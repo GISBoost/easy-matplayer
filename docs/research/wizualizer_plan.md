@@ -4,14 +4,14 @@ Data: 2026-10-20. Plan lokalny. Nie jest fazą w `TASKS.md`. Recenzja faktów: `
 
 ## Wybór użytkownika (2026-10-20)
 
-Michał wybrał w formularzu 2026-10-20. Wpis jest w `docs/projekt/DECISIONS.md` jako **D24**: faza po zamkniętym MVP, bez otwierania MVP i bez zastępowania G5/D23. Krok 1 (indeks) jest w `pipeline/viz_index.py`. Krok 2 (silnik klatki) jest w `pipeline/viz_engine.py`. Dalej jest spike stosu okna, potem krok 3.
+Michał wybrał w formularzu 2026-10-20. Wpis jest w `docs/projekt/DECISIONS.md` jako **D24**: faza po zamkniętym MVP, bez otwierania MVP i bez zastępowania G5/D23. Krok 1 (indeks) jest w `pipeline/viz_index.py`. Krok 2 (silnik klatki) jest w `pipeline/viz_engine.py`. Spike stosu (2026-10-20) zostawił WebView2 + Leaflet. Dalej jest krok 3 (okno). Klucza CARTO nadal nie ma.
 
 | punkt | wybór |
 |---|---|
 | 1 | Kod po wpisie w `DECISIONS.md` |
 | 2 | Lokalny player z inspekcją. Blender zostaje do filmów, SimWrapper do dashboardów |
 | 3 | v1: mapa, czas, szukanie, klik auta, klik linku, pięć klas, lista czynności. Bez dwóch runów i bez wykresu doby |
-| 4 | Spike Qt i WebView2, stos zostaje po pomiarze |
+| 4 | Spike zmierzony 2026-10-20: zostaje WebView2 + Leaflet. Liczby na końcu pliku. Okno jeszcze nie |
 | 5 | Rzadki indeks całego runu w `output/`. Gęsty `vehicles.npz` zostaje przy Blenderze |
 | 6 | Indeks całego `output/g5r6_25pct_s4711`. Player otwiera się o 06:00 |
 | 7 | Pięć klas (`r`, `c`, `o`, `t`, `h`), na starcie wszystkie włączone. Kolor auta = prędkość |
@@ -33,7 +33,7 @@ Maszyna: 16 GB RAM, Windows, Python 3.12 (`uv`), Java 25 tylko do symulacji. Bud
 1. Wybór punktów 1–11 i wpis D24: zrobione.
 2. Krok 1, indeks: zrobione 2026-10-20 (`pipeline/viz_index.py`). Pliki leżą w `output/g5r6_25pct_s4711/viz/` i są poza gitem.
 3. Krok 2, silnik klatki: zrobione 2026-10-20 (`pipeline/viz_engine.py`). Na R6 w szczycie 961 aut, bez `t` 420.
-4. Spike stosu okna (punkt 4): następne zlecenie. Spike jest gitignored, pod `output/viz_spike/`, i idzie do kosza po pomiarze. Okno dopiero po pomiarze.
+4. Spike stosu okna (punkt 4): zmierzony 2026-10-20. Zostaje WebView2 + Leaflet. Kod spike'u leży w `output/viz_spike/` i jest poza gitem. Okno (krok 3) jeszcze nie.
 5. Zależności okna (`PySide6` albo `pywebview`, oraz Leaflet w powłoce) nie ma w `pyproject.toml`. Indekser mieści się w tym, co już jest: `numpy`, `lxml`, `zstandard`, `pyproj`.
 6. Klucz CARTO do kafelków `dark_nolabels`. Bez niego v1 rysuje sieć na ciemnym tle. Klucza nie wklejać do gita.
 
@@ -284,6 +284,25 @@ Log indeksu: `output/<run>/viz/index.log`. Log silnika: `output/<run>/viz/engine
 
 ## Definicja „gotowe do wdrożenia”
 
-Gotowe jest: wybór 11 punktów, D24, format, testy, kolejność, budżet, miejsce plików, wygląd pierwszej klatki, podkład (Leaflet, CARTO `dark_nolabels`), krok 1 (indeks R6), krok 2 (silnik klatki). Niegotowe, świadomie: wynik spike'u stosu, krok 3 (okno), zależność okna, klucz CARTO, akceptacja ludzka obrazu.
+Gotowe jest: wybór 11 punktów, D24, format, testy, kolejność, budżet, miejsce plików, wygląd pierwszej klatki, podkład (Leaflet, CARTO `dark_nolabels`), krok 1 (indeks R6), krok 2 (silnik klatki), spike stosu (WebView2 + Leaflet, liczby niżej). Niegotowe, świadomie: krok 3 (okno), zależność okna w `pyproject.toml`, klucz CARTO, akceptacja ludzka obrazu.
 
-Następne zlecenie to spike Qt kontra WebView2, pod `output/viz_spike/` i poza gitem. Okno dopiero po pomiarze.
+Następne zlecenie to krok 3, okno. Do tego czasu playera nie ma. Bez klucza okno rysuje sieć na `#121418` i zdanie o wyłączonym podkładzie.
+
+## Spike stosu, pomiar 2026-10-20
+
+Kod został w `output/viz_spike/` i nie wchodzi do gita. Ta sama klatka: `output/g5r6_25pct_s4711`, t = 58 170 s, 961 aut, 8 362 cięciwy w kadrze, 30 klatek co sekundę. Osie: 524 805 E, 485 023 N wychodzą jako 52,2307° N, 19,3633° E (`pyproj`, `always_xy`).
+
+Kafelki: URL CARTO `dark_nolabels` bez klucza. Klucza w repozytorium nie ma. Serwer oddał HTTP 200 i 35 razy ten sam PNG, 2 513 B, z napisem API KEY REQUIRED. To nie jest mapa. Oba warianty narysowały cięciwy na `#121418` i zdanie „Podkład wyłączony.” Podkładu ten pomiar nie obejmuje. `tile.openstreetmap.org` nie był użyty.
+
+Hz to tempo 30 Hz przez 2 s (ukończone klatki podzielone przez czas), nie pętla na maksimum. Oba warianty tempo utrzymały. Klik Qt to `QTest.mouseClick` w piksel auta 0. Klik WebView2 to jedno `evaluate_js` z `pickAt`. Oba zwróciły indeks 0. RAM to working set procesu i potomków. PowerShell na tym komputerze wypisuje przecinek (`526,9`); parser liczby musi go przyjąć.
+
+| wariant | Hz | klik, ms | RAM, MB |
+|---|---:|---:|---:|
+| PySide6 | 29,56 | 0,24 | 165 |
+| WebView2 + Leaflet | 29,22 | 0,92 | 503 |
+
+WebView2 dostał jedną tablicę JSON (961 punktów) na klatkę, jednym `evaluate_js`. Progi z tego pliku (poniżej 15 Hz, powyżej 1 GB, klik powyżej 50 ms) nie zostały przekroczone. PySide6 też je mieści. Zostaje WebView2 + Leaflet: plan już tam stał, a waga klatki się utrzymała. Ciemnego podkładu z atrybucją nie pokazał żaden wariant, bo nie ma klucza. Okno v1 nie jest zaczęte. `PySide6` i `pywebview` nie weszły do `pyproject.toml`.
+
+Zrzut WebView2 (HiDPI, widoczna część kadru, podkład wyłączony):
+
+![spike WebView2, podkład wyłączony](wizualizer_spike.png)
