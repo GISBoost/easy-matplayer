@@ -4,7 +4,7 @@ Data: 2026-10-20. Plan lokalny. Nie jest fazą w `TASKS.md`. Recenzja faktów: `
 
 ## Wybór użytkownika (2026-10-20)
 
-Michał wybrał w formularzu 2026-10-20. Wpis jest w `docs/projekt/DECISIONS.md` jako **D24**: faza po zamkniętym MVP, bez otwierania MVP i bez zastępowania G5/D23. Krok 1 (indeks) jest w `pipeline/viz_index.py`. Dalej jest krok 2, silnik klatki bez okna.
+Michał wybrał w formularzu 2026-10-20. Wpis jest w `docs/projekt/DECISIONS.md` jako **D24**: faza po zamkniętym MVP, bez otwierania MVP i bez zastępowania G5/D23. Krok 1 (indeks) jest w `pipeline/viz_index.py`. Krok 2 (silnik klatki) jest w `pipeline/viz_engine.py`. Dalej jest spike stosu okna, potem krok 3.
 
 | punkt | wybór |
 |---|---|
@@ -32,8 +32,8 @@ Maszyna: 16 GB RAM, Windows, Python 3.12 (`uv`), Java 25 tylko do symulacji. Bud
 
 1. Wybór punktów 1–11 i wpis D24: zrobione.
 2. Krok 1, indeks: zrobione 2026-10-20 (`pipeline/viz_index.py`). Pliki leżą w `output/g5r6_25pct_s4711/viz/` i są poza gitem.
-3. Krok 2, silnik klatki bez okna: następne zlecenie. Nie zaczynać od okna.
-4. Spike stosu okna (punkt 4). Spike jest gitignored, pod `output/viz_spike/`, i idzie do kosza po pomiarze.
+3. Krok 2, silnik klatki: zrobione 2026-10-20 (`pipeline/viz_engine.py`). Na R6 w szczycie 961 aut, bez `t` 420.
+4. Spike stosu okna (punkt 4): następne zlecenie. Spike jest gitignored, pod `output/viz_spike/`, i idzie do kosza po pomiarze. Okno dopiero po pomiarze.
 5. Zależności okna (`PySide6` albo `pywebview`, oraz Leaflet w powłoce) nie ma w `pyproject.toml`. Indekser mieści się w tym, co już jest: `numpy`, `lxml`, `zstandard`, `pyproj`.
 6. Klucz CARTO do kafelków `dark_nolabels`. Bez niego v1 rysuje sieć na ciemnym tle. Klucza nie wklejać do gita.
 
@@ -219,6 +219,10 @@ Test geometrii, ten sam próg co G6: seed 1, trzy przejazdy o więcej niż 8 wę
 
 ### Krok 2. Silnik bez okna
 
+`uv run python pipeline/viz_engine.py output/g5r6_25pct_s4711`
+
+Stan 2026-10-20: zrobione. Akceptacja poniżej przeszła na R6. Dowód: `docs/projekt/PROGRESS.md` i `output/g5r6_25pct_s4711/viz/engine.log`.
+
 Testy na indeksie z kroku 1, bez rysowania:
 
 - w czasie równym węzłowi pozycja = współrzędne węzła (float32, 1 mm)
@@ -270,15 +274,16 @@ Z katalogu projektu, tym samym `uv` co reszta pipeline:
 
 ```
 uv run python pipeline/viz_index.py output/g5r6_25pct_s4711
+uv run python pipeline/viz_engine.py output/g5r6_25pct_s4711
 uv run python -m viz_player output/g5r6_25pct_s4711
 ```
 
-Drugie polecenie jest nazwą roboczą. Indekser jest w gicie (`pipeline/viz_index.py`). Katalog `viz_player/` powstaje z krokiem 3, po spike'u, obok `pipeline/`, bez Javy.
+Trzecie polecenie jest nazwą roboczą okna. Indekser i silnik są w gicie (`pipeline/viz_index.py`, `pipeline/viz_engine.py`). Katalog `viz_player/` powstaje z krokiem 3, po spike'u, obok `pipeline/`, bez Javy.
 
-Log indeksu: `output/<run>/viz/index.log`. Okno zapisuje ostatni otwarty run w `output/viz_player_state.json` (też pod `output/`, już ignorowane). Bez zapisu do `scenarios/` i bez zapisu do `data/raw/`.
+Log indeksu: `output/<run>/viz/index.log`. Log silnika: `output/<run>/viz/engine.log`. Okno zapisuje ostatni otwarty run w `output/viz_player_state.json` (też pod `output/`, już ignorowane). Bez zapisu do `scenarios/` i bez zapisu do `data/raw/`.
 
 ## Definicja „gotowe do wdrożenia”
 
-Gotowe jest: wybór 11 punktów, D24, format, testy, kolejność, budżet, miejsce plików, wygląd pierwszej klatki, podkład (Leaflet, CARTO `dark_nolabels`), krok 1 (indeks R6). Niegotowe, świadomie: krok 2 (silnik bez okna), zależność okna, wynik spike'u stosu, klucz CARTO, akceptacja ludzka obrazu.
+Gotowe jest: wybór 11 punktów, D24, format, testy, kolejność, budżet, miejsce plików, wygląd pierwszej klatki, podkład (Leaflet, CARTO `dark_nolabels`), krok 1 (indeks R6), krok 2 (silnik klatki). Niegotowe, świadomie: wynik spike'u stosu, krok 3 (okno), zależność okna, klucz CARTO, akceptacja ludzka obrazu.
 
-Następne zlecenie kodu to krok 2 (silnik klatki, bez okna). Nie zaczynać od okna.
+Następne zlecenie to spike Qt kontra WebView2, pod `output/viz_spike/` i poza gitem. Okno dopiero po pomiarze.
