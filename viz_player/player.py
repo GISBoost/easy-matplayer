@@ -1,4 +1,4 @@
-"""Okno odtwarzacza (D24, krok 3). WebView2 + Leaflet.
+"""Okno odtwarzacza (D24). WebView2 + Leaflet. Panel id ma oś czynności.
 
 Nie parsuje XML. Czyta indeks przez pipeline/viz_engine.py i rysuje klatkę.
 Bez klucza CARTO zostają cięciwy na #121418 i zdanie „Podkład wyłączony.”
@@ -85,6 +85,66 @@ def covering(rows, t):
             return None
         opened = row if row["kind"] == "actstart" else None
     return opened
+
+
+def _cut(start, end, cuts):
+    pieces = [(start, end)]
+    for c0, c1 in cuts:
+        nxt = []
+        for a, b in pieces:
+            if c1 <= a or c0 >= b:
+                nxt.append((a, b))
+                continue
+            if a < c0:
+                nxt.append((a, c0))
+            if c1 < b:
+                nxt.append((c1, b))
+        pieces = nxt
+    return [(a, b) for a, b in pieces if b > a]
+
+
+def _on_axis(a, b, t, t_max):
+    if a <= t < b:
+        return True
+    return t >= t_max and abs(b - t_max) <= 1e-3 and a < b and a <= t
+
+
+def schedule(rows, t_min, t_max, trips, t):
+    """Odcinki na osi [t_min, t_max]. Jazda bierze się z przejazdów i wycina czynność."""
+    t_min, t_max, t = float(t_min), float(t_max), float(t)
+    spans = []
+    if rows and rows[0]["kind"] == "actend" and t_min < float(rows[0]["t"]):
+        spans.append((t_min, float(rows[0]["t"]), rows[0]["type"]))
+    for i, row in enumerate(rows):
+        if row["kind"] != "actstart":
+            continue
+        start = float(row["t"])
+        end = t_max
+        for nxt in rows[i + 1:]:
+            if nxt["kind"] == "actend" or float(nxt["t"]) > start:
+                end = float(nxt["t"])
+                break
+        if start < end:
+            spans.append((start, end, row["type"]))
+    clipped = []
+    for a, b in trips:
+        a, b = max(float(a), t_min), min(float(b), t_max)
+        if b > a:
+            clipped.append((a, b))
+    out = []
+    for a, b, label in spans:
+        for c0, c1 in _cut(a, b, clipped):
+            out.append({
+                "t0": c0, "t1": c1, "label": label, "trip": False,
+                "on": _on_axis(c0, c1, t, t_max),
+            })
+    for a, b in clipped:
+        out.append({
+            "t0": a, "t1": b, "label": "jazda", "trip": True,
+            "on": _on_axis(a, b, t, t_max),
+        })
+    out.sort(key=lambda seg: seg["t0"])
+    return out
 
 
 def carto_basemap():
@@ -267,28 +327,33 @@ class Player:
 
     def activity_view(self, ident):
         rows = viz_engine.activities(self.index, ident)
-        cover = covering(rows, float(self.t))
-        view = []
-        for row in rows:
-            view.append({
-                "clock": clock(row["t"]),
-                "kind": "start" if row["kind"] == "actstart" else "koniec",
-                "type": row["type"],
-                "cover": row is cover and row["kind"] == "actstart",
-            })
-        return rows, cover, view
+        return rows, covering(rows, float(self.t))
+
+    def trips_of(self, ident):
+        id_i = self.index.id_of.get(str(ident))
+        if id_i is None:
+            return []
+        a, b = int(self.index.track_off[id_i]), int(self.index.track_off[id_i + 1])
+        return [
+            (float(self.index.track_t0[int(k)]), float(self.index.track_t1[int(k)]))
+            for k in self.index.track_order[a:b]
+        ]
 
     def panel(self):
         if self.index is None:
-            return {"kind": "empty", "lines": [self.error or "Brak runu."], "activities": []}
+            return {"kind": "empty", "lines": [self.error or "Brak runu."], "axis": []}
         if self.selected_id is None and self.selected_link is not None:
             return self._link_panel(self.selected_link)
         if self.selected_id is None:
-            return {"kind": "empty", "lines": [], "activities": []}
+            return {"kind": "empty", "lines": [], "axis": []}
         return self._id_panel(self.selected_id)
 
     def _id_panel(self, ident):
-        _rows, cover, view = self.activity_view(ident)
+        rows, cover = self.activity_view(ident)
+        axis = schedule(
+            rows, self.index.meta["t_min"], self.index.meta["t_max"],
+            self.trips_of(ident), self.t,
+        )
         track = self.active_track(ident)
         fr = self.frame_np()
         if track is not None:
@@ -303,16 +368,16 @@ class Player:
                         ident, self.class_name.get(letter, letter), kmh(fr.speed[i]),
                         "link " + lid, typ, "freespeed " + free,
                     ],
-                    "activities": view,
+                    "axis": axis,
                 }
         if cover is not None:
             lid, _typ, _leng, _free = self.link_bits(int(cover["link"]))
             return {
                 "kind": "activity",
                 "lines": [ident, cover["type"], "link " + lid, "nie jedzie"],
-                "activities": view,
+                "axis": axis,
             }
-        return {"kind": "idle", "lines": [ident, "nie jedzie"], "activities": view}
+        return {"kind": "idle", "lines": [ident, "nie jedzie"], "axis": axis}
 
     def _link_panel(self, link_i):
         lid, typ, leng, free = self.link_bits(link_i)
@@ -323,7 +388,7 @@ class Player:
         return {
             "kind": "link",
             "lines": [lid, typ, leng, "freespeed " + free, line],
-            "activities": [],
+            "axis": [],
         }
 
     def letter(self, code):
@@ -383,7 +448,7 @@ class Player:
                         pan = [lat_l[sel], lon_l[sel]]
                 path = self.path_latlon(track)
             elif self.follow:
-                _rows, cover, _view = self.activity_view(self.selected_id)
+                _rows, cover = self.activity_view(self.selected_id)
                 if cover is not None:
                     plon, plat = self.fwd.transform(ORIGIN[0] + float(cover["x"]), ORIGIN[1] + float(cover["y"]))
                     pan = [round(float(plat), 6), round(float(plon), 6)]
@@ -541,9 +606,32 @@ def self_test():
     if ramp_rgb(0) != (255, 31, 13) or ramp_rgb(VMAX) != (26, 230, 255):
         raise SystemExit(f"self-test: rampa {ramp_rgb(0)} {ramp_rgb(VMAX)}")
     shell = (HERE / "shell.html").read_text(encoding="utf-8")
-    for token in ("255, 31, 13", "255, 179, 26", "26, 230, 255", "const VMAX = 14", "grid-column: 1 / -1"):
+    for token in ("255, 31, 13", "255, 179, 26", "26, 230, 255", "const VMAX = 14", "grid-column: 1 / -1", 'id="axis"'):
         if token not in shell:
             raise SystemExit(f"self-test: shell bez {token}")
+    day = [
+        {"t": 100.0, "kind": "actend", "type": "home"},
+        {"t": 200.0, "kind": "actstart", "type": "work"},
+        {"t": 500.0, "kind": "actend", "type": "work"},
+        {"t": 600.0, "kind": "actstart", "type": "home"},
+    ]
+    full = schedule(day, 0, 800, [(100, 200), (500, 600)], 550)
+    expect = [
+        ("home", 0.0, 100.0, False),
+        ("jazda", 100.0, 200.0, False),
+        ("work", 200.0, 500.0, False),
+        ("jazda", 500.0, 600.0, True),
+        ("home", 600.0, 800.0, False),
+    ]
+    got = [(seg["label"], seg["t0"], seg["t1"], seg["on"]) for seg in full]
+    if got != expect:
+        raise SystemExit(f"self-test: oś {got}")
+    end = schedule(day, 0, 800, [(100, 200), (500, 600)], 800)
+    if not end[-1]["on"] or any(seg["on"] for seg in end[:-1]):
+        raise SystemExit(f"self-test: koniec osi {end}")
+    cut = schedule([{"t": 200.0, "kind": "actstart", "type": "work"}], 0, 400, [(180, 220)], 200)
+    if [(seg["label"], seg["on"]) for seg in cut] != [("jazda", True), ("work", False)]:
+        raise SystemExit(f"self-test: jazda wycina czynność {cut}")
     home = {"t": 100.0, "kind": "actend", "type": "home"}
     work = {"t": 200.0, "kind": "actstart", "type": "work"}
     rows = [home, work]
@@ -628,6 +716,13 @@ def self_test():
         home_panel = player.panel()
         if home_panel["kind"] != "activity" or "home" not in home_panel["lines"] or "nie jedzie" not in home_panel["lines"]:
             raise SystemExit(f"self-test: home {home_panel}")
+        axis = home_panel["axis"]
+        if [seg["label"] for seg in axis] != ["home", "jazda", "work"]:
+            raise SystemExit(f"self-test: oś r1 {axis}")
+        if not axis[0]["on"] or axis[1]["on"] or axis[2]["on"]:
+            raise SystemExit(f"self-test: oś r1 teraz {axis}")
+        if axis[1]["t0"] != 23000.0 or axis[1]["t1"] != 23100.0 or axis[1]["trip"] is not True:
+            raise SystemExit(f"self-test: jazda r1 {axis[1]}")
         if player.payload()["sel"] is not None or player.payload()["path"]:
             raise SystemExit("self-test: duch na drodze")
         player.set_classes("rcoh")
@@ -659,6 +754,8 @@ def self_test():
         later = player.panel()
         if later["kind"] != "activity" or "work" not in later["lines"]:
             raise SystemExit(f"self-test: praca {later}")
+        if not any(seg["label"] == "work" and seg["on"] for seg in later["axis"]):
+            raise SystemExit(f"self-test: oś pracy {later['axis']}")
         if player.lookup("r1").get("followed") != "r1":
             raise SystemExit("self-test: dokładne id")
         many = player.lookup("r")
@@ -732,6 +829,10 @@ def check(run):
         need(panel["kind"] == "link" and not panel["lines"][-1].startswith("teraz 0"), f"link {panel['lines']}")
     followed = player.lookup("r6510903_5")
     need(followed.get("followed") == "r6510903_5", f"lookup {followed}")
+    axis = player.panel().get("axis") or []
+    need(len(axis) >= 2 and any(seg["trip"] for seg in axis), f"oś {len(axis)}")
+    need(sum(bool(seg["on"]) for seg in axis) <= 1, "oś: dwie naraz")
+    need([seg["t0"] for seg in axis] == sorted(seg["t0"] for seg in axis), "oś nie po czasie")
     if problems:
         _note(player.run_dir, "FAIL " + "; ".join(problems))
         return 1
@@ -739,7 +840,7 @@ def check(run):
     _note(
         player.run_dir,
         f"check OK run={player.run_name} start=06:00:00 probka={player.sample} podklad={base} "
-        f"okno6_9={window['n']} szczyt={peak['n']} bez_t={thin['n']} linki={len(boot['links'])} "
+        f"okno6_9={window['n']} szczyt={peak['n']} bez_t={thin['n']} os={len(axis)} linki={len(boot['links'])} "
         f"osie={lat:.4f}N {lon:.4f}E",
     )
     return 0
@@ -907,6 +1008,15 @@ def smoke(run):
             detail = window.evaluate_js("document.getElementById('detail').innerText")
             if "r6510903_5" not in str(detail):
                 result["error"] = f"panel {detail}"
+                return
+            axis_ok = window.evaluate_js(
+                "(function(){var box=document.getElementById('axis');"
+                "var bar=document.getElementById('axis-bar');"
+                "var n=bar?bar.querySelectorAll('.seg').length:0;"
+                "return !!box && !box.hidden && n>0 && bar.getBoundingClientRect().width>40;})()"
+            )
+            if axis_ok is not True:
+                result["error"] = "oś " + str(axis_ok)
                 return
             window.evaluate_js("window.dispatchEvent(new KeyboardEvent('keydown', {key: 'Escape'}))")
             time.sleep(0.5)

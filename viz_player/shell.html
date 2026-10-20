@@ -31,8 +31,14 @@ body { display: grid; grid-template-columns: 1fr 320px; grid-template-rows: 1fr 
 .chip.on { color: #e7e9ee; border-color: #7eb6ff; }
 #detail { line-height: 1.45; }
 #detail div { margin: 0; }
-#acts { margin-top: 14px; color: #9aa3b2; font-size: 13px; }
-#acts .on { color: #7eb6ff; }
+#axis { margin-top: 14px; }
+#axis-bar { position: relative; height: 18px; border-radius: 4px; background: #121418; cursor: pointer; }
+/* ponytail: min-width 2px, zoom osi gdy krótka jazda ma być osobno */
+#axis-bar .seg { position: absolute; top: 2px; bottom: 2px; background: #3d4656; border-radius: 2px; min-width: 2px; }
+#axis-bar .seg.trip { background: #7eb6ff; }
+#axis-bar .seg.on { outline: 1px solid #e7e9ee; z-index: 1; }
+#axis-bar .now { position: absolute; top: 0; bottom: 0; width: 2px; margin-left: -1px; background: #e7e9ee; pointer-events: none; z-index: 2; }
+#axis-ends { display: flex; justify-content: space-between; margin-top: 4px; color: #9aa3b2; font-size: 11px; font-variant-numeric: tabular-nums; }
 .muted { color: #9aa3b2; }
 #hint { margin-top: 18px; color: #9aa3b2; font-size: 12px; line-height: 1.4; }
 #bar { display: flex; align-items: center; gap: 8px; padding: 0 12px; background: #1b1f27; min-width: 0;
@@ -65,7 +71,10 @@ body.panel-off #panel { display: none; }
   <div id="hits"></div>
   <div id="chips"></div>
   <div id="detail" class="muted">Kliknij auto albo drogę.</div>
-  <div id="acts"></div>
+  <div id="axis" hidden>
+    <div id="axis-bar"></div>
+    <div id="axis-ends"><span id="axis-a"></span><span id="axis-b"></span></div>
+  </div>
   <p id="hint">Spacja: start. Strzałki: ±1 min. F: śledź. Esc: wyczyść.</p>
 </aside>
 <div id="bar">
@@ -156,9 +165,33 @@ const chips = document.getElementById("chips");
   chips.appendChild(b);
 });
 
+function showAxis(segments) {
+  const box = document.getElementById("axis");
+  const bar = document.getElementById("axis-bar");
+  bar.replaceChildren();
+  if (!segments || !segments.length || !(tMax > tMin)) {
+    box.hidden = true;
+    return;
+  }
+  box.hidden = false;
+  const span = tMax - tMin;
+  segments.forEach((seg) => {
+    const d = document.createElement("div");
+    d.className = "seg" + (seg.trip ? " trip" : "") + (seg.on ? " on" : "");
+    d.title = seg.label + "  " + clock(seg.t0) + "–" + clock(seg.t1);
+    d.style.left = ((seg.t0 - tMin) / span * 100) + "%";
+    d.style.width = ((seg.t1 - seg.t0) / span * 100) + "%";
+    bar.appendChild(d);
+  });
+  const now = document.createElement("div");
+  now.className = "now";
+  now.style.left = (Math.min(1, Math.max(0, (t - tMin) / span)) * 100) + "%";
+  bar.appendChild(now);
+  document.getElementById("axis-a").textContent = clock(tMin);
+  document.getElementById("axis-b").textContent = clock(tMax);
+}
 function showPanel(p) {
   const el = document.getElementById("detail");
-  const acts = document.getElementById("acts");
   if (!p || p.kind === "miss") return;
   el.className = p.kind === "empty" ? "muted" : "";
   el.replaceChildren();
@@ -168,13 +201,7 @@ function showPanel(p) {
     d.textContent = text;
     el.appendChild(d);
   });
-  acts.replaceChildren();
-  (p.activities || []).forEach((a) => {
-    const d = document.createElement("div");
-    if (a.cover) d.className = "on";
-    d.textContent = a.clock + "  " + a.kind + "  " + a.type;
-    acts.appendChild(d);
-  });
+  showAxis(p.axis);
 }
 function showHits(hits) {
   const box = document.getElementById("hits");
@@ -384,6 +411,15 @@ slider.addEventListener("pointerdown", () => { scrub = true; });
 window.addEventListener("pointerup", () => { scrub = false; });
 slider.addEventListener("input", () => {
   t = Number(slider.value);
+  document.getElementById("clock").textContent = clock(t);
+  dirty = true;
+});
+document.getElementById("axis-bar").addEventListener("click", (ev) => {
+  const r = ev.currentTarget.getBoundingClientRect();
+  if (r.width < 1) return;
+  const u = Math.min(1, Math.max(0, (ev.clientX - r.left) / r.width));
+  t = tMin + u * (tMax - tMin);
+  slider.value = String(t);
   document.getElementById("clock").textContent = clock(t);
   dirty = true;
 });

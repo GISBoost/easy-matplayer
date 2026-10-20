@@ -4,7 +4,7 @@ Data: 2026-10-20. Plan lokalny. Nie jest fazą w `TASKS.md`. Recenzja faktów: `
 
 ## Wybór użytkownika (2026-10-20)
 
-Michał wybrał w formularzu 2026-10-20. Wpis jest w `docs/projekt/DECISIONS.md` jako **D24**: faza po zamkniętym MVP, bez otwierania MVP i bez zastępowania G5/D23. Krok 1 (indeks) jest w `pipeline/viz_index.py`. Krok 2 (silnik klatki) jest w `pipeline/viz_engine.py`. Spike stosu (2026-10-20) zostawił WebView2 + Leaflet. Krok 3 (okno) jest w `viz_player/`. Akceptacja automatyczna przeszła 2026-10-20. Akceptacja ludzka obrazu jest otwarta. Klucza CARTO nadal nie ma.
+Michał wybrał w formularzu 2026-10-20. Wpis jest w `docs/projekt/DECISIONS.md` jako **D24**: faza po zamkniętym MVP, bez otwierania MVP i bez zastępowania G5/D23. Krok 1 (indeks) jest w `pipeline/viz_index.py`. Krok 2 (silnik klatki) jest w `pipeline/viz_engine.py`. Spike stosu (2026-10-20) zostawił WebView2 + Leaflet. Krok 3 (okno) jest w `viz_player/`. Akceptacja automatyczna przeszła 2026-10-20. Akceptacja ludzka obrazu jest otwarta. Klucza CARTO nadal nie ma. Z kroku 4 jest oś harmonogramu w panelu.
 
 | punkt | wybór |
 |---|---|
@@ -257,7 +257,11 @@ Zrzut smoke, pauza 07:56:31, 849 aut, podkład wyłączony. To nie jest akceptac
 
 ### Krok 4. Dopiero potem, każda rzecz osobno
 
-Harmonogram jako oś czasu (nie lista), łamane OSM w konwerterze, podkład z licencją, drugi run, spięcie bake'u z tym indeksem, Łódź. Każda czeka na własny wpis, jeśli rusza zakres.
+Stan 2026-10-20: pierwsza rzecz jest w panelu wybranego id. Oś czasu zastępuje listę czynności. Odcinek czynności bierze się z `actstart`/`actend`, jazda z przejazdów i wycina czynność. Zakres osi to `[t_min, t_max]`. Klik ustawia czas. Dziury między czynnością a jazdą to dojście, którego indeks nie rysuje (`car interaction`). To nie jest wykres natężenia doby.
+
+Akceptacja automatyczna: self-test osi (dom–jazda–praca–jazda–dom, jazda wycina czynność), check R6 (`r6510903_5` ma 5 odcinków, jeden zaznaczony), smoke widzi pasek osi w oknie. Dowód: `docs/projekt/PROGRESS.md`.
+
+Reszta kroku 4 czeka na własny wpis, bo rusza zakres: łamane OSM w konwerterze (Java), podkład z licencją (klucz CARTO), drugi run, spięcie bake'u, Łódź.
 
 ## Ryzyka
 
@@ -292,7 +296,7 @@ Log indeksu: `output/<run>/viz/index.log`. Log silnika: `output/<run>/viz/engine
 
 Gotowe jest: wybór 11 punktów, D24, format, testy, kolejność, budżet, miejsce plików, wygląd pierwszej klatki, podkład (Leaflet, CARTO `dark_nolabels`), krok 1 (indeks R6), krok 2 (silnik klatki), spike stosu (WebView2 + Leaflet, liczby niżej), krok 3 w kodzie (okno, `pywebview`, Leaflet w `viz_player/vendor/`) i jego akceptacja automatyczna. Niegotowe, świadomie: akceptacja ludzka obrazu, klucz CARTO.
 
-Bez klucza okno rysuje sieć na `#121418` i zdanie o wyłączonym podkładzie. Krok 4 zostaje osobno.
+Bez klucza okno rysuje sieć na `#121418` i zdanie o wyłączonym podkładzie. Z kroku 4 jest oś harmonogramu. Łamane OSM, podkład z kluczem, drugi run, spięcie bake'u i Łódź zostają osobno.
 
 ## Spike stosu, pomiar 2026-10-20
 
