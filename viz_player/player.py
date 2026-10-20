@@ -541,7 +541,7 @@ def self_test():
     if ramp_rgb(0) != (255, 31, 13) or ramp_rgb(VMAX) != (26, 230, 255):
         raise SystemExit(f"self-test: rampa {ramp_rgb(0)} {ramp_rgb(VMAX)}")
     shell = (HERE / "shell.html").read_text(encoding="utf-8")
-    for token in ("255, 31, 13", "255, 179, 26", "26, 230, 255", "const VMAX = 14"):
+    for token in ("255, 31, 13", "255, 179, 26", "26, 230, 255", "const VMAX = 14", "grid-column: 1 / -1"):
         if token not in shell:
             raise SystemExit(f"self-test: shell bez {token}")
     home = {"t": 100.0, "kind": "actend", "type": "home"}
@@ -830,6 +830,10 @@ def smoke(run):
             if not ready:
                 result["error"] = "mapa nie wstała"
                 return
+            opened = _wait_js(window, "document.getElementById('clock').textContent === '06:00:00'")
+            if not opened:
+                result["error"] = "brak klatki " + str(window.evaluate_js("window.drawError"))
+                return
             window.evaluate_js("window.hold = true")
             time.sleep(0.4)
             meta = player.index.meta
@@ -857,6 +861,16 @@ def smoke(run):
                 return
             if player.basemap is None and str(base) != "Podkład wyłączony.":
                 result["error"] = f"podkład {base}"
+                return
+            window.evaluate_js("document.getElementById('hide').click()")
+            time.sleep(0.3)
+            back = window.evaluate_js(
+                "(function(){var b=document.getElementById('hide');var r=b.getBoundingClientRect();"
+                "return r.width>20 && r.left>=0 && r.right<=window.innerWidth+1 && b.textContent==='panel';})()"
+            )
+            window.evaluate_js("document.getElementById('hide').click()")
+            if back is not True:
+                result["error"] = "przycisk panelu " + str(back)
                 return
             window.evaluate_js("document.querySelector('.chip[data-letter=\"t\"]').click()")
             time.sleep(0.8)

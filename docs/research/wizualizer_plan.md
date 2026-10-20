@@ -234,7 +234,7 @@ Testy na indeksie z kroku 1, bez rysowania:
 
 ### Krok 3. Okno
 
-Stan 2026-10-20: kod zrobiony (`viz_player/`). Akceptacja automatyczna przeszła: self-testy kroków 1–2, self-test okna, check R6 i smoke okna. Akceptacji ludzkiej agent nie zalicza. Dowód: `docs/projekt/PROGRESS.md`, `output/g5r6_25pct_s4711/viz/player.log`, zrzut niżej (to smoke o 07:56, nie otwarcie programu; program wstaje o 06:00).
+Stan 2026-10-20: kod zrobiony (`viz_player/`). Akceptacja automatyczna przeszła: self-testy kroków 1–2, self-test okna, check R6 i smoke okna. Po pierwszej inspekcji: przycisk panelu zostaje na pasku, a kolejne uruchomienie po krzyżyku znowu rysuje klatkę (lekcja 28). Akceptacji ludzkiej agent nie zalicza. Dowód: `docs/projekt/PROGRESS.md`, `output/g5r6_25pct_s4711/viz/player.log`, zrzut niżej (to smoke o 07:56, nie otwarcie programu; program wstaje o 06:00).
 
 Akceptacja automatyczna: kroki 1–2 nadal przechodzą, import okna nie czyta XML.
 

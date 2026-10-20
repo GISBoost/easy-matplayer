@@ -8,7 +8,7 @@
 html, body { margin: 0; height: 100%; background: #121418; color: #e7e9ee;
   font-family: "Segoe UI", sans-serif; font-size: 14px; }
 body { display: grid; grid-template-columns: 1fr 320px; grid-template-rows: 1fr 52px; overflow: hidden; }
-#stage { position: relative; min-width: 0; min-height: 0; }
+#stage { position: relative; min-width: 0; min-height: 0; grid-column: 1; grid-row: 1; }
 #map { position: absolute; inset: 0; background: #121418; }
 #draw { position: absolute; inset: 0; z-index: 450; pointer-events: none; }
 #legend { position: absolute; z-index: 500; left: 12px; bottom: 22px; display: flex; gap: 8px;
@@ -16,7 +16,8 @@ body { display: grid; grid-template-columns: 1fr 320px; grid-template-rows: 1fr 
   color: #e7e9ee; font-size: 12px; }
 #legend .bar { width: 128px; height: 8px; border-radius: 4px;
   background: linear-gradient(90deg, rgb(255, 31, 13) 0%, rgb(255, 179, 26) 40%, rgb(26, 230, 255) 100%); }
-#panel { background: #1b1f27; overflow: auto; padding: 16px 16px 12px; min-height: 0; }
+#panel { background: #1b1f27; overflow: auto; padding: 16px 16px 12px; min-height: 0;
+  grid-column: 2; grid-row: 1; }
 #panel h1 { margin: 0 0 4px; font-size: 15px; font-weight: 600; }
 #panel .run { margin: 0 0 12px; color: #9aa3b2; font-size: 12px; word-break: break-all; }
 #find input { width: 100%; box-sizing: border-box; background: #121418; color: #e7e9ee;
@@ -34,7 +35,8 @@ body { display: grid; grid-template-columns: 1fr 320px; grid-template-rows: 1fr 
 #acts .on { color: #7eb6ff; }
 .muted { color: #9aa3b2; }
 #hint { margin-top: 18px; color: #9aa3b2; font-size: 12px; line-height: 1.4; }
-#bar { display: flex; align-items: center; gap: 8px; padding: 0 12px; background: #1b1f27; min-width: 0; }
+#bar { display: flex; align-items: center; gap: 8px; padding: 0 12px; background: #1b1f27; min-width: 0;
+  grid-column: 1 / -1; grid-row: 2; }
 #bar button { background: #121418; color: #e7e9ee; border: 1px solid #2a3140; border-radius: 6px; padding: 4px 10px; }
 #bar button.on, #play.on { border-color: #7eb6ff; color: #7eb6ff; }
 #slider { flex: 1; min-width: 80px; accent-color: #7eb6ff; }
@@ -77,7 +79,7 @@ body.panel-off #panel { display: none; }
   <span id="count">0 aut</span>
   <span id="sample"></span>
   <span id="base">Podkład wyłączony.</span>
-  <button id="hide" type="button">panel</button>
+  <button id="hide" type="button">ukryj</button>
 </div>
 <script id="boot" type="application/json">__BOOT__</script>
 <script>/*__LEAFLET_JS__*/</script>
@@ -325,10 +327,19 @@ function py() {
   });
 }
 function pull() {
-  if (window.hold || busy || !window.pywebview) return;
+  const api = window.pywebview && window.pywebview.api;
+  if (window.hold || busy || !api || !api.frame) return;
   busy = true;
   const sent = t;
-  window.pywebview.api.frame(sent).then((payload) => {
+  let pending;
+  try {
+    pending = api.frame(sent);
+  } catch (err) {
+    busy = false;
+    window.drawError = String(err);
+    return;
+  }
+  pending.then((payload) => {
     busy = false;
     if (window.hold) return;
     if (!playing && Math.abs(sent - t) > 1e-3) {
@@ -377,7 +388,10 @@ slider.addEventListener("input", () => {
   dirty = true;
 });
 document.getElementById("hide").addEventListener("click", () => {
-  document.body.classList.toggle("panel-off");
+  const off = document.body.classList.toggle("panel-off");
+  const b = document.getElementById("hide");
+  b.textContent = off ? "panel" : "ukryj";
+  b.classList.toggle("on", off);
   if (map) setTimeout(() => { map.invalidateSize(); linkKey = ""; if (lastPayload) draw(lastPayload); }, 0);
 });
 document.getElementById("find").addEventListener("submit", (ev) => {
