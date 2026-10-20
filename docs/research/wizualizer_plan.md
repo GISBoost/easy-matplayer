@@ -4,7 +4,7 @@ Data: 2026-10-20. Plan lokalny. Nie jest fazą w `TASKS.md`. Recenzja faktów: `
 
 ## Wybór użytkownika (2026-10-20)
 
-Michał wybrał w formularzu 2026-10-20. Wpis jest w `docs/projekt/DECISIONS.md` jako **D24**: faza po zamkniętym MVP, bez otwierania MVP i bez zastępowania G5/D23. Kodu jeszcze nie ma.
+Michał wybrał w formularzu 2026-10-20. Wpis jest w `docs/projekt/DECISIONS.md` jako **D24**: faza po zamkniętym MVP, bez otwierania MVP i bez zastępowania G5/D23. Krok 1 (indeks) jest w `pipeline/viz_index.py`. Dalej jest krok 2, silnik klatki bez okna.
 
 | punkt | wybór |
 |---|---|
@@ -28,13 +28,14 @@ Otworzyć gotowy run na tym komputerze, puścić czas, znaleźć pojazd, klikną
 
 Maszyna: 16 GB RAM, Windows, Python 3.12 (`uv`), Java 25 tylko do symulacji. Budżet pamięci playera: 2–4 GB. Run, na którym plan jest sprawdzony liczbami: `output/g5r6_25pct_s4711`.
 
-## Czego brakuje, zanim powstanie kod
+## Czego brakuje do odtwarzacza
 
-1. Wybór użytkownika przy punktach 1–11 (koniec odpowiedzi agenta, który ten plan napisał). Dopóki go nie ma, liczby „rekomendacja” w recenzji są opinią.
-2. Wpis D24 jest. Kod i tak czeka na osobne zlecenie: pierwszy krok to indeks, nie okno.
-3. Spike stosu okna (punkt 4), jeśli wybór nie wskaże jednego stosu z góry. Spike jest gitignored, pod `output/viz_spike/`, i idzie do kosza po pomiarze.
-4. Zależności okna (`PySide6` albo `pywebview`, oraz Leaflet w powłoce) nie ma w `pyproject.toml`. Nie dodawać ich przed wpisem D. Indekser mieści się w tym, co już jest: `numpy`, `lxml`, `zstandard`, `pyproj`.
-5. Klucz CARTO do kafelków `dark_nolabels`. Bez niego v1 rysuje sieć na ciemnym tle. Klucza nie wklejać do gita.
+1. Wybór punktów 1–11 i wpis D24: zrobione.
+2. Krok 1, indeks: zrobione 2026-10-20 (`pipeline/viz_index.py`). Pliki leżą w `output/g5r6_25pct_s4711/viz/` i są poza gitem.
+3. Krok 2, silnik klatki bez okna: następne zlecenie. Nie zaczynać od okna.
+4. Spike stosu okna (punkt 4). Spike jest gitignored, pod `output/viz_spike/`, i idzie do kosza po pomiarze.
+5. Zależności okna (`PySide6` albo `pywebview`, oraz Leaflet w powłoce) nie ma w `pyproject.toml`. Indekser mieści się w tym, co już jest: `numpy`, `lxml`, `zstandard`, `pyproj`.
+6. Klucz CARTO do kafelków `dark_nolabels`. Bez niego v1 rysuje sieć na ciemnym tle. Klucza nie wklejać do gita.
 
 Dane do pierwszej wersji są. Eventy, sieć i `sampleSize` 0,25 leżą w runie R6. Runu D16, z którego wzięto 4 822 / 755, na dysku nie ma. Nazw ulic w sieci nie ma i v1 ich nie dociąga.
 
@@ -202,6 +203,8 @@ Zrobione: D24 (2026-10-20). Faza po zamkniętym MVP. Osobne repo odłożone.
 
 `uv run python pipeline/viz_index.py output/g5r6_25pct_s4711`
 
+Stan 2026-10-20: zrobione. Akceptacja poniżej przeszła na R6. Dowód: `docs/projekt/PROGRESS.md` i `output/g5r6_25pct_s4711/viz/index.log`.
+
 Akceptacja na tym runie, liczby z pomiaru 2026-10-20:
 
 - 29 660 przejazdów
@@ -261,7 +264,7 @@ Harmonogram jako oś czasu (nie lista), łamane OSM w konwerterze, podkład z li
 | Nowy prefiks id w kolejnym wariancie planów | klasa `inne` niepusta | dopisać legendę, nie zgadywać litery w oknie |
 | Film G6 i player pokazują inny korek | ten sam pojazd, inna pozycja o 08:00 | porównać z testem 0,5 m; poprawia ten, który test oblewa. Bake nie ruszać „przy okazji” |
 
-## Uruchomienie, gdy kod już będzie
+## Uruchomienie
 
 Z katalogu projektu, tym samym `uv` co reszta pipeline:
 
@@ -270,12 +273,12 @@ uv run python pipeline/viz_index.py output/g5r6_25pct_s4711
 uv run python -m viz_player output/g5r6_25pct_s4711
 ```
 
-Drugie polecenie jest nazwą roboczą. Katalog pakietu playera: `viz_player/` w korzeniu repo, obok `pipeline/`, bez Javy. Oba wejścia do gita dopiero razem z wpisem D. Do tego czasu nawet szkielet zostaje niezałożony.
+Drugie polecenie jest nazwą roboczą. Indekser jest w gicie (`pipeline/viz_index.py`). Katalog `viz_player/` powstaje z krokiem 3, po spike'u, obok `pipeline/`, bez Javy.
 
 Log indeksu: `output/<run>/viz/index.log`. Okno zapisuje ostatni otwarty run w `output/viz_player_state.json` (też pod `output/`, już ignorowane). Bez zapisu do `scenarios/` i bez zapisu do `data/raw/`.
 
 ## Definicja „gotowe do wdrożenia”
 
-Gotowe jest: wybór 11 punktów, D24, format, testy, kolejność, budżet, miejsce plików, wygląd pierwszej klatki, podkład (Leaflet, CARTO `dark_nolabels`). Niegotowe, świadomie: kod, zależność okna, wynik spike'u stosu, klucz CARTO, akceptacja ludzka obrazu.
+Gotowe jest: wybór 11 punktów, D24, format, testy, kolejność, budżet, miejsce plików, wygląd pierwszej klatki, podkład (Leaflet, CARTO `dark_nolabels`), krok 1 (indeks R6). Niegotowe, świadomie: krok 2 (silnik bez okna), zależność okna, wynik spike'u stosu, klucz CARTO, akceptacja ludzka obrazu.
 
-Następna sesja, gdy użytkownik zleci kod, robi krok 1 (sam indeks). Nie zaczyna od okna.
+Następne zlecenie kodu to krok 2 (silnik klatki, bez okna). Nie zaczynać od okna.

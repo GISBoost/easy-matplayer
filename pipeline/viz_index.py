@@ -7,7 +7,8 @@ Semantyka pozycji jest kopią pipeline/g6_bake.py: cztery typy eventów ruchu,
 punkt wjazdu wg relativePosition (brak atrybutu = 1), entered link na węźle from,
 left link i leaves traffic na węźle to, długość linku tylko na końcu odcinka.
 Dodatkowo na węźle zostaje indeks linku. actstart i actend poza
-„car interaction” idą do osobnej tabeli. Prędkość (sufit 30 m/s, jak bake)
+„car interaction” idą do osobnej tabeli; brak x albo y przerywa budowę.
+Prędkość (sufit 30 m/s, jak bake)
 liczy silnik klatki w kroku 2 z knot_len i dt. Tu jej nie zapisujemy.
 
 Uruchomienie z katalogu projektu:
@@ -225,9 +226,8 @@ def build(run, log_path):
                 raise CheckFailed(f"czynność na nieznanym linku {link_id}")
             raw_x, raw_y = field(line, "x"), field(line, "y")
             if raw_x is None or raw_y is None:
-                x, y = float(xy[li, 0]), float(xy[li, 1])
-            else:
-                x, y = float(raw_x) - ORIGIN[0], float(raw_y) - ORIGIN[1]
+                raise CheckFailed(f"czynność bez x/y: {line.strip()[:180]}")
+            x, y = float(raw_x) - ORIGIN[0], float(raw_y) - ORIGIN[1]
             act_vid.append(person)
             act_t.append(t)
             act_kind.append(1 if typ == "actstart" else 0)
@@ -282,7 +282,6 @@ def build(run, log_path):
         "act_link": as_i32(act_link),
         "act_x": as_f32(act_x),
         "act_y": as_f32(act_y),
-        "parse_sec": time.perf_counter() - started,
     }
 
 
