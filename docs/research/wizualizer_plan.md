@@ -301,7 +301,14 @@ Hz to tempo 30 Hz przez 2 s (ukończone klatki podzielone przez czas), nie pętl
 | PySide6 | 29,56 | 0,24 | 165 |
 | WebView2 + Leaflet | 29,22 | 0,92 | 503 |
 
-WebView2 dostał jedną tablicę JSON (961 punktów) na klatkę, jednym `evaluate_js`. Progi z tego pliku (poniżej 15 Hz, powyżej 1 GB, klik powyżej 50 ms) nie zostały przekroczone. PySide6 też je mieści. Zostaje WebView2 + Leaflet: plan już tam stał, a waga klatki się utrzymała. Ciemnego podkładu z atrybucją nie pokazał żaden wariant, bo nie ma klucza. Okno v1 nie jest zaczęte. `PySide6` i `pywebview` nie weszły do `pyproject.toml`.
+Powtórka tego samego dnia, bo przy pierwszym pomiarze w RAM siedziały inne programy. Przed powtórką, przez 2 s, maszyna (12 rdzeni logicznych) zużyła 5,8 s CPU z 24 dostępnych, głównie `dllhost` i VS Code. Spike'i poszły jeden po drugim, żaden nie został w tle. Wynik powtórki:
+
+| wariant | Hz | klik, ms | RAM, MB |
+|---|---:|---:|---:|
+| PySide6 | 29,70 | 0,24 | 165 |
+| WebView2 + Leaflet | 29,58 | 0,65 | 503 |
+
+WebView2 dostał jedną tablicę JSON (961 punktów) na klatkę, jednym `evaluate_js`. Progi z tego pliku (poniżej 15 Hz, powyżej 1 GB, klik powyżej 50 ms) nie zostały przekroczone ani razu. PySide6 też je mieści. Do dalszej implementacji zostaje WebView2 + Leaflet: plan już tam stał, powtórka dała te same rzędy liczb, waga klatki się utrzymała. Ciemnego podkładu z atrybucją nie pokazał żaden wariant, bo nie ma klucza. Okno v1 nie jest zaczęte. `PySide6` i `pywebview` nie weszły do `pyproject.toml`.
 
 Zrzut WebView2 (HiDPI, widoczna część kadru, podkład wyłączony):
 
