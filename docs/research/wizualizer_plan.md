@@ -4,14 +4,14 @@ Data: 2026-10-20. Plan lokalny. Nie jest fazą w `TASKS.md`. Recenzja faktów: `
 
 ## Wybór użytkownika (2026-10-20)
 
-Michał wybrał w formularzu 2026-10-20. Wpis jest w `docs/projekt/DECISIONS.md` jako **D24**: faza po zamkniętym MVP, bez otwierania MVP i bez zastępowania G5/D23. Krok 1 (indeks) jest w `pipeline/viz_index.py`. Krok 2 (silnik klatki) jest w `pipeline/viz_engine.py`. Spike stosu (2026-10-20) zostawił WebView2 + Leaflet. Dalej jest krok 3 (okno). Klucza CARTO nadal nie ma.
+Michał wybrał w formularzu 2026-10-20. Wpis jest w `docs/projekt/DECISIONS.md` jako **D24**: faza po zamkniętym MVP, bez otwierania MVP i bez zastępowania G5/D23. Krok 1 (indeks) jest w `pipeline/viz_index.py`. Krok 2 (silnik klatki) jest w `pipeline/viz_engine.py`. Spike stosu (2026-10-20) zostawił WebView2 + Leaflet. Krok 3 (okno) jest w `viz_player/`. Akceptacja automatyczna przeszła 2026-10-20. Akceptacja ludzka obrazu jest otwarta. Klucza CARTO nadal nie ma.
 
 | punkt | wybór |
 |---|---|
 | 1 | Kod po wpisie w `DECISIONS.md` |
 | 2 | Lokalny player z inspekcją. Blender zostaje do filmów, SimWrapper do dashboardów |
 | 3 | v1: mapa, czas, szukanie, klik auta, klik linku, pięć klas, lista czynności. Bez dwóch runów i bez wykresu doby |
-| 4 | Spike zmierzony 2026-10-20: zostaje WebView2 + Leaflet. Liczby na końcu pliku. Okno jeszcze nie |
+| 4 | Spike zmierzony 2026-10-20: zostaje WebView2 + Leaflet. Okno jest w `viz_player/`. Akceptacja ludzka otwarta |
 | 5 | Rzadki indeks całego runu w `output/`. Gęsty `vehicles.npz` zostaje przy Blenderze |
 | 6 | Indeks całego `output/g5r6_25pct_s4711`. Player otwiera się o 06:00 |
 | 7 | Pięć klas (`r`, `c`, `o`, `t`, `h`), na starcie wszystkie włączone. Kolor auta = prędkość |
@@ -33,8 +33,8 @@ Maszyna: 16 GB RAM, Windows, Python 3.12 (`uv`), Java 25 tylko do symulacji. Bud
 1. Wybór punktów 1–11 i wpis D24: zrobione.
 2. Krok 1, indeks: zrobione 2026-10-20 (`pipeline/viz_index.py`). Pliki leżą w `output/g5r6_25pct_s4711/viz/` i są poza gitem.
 3. Krok 2, silnik klatki: zrobione 2026-10-20 (`pipeline/viz_engine.py`). Na R6 w szczycie 961 aut, bez `t` 420.
-4. Spike stosu okna (punkt 4): zmierzony 2026-10-20. Zostaje WebView2 + Leaflet. Kod spike'u leży w `output/viz_spike/` i jest poza gitem. Okno (krok 3) jeszcze nie.
-5. Zależności okna (`PySide6` albo `pywebview`, oraz Leaflet w powłoce) nie ma w `pyproject.toml`. Indekser mieści się w tym, co już jest: `numpy`, `lxml`, `zstandard`, `pyproj`.
+4. Spike stosu okna (punkt 4): zmierzony 2026-10-20. Zostaje WebView2 + Leaflet. Kod spike'u leży w `output/viz_spike/` i jest poza gitem. Okno (krok 3) jest w `viz_player/`. Została akceptacja ludzka obrazu.
+5. `pywebview` jest w `pyproject.toml`. Leaflet 1.9.4 leży w `viz_player/vendor/` (powłoka, nie zamek zależności). `PySide6` nie wchodzi. Indekser dalej mieści się w `numpy`, `lxml`, `zstandard`, `pyproj`.
 6. Klucz CARTO do kafelków `dark_nolabels`. Bez niego v1 rysuje sieć na ciemnym tle. Klucza nie wklejać do gita.
 
 Dane do pierwszej wersji są. Eventy, sieć i `sampleSize` 0,25 leżą w runie R6. Runu D16, z którego wzięto 4 822 / 755, na dysku nie ma. Nazw ulic w sieci nie ma i v1 ich nie dociąga.
@@ -234,7 +234,9 @@ Testy na indeksie z kroku 1, bez rysowania:
 
 ### Krok 3. Okno
 
-Po spike'u. Akceptacja automatyczna: kroki 1–2 nadal przechodzą, import okna nie czyta XML.
+Stan 2026-10-20: kod zrobiony (`viz_player/`). Akceptacja automatyczna przeszła: self-testy kroków 1–2, self-test okna, check R6 i smoke okna. Akceptacji ludzkiej agent nie zalicza. Dowód: `docs/projekt/PROGRESS.md`, `output/g5r6_25pct_s4711/viz/player.log`, zrzut niżej (to smoke o 07:56, nie otwarcie programu; program wstaje o 06:00).
+
+Akceptacja automatyczna: kroki 1–2 nadal przechodzą, import okna nie czyta XML.
 
 Akceptacja ludzka (tej części agent nie zalicza sam):
 
@@ -248,6 +250,10 @@ Akceptacja ludzka (tej części agent nie zalicza sam):
 - ciemne kafelki pod siecią, bez nazw ulic, z atrybucją OSM i CARTO; przy braku klucza widać samą sieć i zdanie o wyłączonym podkładzie
 
 Poprawki wyglądu po tym obejrzeniu są częścią kroku 3, nie nową fazą.
+
+Zrzut smoke, pauza 07:56:31, 849 aut, podkład wyłączony. To nie jest akceptacja ludzka:
+
+![okno easy-matviz, 07:56, podkład wyłączony](wizualizer_okno.png)
 
 ### Krok 4. Dopiero potem, każda rzecz osobno
 
@@ -278,15 +284,15 @@ uv run python pipeline/viz_engine.py output/g5r6_25pct_s4711
 uv run python -m viz_player output/g5r6_25pct_s4711
 ```
 
-Trzecie polecenie jest nazwą roboczą okna. Indekser i silnik są w gicie (`pipeline/viz_index.py`, `pipeline/viz_engine.py`). Katalog `viz_player/` powstaje z krokiem 3, po spike'u, obok `pipeline/`, bez Javy.
+Trzecie polecenie otwiera okno. Indekser, silnik i okno są w gicie (`pipeline/viz_index.py`, `pipeline/viz_engine.py`, `viz_player/`). Katalog `viz_player/` stoi obok `pipeline/`, bez Javy.
 
 Log indeksu: `output/<run>/viz/index.log`. Log silnika: `output/<run>/viz/engine.log`. Okno zapisuje ostatni otwarty run w `output/viz_player_state.json` (też pod `output/`, już ignorowane). Bez zapisu do `scenarios/` i bez zapisu do `data/raw/`.
 
 ## Definicja „gotowe do wdrożenia”
 
-Gotowe jest: wybór 11 punktów, D24, format, testy, kolejność, budżet, miejsce plików, wygląd pierwszej klatki, podkład (Leaflet, CARTO `dark_nolabels`), krok 1 (indeks R6), krok 2 (silnik klatki), spike stosu (WebView2 + Leaflet, liczby niżej). Niegotowe, świadomie: krok 3 (okno), zależność okna w `pyproject.toml`, klucz CARTO, akceptacja ludzka obrazu.
+Gotowe jest: wybór 11 punktów, D24, format, testy, kolejność, budżet, miejsce plików, wygląd pierwszej klatki, podkład (Leaflet, CARTO `dark_nolabels`), krok 1 (indeks R6), krok 2 (silnik klatki), spike stosu (WebView2 + Leaflet, liczby niżej), krok 3 w kodzie (okno, `pywebview`, Leaflet w `viz_player/vendor/`) i jego akceptacja automatyczna. Niegotowe, świadomie: akceptacja ludzka obrazu, klucz CARTO.
 
-Następne zlecenie to krok 3, okno. Do tego czasu playera nie ma. Bez klucza okno rysuje sieć na `#121418` i zdanie o wyłączonym podkładzie.
+Bez klucza okno rysuje sieć na `#121418` i zdanie o wyłączonym podkładzie. Krok 4 zostaje osobno.
 
 ## Spike stosu, pomiar 2026-10-20
 
@@ -308,7 +314,7 @@ Powtórka tego samego dnia, bo przy pierwszym pomiarze w RAM siedziały inne pro
 | PySide6 | 29,70 | 0,24 | 165 |
 | WebView2 + Leaflet | 29,58 | 0,65 | 503 |
 
-WebView2 dostał jedną tablicę JSON (961 punktów) na klatkę, jednym `evaluate_js`. Progi z tego pliku (poniżej 15 Hz, powyżej 1 GB, klik powyżej 50 ms) nie zostały przekroczone ani razu. PySide6 też je mieści. Do dalszej implementacji zostaje WebView2 + Leaflet: plan już tam stał, powtórka dała te same rzędy liczb, waga klatki się utrzymała. Ciemnego podkładu z atrybucją nie pokazał żaden wariant, bo nie ma klucza. Okno v1 nie jest zaczęte. `PySide6` i `pywebview` nie weszły do `pyproject.toml`.
+WebView2 dostał jedną tablicę JSON (961 punktów) na klatkę, jednym `evaluate_js`. Progi z tego pliku (poniżej 15 Hz, powyżej 1 GB, klik powyżej 50 ms) nie zostały przekroczone ani razu. PySide6 też je mieści. Do dalszej implementacji zostaje WebView2 + Leaflet: plan już tam stał, powtórka dała te same rzędy liczb, waga klatki się utrzymała. Ciemnego podkładu z atrybucją nie pokazał żaden wariant, bo nie ma klucza. Po tym pomiarze powstało okno v1 w `viz_player/` (`pywebview` w `pyproject.toml`, bez `PySide6`). Akceptacja ludzka obrazu zostaje otwarta.
 
 Zrzut WebView2 (HiDPI, widoczna część kadru, podkład wyłączony):
 
