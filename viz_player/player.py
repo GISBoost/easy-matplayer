@@ -109,6 +109,30 @@ def _on_axis(a, b, t, t_max):
     return t >= t_max and abs(b - t_max) <= 1e-3 and a < b and a <= t
 
 
+# ponytail: postój ma wagę 1, jazda co najmniej 8 min. Dłuższy postój nie dostaje pikseli.
+TRIP_FLOOR_S = 8 * 60
+
+
+def _fit_axis(segments):
+    if not segments:
+        return segments
+    weights = []
+    for seg in segments:
+        dur = max(float(seg["t1"]) - float(seg["t0"]), 1.0)
+        if seg["trip"]:
+            weights.append(max(dur / TRIP_FLOOR_S, 1.0))
+        else:
+            weights.append(1.0)
+    total = sum(weights)
+    u = 0.0
+    for seg, weight in zip(segments, weights):
+        seg["u0"] = round(u, 5)
+        u += weight / total
+        seg["u1"] = round(u, 5)
+    segments[-1]["u1"] = 1.0
+    return segments
+
+
 def schedule(rows, t_min, t_max, trips, t):
     """Odcinki na osi [t_min, t_max]. Jazda bierze się z przejazdów i wycina czynność."""
     t_min, t_max, t = float(t_min), float(t_max), float(t)
@@ -144,7 +168,7 @@ def schedule(rows, t_min, t_max, trips, t):
             "on": _on_axis(a, b, t, t_max),
         })
     out.sort(key=lambda seg: seg["t0"])
-    return out
+    return _fit_axis(out)
 
 
 def carto_basemap():
@@ -606,7 +630,7 @@ def self_test():
     if ramp_rgb(0) != (255, 31, 13) or ramp_rgb(VMAX) != (26, 230, 255):
         raise SystemExit(f"self-test: rampa {ramp_rgb(0)} {ramp_rgb(VMAX)}")
     shell = (HERE / "shell.html").read_text(encoding="utf-8")
-    for token in ("255, 31, 13", "255, 179, 26", "26, 230, 255", "const VMAX = 14", "grid-column: 1 / -1", 'id="axis"'):
+    for token in ("255, 31, 13", "255, 179, 26", "26, 230, 255", "const VMAX = 14", "grid-column: 1 / -1", 'id="axis"', "postoje ściśnięte"):
         if token not in shell:
             raise SystemExit(f"self-test: shell bez {token}")
     day = [
@@ -626,6 +650,23 @@ def self_test():
     got = [(seg["label"], seg["t0"], seg["t1"], seg["on"]) for seg in full]
     if got != expect:
         raise SystemExit(f"self-test: oś {got}")
+    squeezed = schedule(
+        [
+            {"t": 300.0, "kind": "actend", "type": "home"},
+            {"t": 900.0, "kind": "actstart", "type": "work"},
+            {"t": 8 * 3600 + 900.0, "kind": "actend", "type": "work"},
+            {"t": 8 * 3600 + 1500.0, "kind": "actstart", "type": "home"},
+        ],
+        0, 30 * 3600,
+        [(300.0, 900.0), (8 * 3600 + 900.0, 8 * 3600 + 1500.0)],
+        400.0,
+    )
+    stays = [seg["u1"] - seg["u0"] for seg in squeezed if not seg["trip"]]
+    trips_w = [seg["u1"] - seg["u0"] for seg in squeezed if seg["trip"]]
+    if len(stays) != 3 or len(trips_w) != 2 or min(trips_w) < 0.15 or max(stays) > 0.25:
+        raise SystemExit(f"self-test: ścisk osi {squeezed}")
+    if max(stays) - min(stays) > 1e-4:
+        raise SystemExit(f"self-test: postoje różnej szerokości {stays}")
     end = schedule(day, 0, 800, [(100, 200), (500, 600)], 800)
     if not end[-1]["on"] or any(seg["on"] for seg in end[:-1]):
         raise SystemExit(f"self-test: koniec osi {end}")
@@ -723,6 +764,8 @@ def self_test():
             raise SystemExit(f"self-test: oś r1 teraz {axis}")
         if axis[1]["t0"] != 23000.0 or axis[1]["t1"] != 23100.0 or axis[1]["trip"] is not True:
             raise SystemExit(f"self-test: jazda r1 {axis[1]}")
+        if axis[1]["u1"] - axis[1]["u0"] < 0.2:
+            raise SystemExit(f"self-test: wąska jazda {axis[1]}")
         if player.payload()["sel"] is not None or player.payload()["path"]:
             raise SystemExit("self-test: duch na drodze")
         player.set_classes("rcoh")
@@ -1013,7 +1056,10 @@ def smoke(run):
                 "(function(){var box=document.getElementById('axis');"
                 "var bar=document.getElementById('axis-bar');"
                 "var n=bar?bar.querySelectorAll('.seg').length:0;"
-                "return !!box && !box.hidden && n>0 && bar.getBoundingClientRect().width>40;})()"
+                "var trip=bar?bar.querySelector('.seg.trip'):null;"
+                "var tw=trip?trip.getBoundingClientRect().width:0;"
+                "var bw=bar?bar.getBoundingClientRect().width:0;"
+                "return !!box && !box.hidden && n>0 && bw>40 && tw>bw*0.12;})()"
             )
             if axis_ok is not True:
                 result["error"] = "oś " + str(axis_ok)

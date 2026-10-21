@@ -257,11 +257,11 @@ Zrzut smoke, pauza 07:56:31, 849 aut, podkład wyłączony. To nie jest akceptac
 
 ### Krok 4. Dopiero potem, każda rzecz osobno
 
-Stan 2026-10-20: pierwsza rzecz jest w panelu wybranego id. Oś czasu zastępuje listę czynności. Odcinek czynności bierze się z `actstart`/`actend`, jazda z przejazdów i wycina czynność. Zakres osi to `[t_min, t_max]`. Klik ustawia czas. Dziury między czynnością a jazdą to dojście, którego indeks nie rysuje (`car interaction`). To nie jest wykres natężenia doby.
+Stan 2026-10-20: pierwsza rzecz jest w panelu wybranego id. Oś czasu zastępuje listę czynności. Odcinek czynności bierze się z `actstart`/`actend`, jazda z przejazdów i wycina czynność. Na pasku postój ma stałą wagę, a jazda co najmniej wagę 8 minut, więc kilkuminutowy przejazd nie znika przy wielogodzinnym domu. Klik w odcinek ustawia czas wewnątrz niego. Dziury między czynnością a jazdą to dojście, którego indeks nie rysuje (`car interaction`). To nie jest wykres natężenia doby.
 
 Akceptacja automatyczna: self-test osi (dom–jazda–praca–jazda–dom, jazda wycina czynność), check R6 (`r6510903_5` ma 5 odcinków, jeden zaznaczony), smoke widzi pasek osi w oknie. Dowód: `docs/projekt/PROGRESS.md`.
 
-Reszta kroku 4 czeka na własny wpis, bo rusza zakres: łamane OSM w konwerterze (Java), podkład z licencją (klucz CARTO), drugi run, spięcie bake'u, Łódź.
+Reszta kroku 4, decyzja 2026-10-20: klucz CARTO odłożony, Łódź odrzucona (zostaje Kutno), drugi run odłożony, spięcie bake'u odłożone. Łamane OSM opisane i nie ruszane. Dalej są poprawki GUI i podstawowe funkcje okna.
 
 ## Ryzyka
 
@@ -294,9 +294,9 @@ Log indeksu: `output/<run>/viz/index.log`. Log silnika: `output/<run>/viz/engine
 
 ## Definicja „gotowe do wdrożenia”
 
-Gotowe jest: wybór 11 punktów, D24, format, testy, kolejność, budżet, miejsce plików, wygląd pierwszej klatki, podkład (Leaflet, CARTO `dark_nolabels`), krok 1 (indeks R6), krok 2 (silnik klatki), spike stosu (WebView2 + Leaflet, liczby niżej), krok 3 w kodzie (okno, `pywebview`, Leaflet w `viz_player/vendor/`) i jego akceptacja automatyczna. Niegotowe, świadomie: akceptacja ludzka obrazu, klucz CARTO.
+Gotowe jest: wybór 11 punktów, D24, format, testy, kolejność, budżet, miejsce plików, wygląd pierwszej klatki, podkład (Leaflet, CARTO `dark_nolabels`), krok 1 (indeks R6), krok 2 (silnik klatki), spike stosu (WebView2 + Leaflet, liczby niżej), krok 3 w kodzie (okno, `pywebview`, Leaflet w `viz_player/vendor/`) i jego akceptacja automatyczna. Niegotowe, świadomie: akceptacja ludzka obrazu. Klucz CARTO odłożony decyzją 2026-10-20.
 
-Bez klucza okno rysuje sieć na `#121418` i zdanie o wyłączonym podkładzie. Z kroku 4 jest oś harmonogramu. Łamane OSM, podkład z kluczem, drugi run, spięcie bake'u i Łódź zostają osobno.
+Bez klucza okno rysuje sieć na `#121418` i zdanie o wyłączonym podkładzie. Klucz CARTO, drugi run i spięcie bake'u są odłożone. Łódź w tym kroku nie wchodzi. Z kroku 4 jest oś harmonogramu. Dalej są poprawki okna.
 
 ## Spike stosu, pomiar 2026-10-20
 
