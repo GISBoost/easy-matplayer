@@ -1,6 +1,6 @@
 # Wizualizer — plan wdrożenia
 
-Data: 2026-10-20. Plan lokalny. Nie jest fazą w `TASKS.md`. Recenzja faktów: `wizualizer_recenzja.md`.
+Data: 2026-10-20. Plan lokalny. Nie jest fazą w `TASKS.md`. Recenzja faktów: `wizualizer_recenzja.md`. Opis programu, który już działa: [wizualizer_odtwarzacz.md](wizualizer_odtwarzacz.md).
 
 ## Wybór użytkownika (2026-10-20)
 

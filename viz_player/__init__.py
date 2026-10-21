@@ -1,1 +1,1 @@
-"""Lokalny odtwarzacz runu MATSim (D24, krok 3)."""
+"""Lokalny odtwarzacz runu MATSim (D24). Opis: docs/research/wizualizer_odtwarzacz.md."""
