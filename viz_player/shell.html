@@ -1,0 +1,549 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+<meta charset="utf-8">
+<title>easy-matviz</title>
+<style>
+/*__LEAFLET_CSS__*/
+html, body { margin: 0; height: 100%; background: #121418; color: #e7e9ee;
+  font-family: "Segoe UI", sans-serif; font-size: 14px; }
+body { display: grid; grid-template-columns: 1fr 320px; grid-template-rows: 1fr 52px; overflow: hidden; }
+#stage { position: relative; min-width: 0; min-height: 0; grid-column: 1; grid-row: 1; }
+#map { position: absolute; inset: 0; background: #121418; }
+#draw { position: absolute; inset: 0; z-index: 450; pointer-events: none; }
+#legend { position: absolute; z-index: 500; left: 12px; bottom: 22px; display: flex; gap: 8px;
+  align-items: center; padding: 6px 8px; border-radius: 6px; background: rgba(18, 20, 24, .82);
+  color: #e7e9ee; font-size: 12px; }
+#legend .bar { width: 128px; height: 8px; border-radius: 4px;
+  background: linear-gradient(90deg, rgb(255, 31, 13) 0%, rgb(255, 179, 26) 40%, rgb(26, 230, 255) 100%); }
+#panel { background: #1b1f27; overflow: auto; padding: 16px 16px 12px; min-height: 0;
+  grid-column: 2; grid-row: 1; }
+#panel h1 { margin: 0 0 4px; font-size: 15px; font-weight: 600; }
+#panel .run { margin: 0 0 12px; color: #9aa3b2; font-size: 12px; word-break: break-all; }
+#find input { width: 100%; box-sizing: border-box; background: #121418; color: #e7e9ee;
+  border: 1px solid #2a3140; border-radius: 6px; padding: 8px; font: inherit; }
+#hits { display: flex; flex-direction: column; gap: 4px; margin-top: 8px; }
+#hits button, .chip, #bar button { font: inherit; cursor: pointer; }
+#hits button { text-align: left; background: #121418; color: #e7e9ee; border: 1px solid #2a3140;
+  border-radius: 6px; padding: 6px 8px; }
+#chips { display: flex; flex-wrap: wrap; gap: 6px; margin: 14px 0; }
+.chip { background: transparent; color: #9aa3b2; border: 1px solid #2a3140; border-radius: 999px; padding: 4px 10px; }
+.chip.on { color: #e7e9ee; border-color: #7eb6ff; }
+#detail { line-height: 1.45; }
+#detail div { margin: 0; }
+#axis { margin-top: 14px; }
+#axis-bar { position: relative; height: 36px; border-radius: 4px; background: #121418; cursor: pointer; }
+#axis-bar .seg { position: absolute; top: 0; bottom: 0; display: flex; align-items: center; justify-content: center;
+  overflow: hidden; background: #3d4656; color: #e7e9ee; font-size: 12px; white-space: nowrap; }
+#axis-bar .seg.trip { background: #7eb6ff; color: #121418; }
+#axis-bar .seg.on { outline: 1px solid #e7e9ee; z-index: 1; }
+#axis-bar .now { position: absolute; top: 0; bottom: 0; width: 2px; margin-left: -1px; background: #e7e9ee; pointer-events: none; z-index: 2; }
+#axis-ends { display: flex; justify-content: space-between; gap: 8px; margin-top: 4px; color: #9aa3b2; font-size: 11px; font-variant-numeric: tabular-nums; }
+.muted { color: #9aa3b2; }
+#hint { margin-top: 18px; color: #9aa3b2; font-size: 12px; line-height: 1.4; }
+#bar { display: flex; align-items: center; gap: 8px; padding: 0 12px; background: #1b1f27; min-width: 0;
+  grid-column: 1 / -1; grid-row: 2; }
+#bar button { background: #121418; color: #e7e9ee; border: 1px solid #2a3140; border-radius: 6px; padding: 4px 10px; }
+#bar button.on, #play.on { border-color: #7eb6ff; color: #7eb6ff; }
+#slider { flex: 1; min-width: 80px; accent-color: #7eb6ff; }
+#clock { font-variant-numeric: tabular-nums; min-width: 72px; }
+#count, #sample, #base { color: #9aa3b2; white-space: nowrap; }
+body.panel-off { grid-template-columns: 1fr 0; }
+body.panel-off #panel { display: none; }
+.leaflet-container { background: #121418; font-family: "Segoe UI", sans-serif; }
+.leaflet-bar { border: none; }
+.leaflet-control-zoom a { background: #1b1f27; color: #e7e9ee; border-bottom-color: #2a3140; }
+.leaflet-control-zoom a:hover { background: #121418; color: #7eb6ff; }
+.leaflet-control-attribution { background: rgba(18, 20, 24, .75); color: #9aa3b2; }
+.leaflet-control-attribution a { color: #7eb6ff; }
+</style>
+</head>
+<body>
+<div id="stage">
+  <div id="map"></div>
+  <canvas id="draw"></canvas>
+  <div id="legend"><div class="bar"></div><span>0 / 20 / 50 km/h</span></div>
+</div>
+<aside id="panel">
+  <h1>easy-matviz</h1>
+  <p class="run" id="run"></p>
+  <form id="find"><input id="q" type="text" placeholder="id pojazdu" autocomplete="off" spellcheck="false"></form>
+  <div id="hits"></div>
+  <div id="chips"></div>
+  <div id="detail" class="muted">Kliknij auto albo drogę.</div>
+  <div id="axis" hidden>
+    <div id="axis-bar"></div>
+    <div id="axis-ends"><span id="axis-a"></span><span id="axis-note">postoje ściśnięte</span><span id="axis-b"></span></div>
+  </div>
+  <p id="hint">Spacja: start. Strzałki: ±1 min. F: śledź. Esc: wyczyść.</p>
+</aside>
+<div id="bar">
+  <button id="play" type="button">start</button>
+  <button type="button" data-m="1" class="on">1×</button>
+  <button type="button" data-m="10">10×</button>
+  <button type="button" data-m="60">60×</button>
+  <button type="button" data-m="300">300×</button>
+  <input id="slider" type="range">
+  <span id="clock">00:00:00</span>
+  <span id="count">0 aut</span>
+  <span id="sample"></span>
+  <span id="base">Podkład wyłączony.</span>
+  <button id="hide" type="button">ukryj</button>
+</div>
+<script id="boot" type="application/json">__BOOT__</script>
+<script>/*__LEAFLET_JS__*/</script>
+<script>
+const boot = JSON.parse(document.getElementById("boot").textContent);
+const VMAX = 14;
+const ROAD = {
+  motorway: "#d5dde6", motorway_link: "#d5dde6",
+  primary: "#aeb6c2", primary_link: "#aeb6c2",
+  secondary: "#7d8694", secondary_link: "#7d8694",
+  tertiary: "#7d8694", tertiary_link: "#7d8694",
+  boundary_turnaround: "#2a3038"
+};
+let t = boot.t, tMin = boot.tMin, tMax = boot.tMax;
+let playing = false, mult = 1, scrub = false, busy = false, dirty = false;
+let lastPayload = null, linkKey = "", linkCanvas = document.createElement("canvas");
+window.hold = false;
+window.drawnN = 0;
+window.drawError = "";
+window.mapReady = false;
+window.apiReady = false;
+window.mapSize = "";
+window.bendN = boot.bendN || 0;
+window.paintedCurves = 0;
+window.curvesReady = !boot.curveWait;
+
+function clock(sec) {
+  sec = Math.max(0, Math.floor(sec));
+  const h = Math.floor(sec / 3600);
+  const m = Math.floor((sec % 3600) / 60);
+  const s = sec % 60;
+  return String(h).padStart(2, "0") + ":" + String(m).padStart(2, "0") + ":" + String(s).padStart(2, "0");
+}
+function auta(n) {
+  if (n === 1) return "1 auto";
+  const d = n % 10, h = n % 100;
+  if (d >= 2 && d <= 4 && (h < 12 || h > 14)) return n + " auta";
+  return n + " aut";
+}
+function ramp(speed) {
+  const u = Math.max(0, Math.min(1, speed / VMAX));
+  const a = [255, 31, 13], b = [255, 179, 26], c = [26, 230, 255];
+  const mix = (p, q, t) => "rgb(" + p.map((v, i) => Math.round(v + (q[i] - v) * t)).join(",") + ")";
+  return u < 0.4 ? mix(a, b, u / 0.4) : mix(b, c, (u - 0.4) / 0.6);
+}
+function roadColor(name) { return ROAD[name] || "#4e5663"; }
+function roadWidth(name) {
+  if (name.indexOf("motorway") === 0) return 2;
+  if (name.indexOf("primary") === 0) return 1.5;
+  if (name.indexOf("secondary") === 0 || name.indexOf("tertiary") === 0) return 1.25;
+  if (name === "boundary_turnaround") return 0.75;
+  return 1;
+}
+
+document.getElementById("run").textContent = boot.run || "";
+document.getElementById("sample").textContent = "próbka " + boot.sample;
+document.getElementById("clock").textContent = clock(t);
+const slider = document.getElementById("slider");
+slider.min = tMin;
+slider.max = tMax;
+slider.step = "1";
+slider.value = String(t);
+if (boot.basemap) document.getElementById("base").hidden = true;
+
+const chips = document.getElementById("chips");
+(boot.classes || []).forEach((c) => {
+  const b = document.createElement("button");
+  b.type = "button";
+  b.className = "chip" + (c.on ? " on" : "");
+  b.dataset.letter = c.letter;
+  b.textContent = c.name;
+  b.addEventListener("click", () => {
+    b.classList.toggle("on");
+    const on = [...chips.querySelectorAll(".chip.on")].map((x) => x.dataset.letter).join("");
+    py().then((api) => api.classes(on)).then(() => { dirty = true; });
+  });
+  chips.appendChild(b);
+});
+
+const STAY_NAME = {home: "dom", work: "praca", tlo_start: "tło", tlo_end: "tło"};
+function segName(seg) {
+  if (seg.trip) return "jazda";
+  return STAY_NAME[seg.label] || seg.label;
+}
+function axisPos(segments, time) {
+  let prev = 0;
+  for (let i = 0; i < segments.length; i++) {
+    const seg = segments[i];
+    if (time < seg.t0) return prev;
+    const last = i === segments.length - 1;
+    if (time < seg.t1 || (last && time <= seg.t1 + 1e-3)) {
+      const dur = Math.max(seg.t1 - seg.t0, 1e-9);
+      const f = Math.min(1, Math.max(0, (time - seg.t0) / dur));
+      return seg.u0 + f * (seg.u1 - seg.u0);
+    }
+    prev = seg.u1;
+  }
+  return prev;
+}
+function timeFromAxis(u) {
+  const segs = window.axisSegs || [];
+  if (!segs.length) return tMin + u * (tMax - tMin);
+  for (let i = 0; i < segs.length; i++) {
+    const seg = segs[i];
+    if (u <= seg.u1 || i === segs.length - 1) {
+      const span = Math.max(seg.u1 - seg.u0, 1e-9);
+      const f = Math.min(1, Math.max(0, (u - seg.u0) / span));
+      return seg.t0 + f * (seg.t1 - seg.t0);
+    }
+  }
+  return segs[segs.length - 1].t1;
+}
+function showAxis(segments) {
+  const box = document.getElementById("axis");
+  const bar = document.getElementById("axis-bar");
+  bar.replaceChildren();
+  window.axisSegs = segments || [];
+  if (!segments || !segments.length) {
+    box.hidden = true;
+    return;
+  }
+  box.hidden = false;
+  segments.forEach((seg) => {
+    const d = document.createElement("div");
+    d.className = "seg" + (seg.trip ? " trip" : "") + (seg.on ? " on" : "");
+    d.title = segName(seg) + "  " + clock(seg.t0) + "–" + clock(seg.t1);
+    d.style.left = (seg.u0 * 100) + "%";
+    d.style.width = ((seg.u1 - seg.u0) * 100) + "%";
+    if (seg.u1 - seg.u0 >= 0.16) d.textContent = segName(seg);
+    bar.appendChild(d);
+  });
+  const now = document.createElement("div");
+  now.className = "now";
+  now.style.left = (axisPos(segments, t) * 100) + "%";
+  bar.appendChild(now);
+  document.getElementById("axis-a").textContent = clock(segments[0].t0);
+  document.getElementById("axis-b").textContent = clock(segments[segments.length - 1].t1);
+  document.getElementById("axis-note").hidden = !segments.some((seg) => !seg.trip);
+}
+function showPanel(p) {
+  const el = document.getElementById("detail");
+  if (!p || p.kind === "miss") return;
+  el.className = p.kind === "empty" ? "muted" : "";
+  el.replaceChildren();
+  const lines = (p.lines && p.lines.length) ? p.lines : (p.kind === "empty" ? ["Kliknij auto albo drogę."] : []);
+  lines.forEach((text) => {
+    const d = document.createElement("div");
+    d.textContent = text;
+    el.appendChild(d);
+  });
+  showAxis(p.axis);
+}
+function showHits(hits) {
+  const box = document.getElementById("hits");
+  box.replaceChildren();
+  if (!hits.length) {
+    const d = document.createElement("div");
+    d.className = "muted";
+    d.textContent = "Brak takiego id.";
+    box.appendChild(d);
+    return;
+  }
+  hits.forEach((h) => {
+    const b = document.createElement("button");
+    b.type = "button";
+    b.textContent = h.id;
+    b.addEventListener("click", () => {
+      py().then((api) => api.select(h.id)).then(() => { box.replaceChildren(); dirty = true; });
+    });
+    box.appendChild(b);
+  });
+}
+function onLookup(raw) {
+  if (!raw) return;
+  if (raw.followed) {
+    document.getElementById("hits").replaceChildren();
+    dirty = true;
+  } else {
+    showHits(raw.hits || []);
+  }
+}
+
+let map = null;
+function linkPoints(i) {
+  const off = boot.curveOff;
+  const a = off ? off[i] : 0;
+  const b = off ? off[i + 1] : 0;
+  if (off && b - a >= 2) {
+    const pts = [];
+    for (let k = a; k < b; k++) pts.push(map.latLngToContainerPoint([boot.curveLat[k], boot.curveLon[k]]));
+    return pts;
+  }
+  const lk = boot.links[i];
+  return [map.latLngToContainerPoint([lk[1], lk[0]]), map.latLngToContainerPoint([lk[3], lk[2]])];
+}
+function offScreen(pts, w, h, margin) {
+  let left = true, right = true, above = true, below = true;
+  for (let i = 0; i < pts.length; i++) {
+    const p = pts[i];
+    if (p.x >= -margin) left = false;
+    if (p.x <= w + margin) right = false;
+    if (p.y >= -margin) above = false;
+    if (p.y <= h + margin) below = false;
+  }
+  return left || right || above || below;
+}
+function strokePts(g, pts) {
+  g.moveTo(pts[0].x, pts[0].y);
+  for (let k = 1; k < pts.length; k++) g.lineTo(pts[k].x, pts[k].y);
+}
+function paintLinks() {
+  const size = map.getSize();
+  const dpr = window.devicePixelRatio || 1;
+  const center = map.getCenter();
+  const key = size.x + "x" + size.y + "@" + dpr + ":" + map.getZoom() + ":" + center.lng.toFixed(5) + ":" + center.lat.toFixed(5);
+  if (key === linkKey) return;
+  linkKey = key;
+  linkCanvas.width = Math.max(1, Math.round(size.x * dpr));
+  linkCanvas.height = Math.max(1, Math.round(size.y * dpr));
+  const g = linkCanvas.getContext("2d");
+  g.setTransform(dpr, 0, 0, dpr, 0, 0);
+  g.lineCap = "round";
+  g.lineJoin = "round";
+  const groups = new Map();
+  const w = size.x, h = size.y, margin = 48;
+  const links = boot.links, types = boot.types;
+  let bent = 0;
+  for (let i = 0; i < links.length; i++) {
+    const pts = linkPoints(i);
+    if (pts.length >= 3) bent++;
+    if (offScreen(pts, w, h, margin)) continue;
+    const name = types[links[i][4]] || "";
+    const style = roadColor(name) + "|" + roadWidth(name);
+    let bucket = groups.get(style);
+    if (!bucket) { bucket = []; groups.set(style, bucket); }
+    bucket.push(pts);
+  }
+  window.paintedCurves = bent;
+  groups.forEach((rows, style) => {
+    const parts = style.split("|");
+    g.strokeStyle = parts[0];
+    g.lineWidth = Number(parts[1]);
+    g.beginPath();
+    for (let i = 0; i < rows.length; i++) strokePts(g, rows[i]);
+    g.stroke();
+  });
+}
+function draw(payload) {
+  try {
+    if (!map) throw new Error("brak mapy");
+    lastPayload = payload;
+    const size = map.getSize();
+    const dpr = window.devicePixelRatio || 1;
+    const canvas = document.getElementById("draw");
+    canvas.width = Math.max(1, Math.round(size.x * dpr));
+    canvas.height = Math.max(1, Math.round(size.y * dpr));
+    canvas.style.width = size.x + "px";
+    canvas.style.height = size.y + "px";
+    const g = canvas.getContext("2d");
+    g.setTransform(dpr, 0, 0, dpr, 0, 0);
+    paintLinks();
+    g.drawImage(linkCanvas, 0, 0, size.x, size.y);
+    if (payload.link != null && boot.links[payload.link]) {
+      const pts = linkPoints(payload.link);
+      g.strokeStyle = "#7eb6ff";
+      g.lineWidth = 3;
+      g.lineJoin = "round";
+      g.beginPath();
+      strokePts(g, pts);
+      g.stroke();
+    }
+    const path = payload.path || [];
+    if (path.length > 1) {
+      g.strokeStyle = "#7eb6ff";
+      g.lineWidth = 2;
+      g.beginPath();
+      for (let i = 0; i < path.length; i++) {
+        const p = map.latLngToContainerPoint([path[i][0], path[i][1]]);
+        if (i === 0) g.moveTo(p.x, p.y); else g.lineTo(p.x, p.y);
+      }
+      g.stroke();
+    }
+    const lon = payload.lon, lat = payload.lat, v = payload.v, hd = payload.hd, heavy = payload.heavy;
+    for (let i = 0; i < lon.length; i++) {
+      const p = map.latLngToContainerPoint([lat[i], lon[i]]);
+      const radius = heavy[i] ? 3.5 : 2.5;
+      const color = ramp(v[i]);
+      g.fillStyle = color;
+      g.beginPath();
+      g.arc(p.x, p.y, radius, 0, Math.PI * 2);
+      g.fill();
+      const ang = -hd[i];
+      g.strokeStyle = color;
+      g.lineWidth = 1;
+      g.beginPath();
+      g.moveTo(p.x, p.y);
+      g.lineTo(p.x + Math.cos(ang) * (radius + 4), p.y + Math.sin(ang) * (radius + 4));
+      g.stroke();
+      if (i === payload.sel) {
+        g.strokeStyle = "#7eb6ff";
+        g.lineWidth = 1.5;
+        g.beginPath();
+        g.arc(p.x, p.y, radius + 3, 0, Math.PI * 2);
+        g.stroke();
+      }
+    }
+    if (payload.pan && !window.hold) map.panTo(payload.pan, {animate: false});
+    document.getElementById("clock").textContent = payload.clock;
+    document.getElementById("count").textContent = auta(payload.n);
+    slider.value = String(payload.t);
+    showPanel(payload.panel);
+    window.drawnN = payload.n;
+    window.drawError = "";
+    window.mapSize = size.x + "x" + size.y;
+  } catch (err) {
+    window.drawError = String(err && err.stack || err);
+  }
+}
+
+function py() {
+  return new Promise((resolve, reject) => {
+    if (window.pywebview && window.pywebview.api) resolve(window.pywebview.api);
+    else reject(new Error("api"));
+  });
+}
+function pull() {
+  const api = window.pywebview && window.pywebview.api;
+  if (window.hold || busy || !window.curvesReady || !api || !api.frame) return;
+  busy = true;
+  const sent = t;
+  let pending;
+  try {
+    pending = api.frame(sent);
+  } catch (err) {
+    busy = false;
+    window.drawError = String(err);
+    return;
+  }
+  pending.then((payload) => {
+    busy = false;
+    if (window.hold) return;
+    if (!playing && Math.abs(sent - t) > 1e-3) {
+      pull();
+      return;
+    }
+    const again = dirty && !playing;
+    dirty = false;
+    draw(payload);
+    if (again) pull();
+  }).catch((err) => {
+    busy = false;
+    window.drawError = String(err);
+  });
+}
+let lastNow = 0;
+function loop(now) {
+  if (!window.hold && playing && !scrub) {
+    const dt = lastNow ? Math.min(0.1, (now - lastNow) / 1000) : 0;
+    t = Math.min(tMax, Math.max(tMin, t + dt * mult));
+    if (t >= tMax) setPlaying(false);
+    dirty = true;
+  }
+  lastNow = now;
+  if (!window.hold && dirty) pull();
+  requestAnimationFrame(loop);
+}
+function setPlaying(on) {
+  playing = on && t < tMax;
+  const b = document.getElementById("play");
+  b.textContent = playing ? "pauza" : "start";
+  b.classList.toggle("on", playing);
+}
+document.getElementById("play").addEventListener("click", () => setPlaying(!playing));
+document.querySelectorAll("#bar button[data-m]").forEach((b) => {
+  b.addEventListener("click", () => {
+    mult = Number(b.dataset.m);
+    document.querySelectorAll("#bar button[data-m]").forEach((x) => x.classList.toggle("on", x === b));
+  });
+});
+slider.addEventListener("pointerdown", () => { scrub = true; });
+window.addEventListener("pointerup", () => { scrub = false; });
+slider.addEventListener("input", () => {
+  t = Number(slider.value);
+  document.getElementById("clock").textContent = clock(t);
+  dirty = true;
+});
+document.getElementById("axis-bar").addEventListener("click", (ev) => {
+  const r = ev.currentTarget.getBoundingClientRect();
+  if (r.width < 1) return;
+  const u = Math.min(1, Math.max(0, (ev.clientX - r.left) / r.width));
+  t = timeFromAxis(u);
+  slider.value = String(t);
+  document.getElementById("clock").textContent = clock(t);
+  dirty = true;
+});
+document.getElementById("hide").addEventListener("click", () => {
+  const off = document.body.classList.toggle("panel-off");
+  const b = document.getElementById("hide");
+  b.textContent = off ? "panel" : "ukryj";
+  b.classList.toggle("on", off);
+  if (map) setTimeout(() => { map.invalidateSize(); linkKey = ""; if (lastPayload) draw(lastPayload); }, 0);
+});
+document.getElementById("find").addEventListener("submit", (ev) => {
+  ev.preventDefault();
+  py().then((api) => api.lookup(document.getElementById("q").value)).then(onLookup);
+});
+window.addEventListener("keydown", (ev) => {
+  const typing = document.activeElement && document.activeElement.tagName === "INPUT";
+  if (ev.key === "Escape") {
+    if (typing) document.activeElement.blur();
+    py().then((api) => api.clear()).then(() => {
+      document.getElementById("hits").replaceChildren();
+      showPanel({kind: "empty"});
+      dirty = true;
+    });
+    return;
+  }
+  if (typing) return;
+  if (ev.key === " ") { ev.preventDefault(); setPlaying(!playing); }
+  else if (ev.key === "ArrowRight") { ev.preventDefault(); t = Math.min(tMax, t + 60); dirty = true; }
+  else if (ev.key === "ArrowLeft") { ev.preventDefault(); t = Math.max(tMin, t - 60); dirty = true; }
+  else if (ev.key === "f" || ev.key === "F") py().then((api) => api.follow(true)).then(() => { dirty = true; });
+}, true);
+
+function bootMap() {
+  if (boot.error) {
+    showPanel({kind: "empty", lines: [boot.error]});
+    window.mapReady = true;
+    return;
+  }
+  map = L.map("map", {zoomControl: true, attributionControl: true, minZoom: 8, maxZoom: 19, zoomSnap: 0.25});
+  map.attributionControl.setPrefix(false);
+  if (boot.basemap) {
+    L.tileLayer(boot.basemap.url, {subdomains: "abcd", attribution: boot.basemap.attr, maxZoom: 20}).addTo(map);
+  }
+  map.on("click", (ev) => {
+    const p = ev.containerPoint;
+    const q = map.containerPointToLatLng(L.point(p.x + 8, p.y));
+    py().then((api) => api.pick(ev.latlng.lat, ev.latlng.lng, q.lat, q.lng)).then((panel) => {
+      if (panel && panel.kind !== "miss") showPanel(panel);
+      dirty = true;
+    });
+  });
+  map.on("move zoom resize", () => { if (lastPayload && !window.hold) draw(lastPayload); });
+  requestAnimationFrame(() => {
+    map.invalidateSize();
+    if (boot.bounds) map.fitBounds(boot.bounds, {padding: [20, 20], animate: false});
+    window.mapSize = map.getSize().x + "x" + map.getSize().y;
+    window.mapReady = true;
+    dirty = true;
+  });
+}
+window.addEventListener("pywebviewready", () => { window.apiReady = true; dirty = true; });
+bootMap();
+requestAnimationFrame(loop);
+</script>
+</body>
+</html>
