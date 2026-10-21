@@ -1,7 +1,8 @@
 """Okno odtwarzacza (D24). WebView2 + Leaflet. Panel id ma oś czynności.
 
 Nie parsuje XML. Czyta indeks przez pipeline/viz_engine.py i rysuje klatkę.
-Bez klucza CARTO zostają cięciwy na #121418 i zdanie „Podkład wyłączony.”
+Łamane OSM są tylko rysunkiem (viz_player/curves.py): sieć, eventy i run bez zmian.
+Bez klucza CARTO zostaje sieć na #121418 i zdanie „Podkład wyłączony.”
 
   uv run python -m viz_player output/g5r6_25pct_s4711
   uv run python -m viz_player --self-test
@@ -19,6 +20,8 @@ import numpy as np
 from pyproj import Transformer
 
 import viz_engine
+
+from viz_player import curves
 
 ORIGIN = viz_engine.viz_index.ORIGIN
 HERE = Path(__file__).resolve().parent
@@ -230,6 +233,7 @@ class Player:
         self.follow = False
         self._key = None
         self._fr = None
+        self.curve = None
 
     def open(self, run, remember=True):
         self.run_dir = Path(run).resolve()
@@ -257,6 +261,14 @@ class Player:
             self.index = None
             self.error = f"Indeks się nie zbudował: {exc}"
             return
+        try:
+            self.curve, note = curves.load(
+                self.run_dir, self.link_id, self.index.link_xy, self.link_length,
+            )
+        except Exception as exc:
+            self.curve = curves.empty(len(self.link_id))
+            note = f"łamane: {exc}; cięciwy"
+        _note(self.run_dir, note)
         self._setup()
         if remember:
             save_state(self.run_dir)
@@ -317,8 +329,20 @@ class Player:
         key = (round(float(self.t), 3), self.classes)
         if key != self._key:
             self._key = key
-            self._fr = viz_engine.frame(self.index, float(self.t), self.classes)
+            fr = viz_engine.frame(self.index, float(self.t), self.classes)
+            self._warp_frame(fr)
+            self._fr = fr
         return self._fr
+
+    def _warp_frame(self, fr):
+        if self.curve is None or self.curve.n_bent == 0 or len(fr) == 0:
+            return
+        xs, ys, hd, mask = self.curve.place(self.index.link_xy, fr.link, fr.xy[:, 0], fr.xy[:, 1])
+        if not mask.any():
+            return
+        fr.xy[mask, 0] = xs[mask]
+        fr.xy[mask, 1] = ys[mask]
+        fr.heading[mask] = hd[mask]
 
     def local(self, lon, lat):
         east, north = self.inv.transform(float(lon), float(lat))
@@ -428,13 +452,19 @@ class Player:
         j = min(max(j, 1), b - a)
         xs = [float(v) for v in index.knot_x[a:a + j]]
         ys = [float(v) for v in index.knot_y[a:a + j]]
-        x, y, _h, _s, _link = viz_engine.pose_at(
+        x, y, _h, _s, link = viz_engine.pose_at(
             index.knot_t[a:b], index.knot_x[a:b], index.knot_y[a:b],
             index.knot_len[a:b], index.knot_link[a:b], t,
         )
+        links = [int(v) for v in index.knot_link[a:a + j]]
         if abs(xs[-1] - x) > 1e-3 or abs(ys[-1] - y) > 1e-3:
             xs.append(float(x))
             ys.append(float(y))
+            links.append(int(link))
+        if self.curve is not None and self.curve.n_bent:
+            pts = self.curve.follow(index.link_xy, xs, ys, links)
+            xs = [p[0] for p in pts]
+            ys = [p[1] for p in pts]
         lon, lat = self.fwd.transform(np.asarray(xs) + ORIGIN[0], np.asarray(ys) + ORIGIN[1])
         return [[round(float(lat[i]), 6), round(float(lon[i]), 6)] for i in range(len(xs))]
 
@@ -496,7 +526,10 @@ class Player:
             self.follow = False
             self.selected_id = str(self.index.track_id[int(track)])
             return self.panel()
-        link = viz_engine.pick_link(self.index, (x, y), tol)
+        if self.curve is not None and self.curve.n_bent:
+            link = self.curve.nearest(self.index.link_xy, x, y, tol)
+        else:
+            link = viz_engine.pick_link(self.index, (x, y), tol)
         if link is not None:
             self.selected_id = None
             self.follow = False
@@ -557,7 +590,18 @@ class Player:
                 for letter in self.chip_letters
             ],
             "links": stack.tolist(),
+            "curveOff": [],
+            "curveLon": [],
+            "curveLat": [],
+            "curveWait": bool(self.curve is not None and self.curve.n_bent),
+            "bendI": None,
+            "bendN": 0,
         })
+        hit = np.where(self.link_id == "1807611370009f")[0]
+        if len(hit) and self.curve is not None:
+            i = int(hit[0])
+            base["bendI"] = i
+            base["bendN"] = int(self.curve.off[i + 1] - self.curve.off[i])
         return base
 
 
@@ -630,7 +674,8 @@ def self_test():
     if ramp_rgb(0) != (255, 31, 13) or ramp_rgb(VMAX) != (26, 230, 255):
         raise SystemExit(f"self-test: rampa {ramp_rgb(0)} {ramp_rgb(VMAX)}")
     shell = (HERE / "shell.html").read_text(encoding="utf-8")
-    for token in ("255, 31, 13", "255, 179, 26", "26, 230, 255", "const VMAX = 14", "grid-column: 1 / -1", 'id="axis"', "postoje ściśnięte"):
+    curves.self_test()
+    for token in ("255, 31, 13", "255, 179, 26", "26, 230, 255", "const VMAX = 14", "grid-column: 1 / -1", 'id="axis"', "postoje ściśnięte", "curveOff", "linkPoints", "paintedCurves", "curveWait"):
         if token not in shell:
             raise SystemExit(f"self-test: shell bez {token}")
     day = [
@@ -843,6 +888,8 @@ def check(run):
     need(abs(player.t - START) < 1e-6, f"start {player.t}")
     need(abs(lat - 52.2307) < 0.002 and abs(lon - 19.3633) < 0.002, f"osie {lat:.4f} {lon:.4f}")
     need(len(boot["links"]) == int(meta["n_links"]), f"linki {len(boot['links'])} {meta['n_links']}")
+    page_bytes = len(render(player).encode("utf-8"))
+    need(page_bytes < 1_200_000, f"strona {page_bytes} B, NavigateToString ucina duże HTML")
     south, west = boot["bounds"][0]
     north, east = boot["bounds"][1]
     need(south < 52.23 < north and west < 19.36 < east, f"zasięg {boot['bounds']}")
@@ -876,6 +923,24 @@ def check(run):
     need(len(axis) >= 2 and any(seg["trip"] for seg in axis), f"oś {len(axis)}")
     need(sum(bool(seg["on"]) for seg in axis) <= 1, "oś: dwie naraz")
     need([seg["t0"] for seg in axis] == sorted(seg["t0"] for seg in axis), "oś nie po czasie")
+    hit = np.where(player.link_id == "1807611370009f")[0]
+    need(len(hit) == 1, "brak linku 1807611370009f")
+    if len(hit) == 1:
+        i = int(hit[0])
+        leng = float(player.link_length[i])
+        row = player.index.link_xy[i]
+        chord = math.hypot(float(row[2] - row[0]), float(row[3] - row[1]))
+        need(leng > 1900 and chord < 900, f"długość {leng:.0f} cięciwa {chord:.0f}")
+        chain = player.curve.chain(i) if player.curve is not None else None
+        need(chain is not None and len(chain) >= 3, "brak łamanej 1807611370009f")
+        if chain is not None:
+            arc = curves.arc_length(chain)
+            need(abs(arc - leng) <= 1.0, f"łuk {arc:.2f} przy length {leng:.2f}")
+            mx, my, _h = curves.point_at(chain, 0.5)
+            cx = (float(row[0]) + float(row[2])) / 2
+            cy = (float(row[1]) + float(row[3])) / 2
+            gap = math.hypot(mx - cx, my - cy)
+            need(gap > 100, f"środek łamanej {gap:.0f} m od cięciwy")
     if problems:
         _note(player.run_dir, "FAIL " + "; ".join(problems))
         return 1
@@ -884,6 +949,7 @@ def check(run):
         player.run_dir,
         f"check OK run={player.run_name} start=06:00:00 probka={player.sample} podklad={base} "
         f"okno6_9={window['n']} szczyt={peak['n']} bez_t={thin['n']} os={len(axis)} linki={len(boot['links'])} "
+        f"lamane={0 if player.curve is None else player.curve.n_bent} bend={boot.get('bendN')} "
         f"osie={lat:.4f}N {lon:.4f}E",
     )
     return 0
@@ -943,6 +1009,40 @@ Write-Output "OK $w $h"
         Path(ps1).unlink(missing_ok=True)
 
 
+def _fnums(values):
+    return ",".join(f"{float(v):.6f}" for v in values)
+
+
+def _push_curves(window, player):
+    """Współrzędne łamanych idą po starcie okna. NavigateToString ucina stronę przy ~1,5 MB."""
+    curve = player.curve
+    if player.index is None or curve is None or curve.n_bent == 0:
+        window.evaluate_js("window.curvesReady = true; dirty = true;")
+        return
+    window.evaluate_js("boot.curveOff=[];boot.curveLon=[];boot.curveLat=[];")
+    step = 2000
+    for i in range(0, len(curve.off), step):
+        part = ",".join(str(int(v)) for v in curve.off[i:i + step])
+        window.evaluate_js("boot.curveOff.push(" + part + ");")
+    got = int(window.evaluate_js("boot.curveOff.length") or 0)
+    if got != len(curve.off):
+        raise RuntimeError(f"curveOff {got} / {len(curve.off)}")
+    lon, lat = player.fwd.transform(
+        curve.xy[:, 0].astype(np.float64) + ORIGIN[0],
+        curve.xy[:, 1].astype(np.float64) + ORIGIN[1],
+    )
+    n = len(lon)
+    for i in range(0, n, step):
+        sl = slice(i, i + step)
+        window.evaluate_js(
+            "boot.curveLon.push(" + _fnums(lon[sl]) + ");boot.curveLat.push(" + _fnums(lat[sl]) + ");"
+        )
+    got = int(window.evaluate_js("boot.curveLon.length") or 0)
+    if got != n:
+        raise RuntimeError(f"curveLon {got} / {n}")
+    window.evaluate_js("window.paintedCurves = 0; window.curvesReady = true; linkKey = ''; dirty = true;")
+
+
 def _wait_js(window, expr, seconds=8):
     deadline = time.perf_counter() + seconds
     value = None
@@ -974,7 +1074,13 @@ def smoke(run):
             if not ready:
                 result["error"] = "mapa nie wstała"
                 return
-            opened = _wait_js(window, "document.getElementById('clock').textContent === '06:00:00'")
+            _push_curves(window, player)
+            if not _wait_js(window, "window.paintedCurves > 100", seconds=15):
+                result["error"] = "namalowane łamane " + str(window.evaluate_js(
+                    "[window.paintedCurves, window.drawError, window.curvesReady]"
+                ))
+                return
+            opened = _wait_js(window, "document.getElementById('clock').textContent === '06:00:00'", seconds=15)
             if not opened:
                 result["error"] = "brak klatki " + str(window.evaluate_js("window.drawError"))
                 return
@@ -1101,16 +1207,23 @@ def serve(run):
     player = Player()
     player.open(run)
     import webview
-    webview.create_window(
+    window = webview.create_window(
         "easy-matviz", html=render(player), js_api=Api(player),
         width=1440, height=900, background_color="#121418", text_select=True,
     )
+
+    def kick():
+        if _wait_js(window, "window.mapReady === true && window.apiReady === true", seconds=20):
+            _push_curves(window, player)
+        else:
+            _note(player.run_dir, "FAIL okno nie wstało")
+
     where = "wyłączony" if player.basemap is None else "włączony"
     _note(player.run_dir, f"okno run={player.run_name} podklad={where} blad={player.error or '-'}")
     storage = ROOT / "output" / "viz_player_webview"
     storage.mkdir(parents=True, exist_ok=True)
     webview.start(
-        gui="edgechromium", private_mode=False,
+        kick, gui="edgechromium", private_mode=False,
         storage_path=str(storage), user_agent="easy-matviz",
     )
     return 0

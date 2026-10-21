@@ -111,6 +111,9 @@ window.drawError = "";
 window.mapReady = false;
 window.apiReady = false;
 window.mapSize = "";
+window.bendN = boot.bendN || 0;
+window.paintedCurves = 0;
+window.curvesReady = !boot.curveWait;
 
 function clock(sec) {
   sec = Math.max(0, Math.floor(sec));
@@ -269,6 +272,33 @@ function onLookup(raw) {
 }
 
 let map = null;
+function linkPoints(i) {
+  const off = boot.curveOff;
+  const a = off ? off[i] : 0;
+  const b = off ? off[i + 1] : 0;
+  if (off && b - a >= 2) {
+    const pts = [];
+    for (let k = a; k < b; k++) pts.push(map.latLngToContainerPoint([boot.curveLat[k], boot.curveLon[k]]));
+    return pts;
+  }
+  const lk = boot.links[i];
+  return [map.latLngToContainerPoint([lk[1], lk[0]]), map.latLngToContainerPoint([lk[3], lk[2]])];
+}
+function offScreen(pts, w, h, margin) {
+  let left = true, right = true, above = true, below = true;
+  for (let i = 0; i < pts.length; i++) {
+    const p = pts[i];
+    if (p.x >= -margin) left = false;
+    if (p.x <= w + margin) right = false;
+    if (p.y >= -margin) above = false;
+    if (p.y <= h + margin) below = false;
+  }
+  return left || right || above || below;
+}
+function strokePts(g, pts) {
+  g.moveTo(pts[0].x, pts[0].y);
+  for (let k = 1; k < pts.length; k++) g.lineTo(pts[k].x, pts[k].y);
+}
 function paintLinks() {
   const size = map.getSize();
   const dpr = window.devicePixelRatio || 1;
@@ -280,31 +310,29 @@ function paintLinks() {
   linkCanvas.height = Math.max(1, Math.round(size.y * dpr));
   const g = linkCanvas.getContext("2d");
   g.setTransform(dpr, 0, 0, dpr, 0, 0);
-  g.lineCap = "butt";
+  g.lineCap = "round";
+  g.lineJoin = "round";
   const groups = new Map();
   const w = size.x, h = size.y, margin = 48;
   const links = boot.links, types = boot.types;
+  let bent = 0;
   for (let i = 0; i < links.length; i++) {
-    const lk = links[i];
-    const a = map.latLngToContainerPoint([lk[1], lk[0]]);
-    const b = map.latLngToContainerPoint([lk[3], lk[2]]);
-    if ((a.x < -margin && b.x < -margin) || (a.y < -margin && b.y < -margin) ||
-        (a.x > w + margin && b.x > w + margin) || (a.y > h + margin && b.y > h + margin)) continue;
-    const name = types[lk[4]] || "";
+    const pts = linkPoints(i);
+    if (pts.length >= 3) bent++;
+    if (offScreen(pts, w, h, margin)) continue;
+    const name = types[links[i][4]] || "";
     const style = roadColor(name) + "|" + roadWidth(name);
     let bucket = groups.get(style);
     if (!bucket) { bucket = []; groups.set(style, bucket); }
-    bucket.push(a.x, a.y, b.x, b.y);
+    bucket.push(pts);
   }
-  groups.forEach((pts, style) => {
+  window.paintedCurves = bent;
+  groups.forEach((rows, style) => {
     const parts = style.split("|");
     g.strokeStyle = parts[0];
     g.lineWidth = Number(parts[1]);
     g.beginPath();
-    for (let i = 0; i < pts.length; i += 4) {
-      g.moveTo(pts[i], pts[i + 1]);
-      g.lineTo(pts[i + 2], pts[i + 3]);
-    }
+    for (let i = 0; i < rows.length; i++) strokePts(g, rows[i]);
     g.stroke();
   });
 }
@@ -324,14 +352,12 @@ function draw(payload) {
     paintLinks();
     g.drawImage(linkCanvas, 0, 0, size.x, size.y);
     if (payload.link != null && boot.links[payload.link]) {
-      const lk = boot.links[payload.link];
-      const a = map.latLngToContainerPoint([lk[1], lk[0]]);
-      const b = map.latLngToContainerPoint([lk[3], lk[2]]);
+      const pts = linkPoints(payload.link);
       g.strokeStyle = "#7eb6ff";
       g.lineWidth = 3;
+      g.lineJoin = "round";
       g.beginPath();
-      g.moveTo(a.x, a.y);
-      g.lineTo(b.x, b.y);
+      strokePts(g, pts);
       g.stroke();
     }
     const path = payload.path || [];
@@ -390,7 +416,7 @@ function py() {
 }
 function pull() {
   const api = window.pywebview && window.pywebview.api;
-  if (window.hold || busy || !api || !api.frame) return;
+  if (window.hold || busy || !window.curvesReady || !api || !api.frame) return;
   busy = true;
   const sent = t;
   let pending;

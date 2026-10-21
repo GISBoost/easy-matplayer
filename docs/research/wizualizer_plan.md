@@ -261,7 +261,9 @@ Stan 2026-10-20: pierwsza rzecz jest w panelu wybranego id. Oś czasu zastępuje
 
 Akceptacja automatyczna: self-test osi (dom–jazda–praca–jazda–dom, jazda wycina czynność), check R6 (`r6510903_5` ma 5 odcinków, jeden zaznaczony), smoke widzi pasek osi w oknie. Dowód: `docs/projekt/PROGRESS.md`.
 
-Reszta kroku 4, decyzja 2026-10-20: klucz CARTO odłożony, Łódź odrzucona (zostaje Kutno), drugi run odłożony, spięcie bake'u odłożone. Łamane OSM opisane i nie ruszane. Dalej są poprawki GUI i podstawowe funkcje okna.
+Łamane OSM, 2026-10-21: tylko w oknie (`viz_player/curves.py`). Łańcuch między węzłami linku, gdy jego długość zgadza się z `length` co do 1 m. Auto i ślad jadą po tej samej łamanej. Sieć, eventy i run bez zmian. Cache `output/<run>/viz/curves.npz`. Na R6 4705 z 10 383 linków; `1807611370009f` ma 11 punktów, length 1969 m, cięciwa 842 m.
+
+Reszta kroku 4, decyzja 2026-10-20: klucz CARTO odłożony, Łódź odrzucona (zostaje Kutno), drugi run odłożony, spięcie bake'u odłożone. Dalej są poprawki GUI i podstawowe funkcje okna.
 
 ## Ryzyka
 
