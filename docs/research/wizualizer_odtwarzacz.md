@@ -374,4 +374,4 @@ Kod wyjścia 0: test przeszedł. 1: test albo brak plików runu. 2: uruchomienie
 
 ## Odłożone
 
-Zostaje, aż będzie osobne zlecenie: klucz CARTO, drugi run obok siebie, spięcie z `g6_bake.py`, Łódź, łamane w konwerterze Javy, przebudowa sieci. Dalszy kierunek zapisany przy D24 to poprawki GUI i podstawowe funkcje okna. Akceptacji obrazu przez człowieka ten dokument nie zalicza.
+Zostaje, aż będzie osobne zlecenie: klucz CARTO, drugi run obok siebie, spięcie z `g6_bake.py`, Łódź, łamane w konwerterze Javy, przebudowa sieci. Plan poprawek okna zaakceptowany przez Michała, kod jeszcze nie: sekcja „Poprawki okna” w `docs/research/wizualizer_plan.md`. Michał 2026-10-21 potwierdził, że auta jadą po łuku. Reszta listy z kroku 3 zostaje do obejrzenia.

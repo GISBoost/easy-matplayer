@@ -261,9 +261,102 @@ Stan 2026-10-20: pierwsza rzecz jest w panelu wybranego id. Oś czasu zastępuje
 
 Akceptacja automatyczna: self-test osi (dom–jazda–praca–jazda–dom, jazda wycina czynność), check R6 (`r6510903_5` ma 5 odcinków, jeden zaznaczony), smoke widzi pasek osi w oknie. Dowód: `docs/projekt/PROGRESS.md`.
 
-Łamane OSM, 2026-10-21: tylko w oknie (`viz_player/curves.py`). Łańcuch między węzłami linku, gdy jego długość zgadza się z `length` co do 1 m. Auto i ślad jadą po tej samej łamanej. Sieć, eventy i run bez zmian. Cache `output/<run>/viz/curves.npz`. Na R6 4705 z 10 383 linków; `1807611370009f` ma 11 punktów, length 1969 m, cięciwa 842 m.
+Łamane OSM, 2026-10-21: tylko w oknie (`viz_player/curves.py`). Łańcuch między węzłami linku, gdy jego długość zgadza się z `length` co do 1 m. Auto i ślad jadą po tej samej łamanej. Sieć, eventy i run bez zmian. Cache `output/<run>/viz/curves.npz`. Na R6 4705 z 10 383 linków; `1807611370009f` ma 11 punktów, length 1969 m, cięciwa 842 m. Michał obejrzał okno tego dnia: auta jadą po łuku.
 
-Reszta kroku 4, decyzja 2026-10-20: klucz CARTO odłożony, Łódź odrzucona (zostaje Kutno), drugi run odłożony, spięcie bake'u odłożone. Dalej są poprawki GUI i podstawowe funkcje okna.
+Reszta kroku 4, decyzja 2026-10-20: klucz CARTO odłożony, Łódź odrzucona (zostaje Kutno), drugi run odłożony, spięcie bake'u odłożone. Poprawki okna są następną sekcją. Kodu tej sekcji jeszcze nie ma.
+
+## Poprawki okna
+
+Data: 2026-10-21. Zlecenie Michała po obejrzeniu łuków. To plan, nie opis działania. Michał zaakceptował go w całości, łącznie z tabelą klas. Kod czeka na osobne zlecenie. Sieć, eventy, indeks i run bez zmian. Java i `g6_bake.py` bez zmian.
+
+Kolejność kodowania, każda rzecz osobno, w tej kolejności:
+
+1. Znacznik auta.
+2. Przełącznik koloru dróg według `type`.
+3. Strzałki mnożnika na pasku, skok co 1. Presety zostają.
+4. Przełącznik koloru auta: prędkość albo klasa.
+5. Później, osobna tura: własny raster, WMS, otwieranie runu przez wybór folderu.
+
+Punkty 1–4 mieszczą się w `viz_player/shell.html` i w teście okna. Folder z punktu 5 woła `window.create_file_dialog` z pywebview (`FileDialog.FOLDER`).
+
+### 1. Znacznik
+
+Dziś auto to koło 2,5 px (ciężkie 3,5 px) i kreska kierunku. Zostaje jeden wypełniony kształt. Kreska kierunku znika, bo grot ją zastępuje.
+
+Układ w pikselach ekranu, stały przy zoomie, tak jak dzisiejsze koło. Oś lokalna: +x to kierunek jazdy. Obrót jest ten sam co dziś (`ang = -heading`, bo y kanwy rośnie w dół). Kąt 0 zostaje wschodem, także gdy silnik nie ma odcinka i daje kierunek 0.
+
+Bok naprzeciw grota to podstawa. Środek półkola jest środkiem tej podstawy. Promień jest połową długości tej podstawy, więc średnica półkola jest równa podstawie. Półkole leży w całości po stronie podstawy przeciwnej do grota, czyli z tyłu pojazdu. Kontur jest jeden: grot, koniec podstawy, łuk półkola, drugi koniec podstawy, z powrotem do grota. Wspólnej podstawy się nie rysuje.
+
+Grot jest dłuższy niż w trójkącie równobocznym. Wysokość od środka podstawy do grota wynosi dwie długości podstawy. Promień półkola zostaje połową podstawy, nie połową dłuższego ramienia.
+
+Podstawa ma 16 px, więc promień półkola ma 8 px, a grot leży 32 px przed środkiem podstawy. Ciężkie (`h`) mają podstawę 22 px, promień 11 px i grot 44 px przed środkiem. Mniejsze koło 5 px zlewa się w kropkę przy całej gminie.
+
+Punkt z klatki, już po przesunięciu na łamaną, leży w środku podstawy. Grot sterczy do przodu. Wypełnienie jest jednym kolorem: rampa prędkości, dopóki nie działa punkt 4. Obrys 1 px `#121418`, żeby sąsiednie auta nie skleiły się w plamę. Zaznaczenie to obrys całego konturu `#7eb6ff` 1,5 px, nie osobne koło. Tolerancja kliknięcia zostaje ta sama: 8 px, nie mniej niż 0,5 m, liczone od punktu pojazdu.
+
+### 2. Kolor dróg
+
+Checkbox w panelu, pod chipami klas, podpis „kolor dróg OSM”. Domyślnie wyłączony. Wyłączony zostawia dzisiejszą szarą paletę i dzisiejsze grubości.
+
+Włączony maluje ten sam atrybut `type`, który już jest w indeksie. Nie czyta PBF i nie dokłada atrybutu. Grubości zostają: motorway 2 px, primary 1,5, secondary i tertiary 1,25, zawrotka 0,75, reszta 1. Łącznica (`*_link`) bierze kolor klasy głównej.
+
+Tabela niżej maluje klasę drogi. Odcień może lekko odstawać od mapy OSM. W legendzie jest polski podpis, więc odcień nie musi być wierny co do heksa.
+
+| `type` | podpis w legendzie | kolor | co to jest |
+|---|---|---|---|
+| `motorway`, `motorway_link` | autostrada | `#e892a2` | jezdnia A1 i jej łącznica |
+| `primary`, `primary_link` | droga główna | `#fcd6a4` | droga klasy primary |
+| `secondary`, `secondary_link` | droga drugorzędna | `#f7fabf` | droga klasy secondary |
+| `tertiary`, `tertiary_link` | droga trzeciorzędna | `#ffffff` | droga klasy tertiary |
+| `residential` | ulica osiedlowa | `#c5d0dc` | ulica w zabudowie |
+| `unclassified` | droga bez klasy | `#9aa3b2` | droga publiczna bez wyższej klasy |
+| `living_street` | strefa zamieszkania | `#ededed` | living street |
+| `boundary_turnaround` | zawrotka graniczna | `#2a3038` | sztuczny łącznik na brzegu sieci |
+| inny | inna | `#4e5663` | typ spoza listy |
+
+`residential` i `unclassified` są ciemniejsze niż tertiary, żeby trzy jasne kreski dało się rozdzielić na tle `#121418`. Zawrotka graniczna zostaje przy ciemnym kolorze, który ma dziś.
+
+Legenda stoi w lewym dolnym rogu mapy, tam gdzie dziś jest pasek prędkości. Widać ją tylko przy włączonym checkboxie. Jeden wiersz to próbka koloru i polski podpis. Wiersz pojawia się, gdy ten `type` jest w `type_legend` otwartego runu. Łącznica nie dostaje osobnego wiersza. Rampa prędkości zostaje nad tą legendą, dopóki kolor auta to prędkość.
+
+### 3. Mnożnik na pasku
+
+Presety `1×`, `10×`, `60×`, `300×` zostają. Mnożnik to sekundy symulacji na sekundę rzeczywistą. Nie wpisuje się go z klawiatury. Odtwarzania wstecz nie ma.
+
+Między pauzą a presetami są strzałka w lewo, bieżący mnożnik i strzałka w prawo. Lewa zmniejsza mnożnik o 1, prawa zwiększa o 1. Z `1×` prawa robi `2×`. Skok jest całkowity. Dół zakresu to 1, góra to 300, bo tyle ma najszybszy preset. Strzałka na granicy nic nie zmienia. Klik presetu ustawia dokładnie tę wartość i podświetla się tylko wtedy, gdy mnożnik jej równa. Po zejściu z `10×` na `9×` żaden preset nie jest podświetlony, a między strzałkami widać `9×`.
+
+Klawisze lewo i prawo dalej przesuwają czas o minutę. Suwak i spacja zostają.
+
+### 4. Kolor auta według klasy
+
+Jeden przełącznik w panelu, dwa stany: „prędkość” i „klasa”. Domyślnie prędkość, czyli dzisiejsza rampa i podpis `0 / 20 / 50 km/h`.
+
+Stan „klasa” maluje cały znacznik jednym kolorem litery id. To inna tabela niż kolory dróg: tu kolor mówi, kim jest pojazd, nie jaką jedzie drogą. Chipy dalej tylko pokazują i chowają warstwę. Liczba km/h w panelu zostaje. Odcień może być inny niż na tej liście, byle legenda podawała ten, który jest na ekranie.
+
+| litera | podpis w legendzie | kolor | kto to jest |
+|---|---|---|---|
+| `r` | mieszkaniec | `#5aa2ff` | mieszkaniec Kutna jadący do pracy w Kutnie |
+| `c` | przyjeżdżający | `#3dbe7a` | osoba spoza Kutna jadąca do pracy w Kutnie |
+| `o` | wyjeżdżający | `#e0c15a` | mieszkaniec Kutna jadący do pracy poza Kutno |
+| `t` | tło lekkie | `#a89880` | lekki ruch tła |
+| `h` | ciężkie | `#e15a4a` | pojazd ciężki |
+| `?` | inne | `#e7e9ee` | id o innej pierwszej literze |
+
+`#7eb6ff` zostaje przy śladzie, zaznaczeniu i podświetleniu drogi, dlatego mieszkaniec ma inny błękit. W stanie „klasa” rampa prędkości chowa się. W tym samym lewym dolnym rogu staje legenda klas: próbka i polski podpis, tylko dla klas, które mają chip. Wiersz `inne` wchodzi, gdy w runie jest klasa `?`.
+
+### 5. Później, nie w pierwszej turze kodu
+
+Własny raster. Użytkownik wskazuje lokalny obraz z zakresem (południe, zachód, północ, wschód w WGS84) albo szablon kafelków XYZ. GeoTIFF i nowa zależność nie wchodzą w tę turę. Plik rastrowy nie trafia do gita.
+
+WMS. Leaflet 1.9.4 w `viz_player/vendor/` ma `L.tileLayer.wms`. Pola: adres usługi i nazwa warstwy. Kafelki w EPSG:3857, tak jak reszta mapy. Usługa, która oddaje tylko EPSG:2180, czeka na osobne zdanie. `tile.openstreetmap.org` dalej jest zabroniony. Klucz CARTO zostaje odłożony i nie jest tą opcją.
+
+Otwarcie runu. Przycisk „otwórz run” woła wybór katalogu. Anulowanie zostawia bieżący run. Katalog bez `output_events.xml.zst` albo bez `output_network.xml.zst` daje zdanie w panelu i też zostawia bieżący run. Poprawny katalog idzie tą samą drogą co uruchomienie z konsoli: indeks, łamane, zapis `output/viz_player_state.json`, przeładowanie strony. Na czas czytania panel pisze, że run się otwiera. Słów „i tym podobne” nie rozwijam. Kolejna rzecz z obsługi okna dostaje własne zdanie.
+
+### Akceptacja, gdy kod powstanie
+
+Self-test szuka w `shell.html` konturu znacznika, checkboxa dróg, strzałek mnożnika i przełącznika prędkość/klasa. Sprawdza, że z `1×` prawa strzałka daje `2×`, a lewa przy `1×` zostawia `1×`. `--check` R6 zostaje przy liczbach klatki. Smoke dalej wymaga 849 aut o 07:56 i łamanych powyżej 100. Obraz znacznika i obu legend ogląda człowiek. Tego planu agent nie zalicza zrzutem.
+
+### Zaakceptowane
+
+Michał zaakceptował ten plan w całości. Grot jest dłuższy niż w trójkącie równobocznym, punkt auta leży w środku podstawy. Strzałki na pasku zmieniają mnożnik o 1. Kolory dróg i klas mogą lekko odstawać od wzorca, a przy włączonym kolorze jest legenda. Tabela klas jest zaakceptowana. Kod tej sekcji jeszcze nie powstał.
 
 ## Ryzyka
 
