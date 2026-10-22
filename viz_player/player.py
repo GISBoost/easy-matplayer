@@ -25,6 +25,7 @@ import viz_export
 from viz_player import curves, site
 
 STATE = DATA / "viz_player_state.json"
+OSM_STATE = DATA / "viz_player_osm.json"
 START = 6 * 3600
 CARTO = "https://{s}.basemaps.cartocdn.com/rastertiles/dark_nolabels/{z}/{x}/{y}.png?key="
 ATTR = "© OpenStreetMap contributors © CARTO"
@@ -202,6 +203,21 @@ def saved_run():
     return str(ROOT / run) if run and not Path(run).is_absolute() else run
 
 
+def saved_pbf():
+    """Plik OSM wskazany w aplikacji albo None (wtedy działa szukanie w data/raw/osm, a bez pliku proste odcinki)."""
+    try:
+        path = json.loads(OSM_STATE.read_text(encoding="utf-8")).get("pbf")
+    except Exception:
+        return None
+    return path if path and Path(path).is_file() else None
+
+
+def save_pbf(path):
+    OSM_STATE.parent.mkdir(parents=True, exist_ok=True)
+    OSM_STATE.write_text(json.dumps({"pbf": str(path) if path else None}, ensure_ascii=False) + "\n", encoding="utf-8")
+    viz_buildings.USER_PBF = Path(path) if path else None
+
+
 def note(run_dir, message):
     print(message)
     if run_dir is None:
@@ -245,6 +261,7 @@ class Player:
         self.error = None
         self.index = None
         self.basemap = carto_basemap()
+        viz_buildings.USER_PBF = Path(saved_pbf()) if saved_pbf() else None
         if not self.run_dir.is_dir():
             self.error = f"Brak katalogu runu {self.run_name}."
             return
@@ -275,7 +292,7 @@ class Player:
             msg = f"łamane: {exc}; cięciwy"
         self.curve.prepare(self.index.link_xy)
         n_bent = self.curve.n_bent
-        self.curve_note = f"łamane: {n_bent} z {len(self.link_id)}" if n_bent else msg
+        self.curve_note = f"łamane: {n_bent} z {len(self.link_id)}{curves.coverage(self.curve)}" if n_bent else msg
         note(self.run_dir, msg)
         self._setup()
         if remember:
@@ -548,7 +565,7 @@ class Player:
             "error": self.error, "run": self.run_name, "version": __version__, "t": self.t_start,
             "tMin": 0, "tMax": 1, "sample": "brak", "basemap": self.basemap,
             "bounds": None, "types": [], "classes": [], "nLinks": 0, "nCurve": 0, "curveNote": "", "data": None,
-            "buildings": None, "buildingsNote": "",
+            "buildings": None, "buildingsNote": "", "osm": self.osm_info(),
         }
         if self.index is None:
             return base
@@ -573,9 +590,19 @@ class Player:
         })
         return base
 
+    def osm_info(self):
+        """Skąd są budynki i łamane drogi: plik OSM (nazwa, czy wskazał go użytkownik) albo dane zapisane przy runie (cached)."""
+        pbf = viz_buildings.find_pbf()
+        if pbf is not None:
+            return {"file": pbf.name, "user": viz_buildings.USER_PBF is not None, "cached": False}
+        cached = self.buildings is not None or (self.curve is not None and self.curve.n_bent > 0)
+        return {"file": None, "user": False, "cached": cached}
+
     def buildings_note(self):
         if self.buildings is None:
-            return "budynki: brak PBF w data/raw/osm"
+            return "budynki: brak pliku OSM (wskaż plik .osm.pbf w panelu)"
+        if self.buildings["n"] == 0:
+            return "budynki: w pliku OSM nie ma budynków w obszarze sieci (czy plik pokrywa tę sieć?)"
         c = self.buildings["counts"]
         return (f"budynki {self.buildings['n']}: wysokość z tagu {c['tag']}, z pięter {c['levels']}, "
                 f"założenie wg klasy {c['default']} (piętra i klasa to założenia)")

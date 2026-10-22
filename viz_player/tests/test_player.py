@@ -3,10 +3,14 @@ from pathlib import Path
 
 import pytest
 
+import viz_buildings
+
 from viz_player import check as chk
 from viz_player import player as pl
 
 from . import fixture as fx
+
+REAL_FIND_PBF = viz_buildings.find_pbf  # conftest podmienia find_pbf na None; ten test chce prawdziwe szukanie
 
 
 @pytest.fixture(scope="module")
@@ -259,3 +263,35 @@ def test_api_open_path_reports_progress(tmp_path):
     busy = [p for p in seen if p["busy"]]
     assert busy and all(0.0 <= p["frac"] <= 1.0 for p in busy if p["frac"] is not None)
     assert len({p["label"] for p in busy}) >= 2, "kilka etapów z etykietami"
+
+
+def test_api_osm_use_sets_clears_and_rejects(run_dir, tmp_path, monkeypatch):
+    from viz_player.window import Api
+
+    monkeypatch.setattr(pl, "OSM_STATE", tmp_path / "osm.json")
+    monkeypatch.setattr(viz_buildings, "USER_PBF", None)
+    monkeypatch.setattr(viz_buildings, "find_pbf", REAL_FIND_PBF)
+    monkeypatch.setattr(viz_buildings, "ROOT", tmp_path)  # bez szukania w data/raw/osm repo
+    import osmium
+
+    pbf = tmp_path / "moj.osm.pbf"
+    with osmium.SimpleWriter(str(pbf)) as w:
+        w.add_node(osmium.osm.mutable.Node(id=1, location=(19.0, 52.0)))
+    player = pl.Player()
+    player.open(run_dir, remember=False)
+    api = Api(player, site=tmp_path / "site", services=tmp_path / "svc.json", rasters_dir=tmp_path / "r")
+    assert player.osm_info() == {"file": None, "user": False, "cached": False}
+
+    bad = tmp_path / "zly.pbf"
+    bad.write_bytes(b"to nie jest pbf")
+    out = api.osm_use(str(bad))
+    assert out["status"] == "error" and "odczytać" in out["message"] and pl.saved_pbf() is None
+
+    out = api.osm_use(str(pbf))
+    assert out["status"] == "ok" and pl.saved_pbf() == str(pbf)
+    assert api._player.osm_info() == {"file": "moj.osm.pbf", "user": True, "cached": False}
+    assert "nie ma budynków" in api._player.buildings_note(), "plik bez budynków w obszarze sieci: komunikat"
+
+    out = api.osm_use("")
+    assert out["status"] == "ok" and pl.saved_pbf() is None
+    assert api._player.osm_info() == {"file": None, "user": False, "cached": True}, "zapomnienie pliku zostawia dane zapisane przy runie"

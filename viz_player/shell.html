@@ -135,6 +135,7 @@ body.panel-off #panel { display: none; }
   <button id="openrun" type="button" class="chip">otwórz run…</button>
   <p id="runmsg" class="muted" hidden></p>
   <progress id="runbar" max="1" value="0" hidden></progress>
+  <p id="osm" class="muted"><span id="osmname"></span> <button id="osm-pick" type="button" class="chip">plik OSM…</button> <button id="osm-clear" type="button" class="chip" hidden>zapomnij plik</button></p>
   <form id="find"><input id="q" type="text" placeholder="id pojazdu" autocomplete="off" spellcheck="false"></form>
   <div id="hits"></div>
   <div id="chips"></div>
@@ -401,6 +402,9 @@ function applyBoot() {
   tMax = boot.tMax;
   document.getElementById("run").textContent = boot.run || "";
   document.getElementById("ver").textContent = boot.version ? "v" + boot.version : "";
+  const osm = boot.osm || {file: null, user: false, cached: false};
+  document.getElementById("osmname").textContent = osm.file ? "OSM: " + osm.file : osm.cached ? "OSM: dane zapisane przy runie" : "OSM: brak (proste odcinki, bez budynków)";
+  document.getElementById("osm-clear").hidden = !osm.user;
   document.getElementById("sample").textContent = "próbka " + boot.sample;
   document.getElementById("curves").textContent = boot.curveNote || "";
   document.getElementById("clock").textContent = clock(t);
@@ -830,12 +834,13 @@ function setPlaying(on) {
 }
 document.getElementById("three").addEventListener("click", () => setThreeD(!threeD));
 // „otwórz run”: wybór folderu w Pythonie, potem otwarcie; sukces przeładowuje stronę (świeży boot.json), błąd zostawia bieżący run
-async function openRunPath(path) {
+// Wspólna obsługa długiej operacji w Pythonie (otwarcie runu, zmiana pliku OSM): pasek i etap z Api.progress(), po sukcesie przeładowanie strony
+async function runBusy(start, text) {
   const api = window.pywebview && window.pywebview.api, msg = document.getElementById("runmsg");
-  const say = (text) => { msg.textContent = text; msg.hidden = !text; };
+  const say = (t) => { msg.textContent = t; msg.hidden = !t; };
   const bar = document.getElementById("runbar");
-  say("Run się otwiera…");
-  bar.value = 0; bar.removeAttribute("value"); bar.hidden = false;
+  say(text);
+  bar.removeAttribute("value"); bar.hidden = false;
   // pasek: Python zgłasza etap i ułamek, strona pyta co 300 ms (otwarcie dużego runu trwa ok. 80 s)
   const poll = setInterval(async () => {
     try {
@@ -846,14 +851,26 @@ async function openRunPath(path) {
     } catch (err) { /* następne zapytanie */ }
   }, 300);
   let r;
-  try { r = await api.open_path(path); } catch (err) { r = {status: "error", message: String(err)}; }
+  try { r = await start(api); } catch (err) { r = {status: "error", message: String(err)}; }
   clearInterval(poll);
   bar.hidden = true;
   if (r.status === "ok") { location.reload(); return r; }
   say(r.message || "");
   return r;
 }
+async function openRunPath(path) {
+  return runBusy((api) => api.open_path(path), "Run się otwiera…");
+}
 window.openRunPath = openRunPath;
+// Plik OSM (opcjonalny): bez niego proste odcinki z sieci runu, z nim łamane drogi i budynki 3D; wynik w cache przy runie
+document.getElementById("osm-pick").addEventListener("click", async () => {
+  const api = window.pywebview && window.pywebview.api;
+  if (!api) return;
+  const r = await api.osm_pick();
+  if (r.status === "path") runBusy((a) => a.osm_use(r.path), "Czytam plik OSM…");
+});
+document.getElementById("osm-clear").addEventListener("click", () => runBusy((a) => a.osm_use(""), "Otwieram run bez pliku OSM…"));
+window.useOsm = (path) => runBusy((a) => a.osm_use(path), "Czytam plik OSM…");
 document.getElementById("openrun").addEventListener("click", async () => {
   const api = window.pywebview && window.pywebview.api;
   if (!api) return;

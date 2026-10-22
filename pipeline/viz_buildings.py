@@ -58,8 +58,14 @@ def height_of(tags, osm_id, cfg):
     return base * spread_factor(osm_id, cfg["spread"]), 2
 
 
+USER_PBF = None  # plik OSM wskazany w aplikacji (viz_player); ma pierwszeństwo przed szukaniem w data/raw/osm
+
+
 def find_pbf():
-    """Najnowszy lodzkie-*.osm.pbf; w worktree gita szuka też w głównym repo (data/ jest poza gitem)."""
+    """Plik wskazany przez użytkownika albo najnowszy lodzkie-*.osm.pbf; w worktree gita szuka też w głównym repo (data/ jest poza gitem)."""
+    if USER_PBF is not None:
+        path = Path(USER_PBF)
+        return path if path.is_file() else None
     for base in [ROOT, *ROOT.parents]:
         hits = sorted((base / "data" / "raw" / "osm").glob("lodzkie-*.osm.pbf"))
         if hits:

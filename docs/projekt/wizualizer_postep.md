@@ -38,7 +38,7 @@ Wcześniej zrobione (fundamenty, D24): origin z sieci, `person_id` i klasyfikato
 ## Aplikacja z pulpitu i release (D27, plan: `wizualizer_aplikacja.md`)
 
 - [x] A1. Ścieżki: zasoby do odczytu osobno od danych do zapisu (`paths.py`, `%LOCALAPPDATA%\easy-matanimation`).
-- [ ] A2. Zachowanie po dwukliku. Zrobione: A2a nazwa, wersja, log do pliku, komunikaty błędów; A2b wybór runu bez argumentu i pełny pasek postępu. Czeka: A2c własny plik OSM.
+- [x] A2. Zachowanie po dwukliku: A2a nazwa, wersja, log do pliku, komunikaty błędów; A2b wybór runu bez argumentu i pełny pasek postępu; A2c własny plik OSM.
 - [ ] A3. Pierwsza paczka PyInstaller onedir, smoke zbudowanego exe z okrojonym PATH.
 - [ ] A4. Test na czystym komputerze / Windows Sandbox.
 - [ ] A5. Zip z małym runem demo.
@@ -186,3 +186,16 @@ Wcześniej zrobione (fundamenty, D24): origin z sieci, `person_id` i klasyfikato
 - **Pełny pasek postępu.** `viz_index.run(run, progress)` zgłasza etap i ułamek: pliki (0–1%), czytanie zdarzeń (1–64%, ułamek z pozycji w skompresowanym pliku), zapis indeksu (64–66%), sprawdzanie indeksu (66–97%, drugi odczyt), opis (97–100%); wagi z czasów prawdziwego runu 100% (50 s, 28 s). `Player.open` i `Player.write_site` dokładają łamane drogi, eksport i budynki; skan OSM (dziesiątki sekund, bez ułamka) pokazuje pasek bez wartości. Okno startowe (`startup.with_progress`) pokazuje się dopiero po 0,6 s, więc otwarcie z cache nie miga. Zamknięcie okna w trakcie kończy aplikację (niedokończony indeks nie ma `meta.json`, więc następnym razem powstaje od nowa). W panelu „otwórz run…” `Api.progress()` jest odpytywane co 300 ms, a `<progress id="runbar">` pokazuje etap i procent.
 - Dowód: 93 testy (nowe: etapy i pozycja w pliku w `test_index`, `Api.open_path` z odpytywaniem postępu w wątku, `with_progress` z prawdziwym oknem Tk, błąd z wątku, `scaled`, trzy scenariusze `serve` bez runu / z błędnym runem); prawdziwa budowa od zera runu 100% (97 210 pojazdów, indeks 80,3 s, całość z łamanymi i budynkami 127 s, bez błędu) z oknem postępu: zrzuty „Czytam zdarzenia ruchu 11%”, „… 33%”, „Sprawdzam indeks 47%”.
 - Nie sprawdzone: sam systemowy dialog wyboru folderu (otwiera się, ale nie klikam w nim automatycznie), pasek w panelu okna na dużym runie (w smoke i teście Api sprawdzone tylko logicznie).
+
+### A2c: własny plik OSM i komunikaty o pokryciu (2026-10-22)
+
+- Panel: linia „OSM: …” (nazwa pliku, „dane zapisane przy runie” albo „brak (proste odcinki, bez budynków)”) i przyciski „plik OSM…” (wybór `.osm.pbf`, nagłówek sprawdzany od razu, zły plik daje komunikat) oraz „zapomnij plik”. Wybór zapamiętany w `DATA/viz_player_osm.json` (ścieżka, plik nie jest kopiowany). Po wyborze bieżący run otwiera się od nowa z paskiem postępu (wspólne `runBusy` w `shell.html`); błąd przywraca poprzedni wybór.
+- `viz_buildings.USER_PBF` ma pierwszeństwo w `find_pbf` przed szukaniem w `data/raw/osm`. Cache łamanych (`curves.npz`) zapamiętuje tożsamość pliku OSM (nazwa, rozmiar, czas zapisu) i liczby `found`/`wanted`: inny plik unieważnia cache, brak pliku (demo) używa cache tak, jak jest. Zmiana: cache sprzed A2c nie ma tożsamości pliku, więc przy obecnym PBF raz się przelicza (Kutno 7 s).
+- Komunikaty: „łamane: 4705 z 10383, …; w pliku OSM 3705 z 3705 dróg sieci”; plik bez dróg tej sieci: „plik OSM nie pokrywa tej sieci (0 z N dróg); cięciwy”; plik bez budynków w obszarze: „w pliku OSM nie ma budynków w obszarze sieci”. Bez pliku i bez cache: „brak pliku OSM (wskaż plik .osm.pbf w panelu)”.
+- „Zapomnij plik” zostawia dane już zapisane przy runie (nie kasuje cache) i panel to mówi; pełne wyczyszczenie to usunięcie folderu `viz/` runu.
+- Dowód: 96 testów (nowe: `curves.load` z atrapą skanu: komunikat o braku pokrycia, liczenie znalezionych dróg, cache związany z plikiem, demo bez pliku; `Api.osm_use`: wskazanie, zły plik, zapomnienie; sprawdzanie nagłówka PBF na prawdziwym pliku, śmieciach, braku pliku i złym rozszerzeniu). Smoke w oknie (112 s): linia OSM w panelu, wskazanie malutkiego PBF bez dróg i budynków tej sieci → przeładowanie ze zdaniem o braku pokrycia, „zapomnij plik” wraca do stanu bez wyboru; z prawdziwym PBF Kutna: „w pliku OSM 3705 z 3705 dróg sieci”.
+- Nie sprawdzone: systemowy dialog wyboru pliku (jak folderu, otwiera się, nie klikam w nim automatycznie); duży PBF z innego województwa niż sieć.
+
+### A2 zamknięte (2026-10-22)
+
+Wszystkie trzy części (A2a, A2b, A2c) przeszły: 96 testów i smoke w prawdziwym oknie.

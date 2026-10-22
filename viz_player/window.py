@@ -20,7 +20,7 @@ import numpy as np
 from viz_player import check, grab, ogc, rasters
 from viz_player import APP_NAME, __version__, startup
 from viz_player.paths import DATA, RUNS
-from viz_player.player import Player, scaled, clock, note, pick_ident, save_state, saved_run
+from viz_player.player import Player, clock, note, pick_ident, save_pbf, save_state, saved_pbf, saved_run, scaled
 
 SERVICES = DATA / "viz_player_services.json"
 RASTERS = DATA / "viz_player_rasters"
@@ -224,6 +224,35 @@ class Api:
             return {"status": "cancel"}
         return {"status": "path", "path": str(sel[0] if isinstance(sel, (list, tuple)) else sel)}
 
+    def osm_pick(self):
+        """Okno wyboru pliku OSM (.osm.pbf). Anulowanie zwraca {"status": "cancel"}."""
+        import webview
+        sel = self._window.create_file_dialog(
+            webview.FileDialog.OPEN, directory=str(RUNS if RUNS.is_dir() else Path.home()),
+            file_types=("Plik OSM (*.osm.pbf;*.pbf)", "Wszystkie pliki (*.*)"),
+        )
+        if not sel:
+            return {"status": "cancel"}
+        return {"status": "path", "path": str(sel[0] if isinstance(sel, (list, tuple)) else sel)}
+
+    def osm_use(self, path):
+        """Ustawia plik OSM (path pusty: usuwa wybór) i otwiera bieżący run od nowa, żeby powstały budynki i łamane drogi.
+        Błąd przywraca poprzedni wybór."""
+        before = saved_pbf()
+        if path:
+            problem = _pbf_problem(Path(path))
+            if problem:
+                return {"status": "error", "message": problem}
+        save_pbf(path or None)
+        self._report("Start", 0.0)
+        try:
+            out = self._open_path(str(self._player.run_dir))
+        finally:
+            self._progress = {"busy": False, "label": "", "frac": 1.0}
+        if out["status"] != "ok":
+            save_pbf(before)
+        return out
+
     def progress(self):
         """Postęp trwającego otwierania runu: {busy, label, frac} (frac None: czas nieokreślony)."""
         return dict(self._progress)
@@ -254,6 +283,21 @@ class Api:
         save_state(fresh.run_dir)
         self._player = fresh
         return {"status": "ok", "run": fresh.run_name}
+
+
+def _pbf_problem(path):
+    """Opis kłopotu z plikiem OSM albo None. Sprawdza rozszerzenie i nagłówek (szybko, bez skanowania)."""
+    if not path.is_file():
+        return f"Nie ma pliku {path.name}."
+    if path.suffix.lower() != ".pbf":
+        return "To nie jest plik .osm.pbf."
+    try:
+        import osmium
+        with osmium.io.Reader(str(path), osmium.osm.osm_entity_bits.NOTHING) as reader:
+            reader.header()
+    except Exception as exc:
+        return f"Nie da się odczytać pliku OSM: {exc}"
+    return None
 
 
 def _dumps(payload):
@@ -311,6 +355,37 @@ def _fake_wms():
     server = http.server.ThreadingHTTPServer(("127.0.0.1", 0), Handler)
     threading.Thread(target=server.serve_forever, daemon=True).start()
     return f"http://127.0.0.1:{server.server_port}/wms", requests, server.shutdown
+
+
+def _smoke_osm(window, js, work):
+    """Plik OSM (A2c): panel pokazuje źródło, własny plik bez dróg i budynków tej sieci daje komunikat o braku pokrycia,
+    „zapomnij plik” wraca do stanu bez wyboru. Zwraca zdanie błędu albo None."""
+    import osmium
+
+    from viz_player.player import save_pbf
+
+    work.mkdir(parents=True, exist_ok=True)
+    pbf = work / "smoke.osm.pbf"
+    with osmium.SimpleWriter(str(pbf)) as w:
+        w.add_node(osmium.osm.mutable.Node(id=1, location=(0.5, 0.5)))
+    ready = "window.mapReady === true && window.apiReady === true"
+    try:
+        if not str(js("document.getElementById('osmname').textContent")).startswith("OSM: "):
+            return "osm: brak linii źródła w panelu"
+        js(f"window.useOsm({json.dumps(str(pbf).replace(chr(92), '/'))});")
+        if not _wait_js(window, f"boot.osm && boot.osm.user === true && boot.osm.file === 'smoke.osm.pbf' && {ready} && window.drawnN > 0", 180):
+            return f"osm: po wskazaniu pliku {js('JSON.stringify(boot.osm)')} msg={js('document.getElementById(\'runmsg\').textContent')}"
+        curves_text = str(js("document.getElementById('curves').textContent"))
+        if "nie pokrywa" not in curves_text and "brak origid" not in curves_text:
+            return f"osm: brak komunikatu o pokryciu: {curves_text!r}"
+        if js("document.getElementById('osm-clear').hidden"):
+            return "osm: brak przycisku „zapomnij plik”"
+        js("document.getElementById('osm-clear').click();")
+        if not _wait_js(window, f"boot.osm && boot.osm.user === false && {ready} && window.drawnN > 0", 180):
+            return f"osm: po zapomnieniu pliku {js('JSON.stringify(boot.osm)')}"
+        return None
+    finally:
+        save_pbf(None)
 
 
 def _smoke_images(window, js, work, services_file):
@@ -690,6 +765,10 @@ def smoke(run):
                         result["error"] = f"otwórz run {want}: {js('boot.run')} {js('window.drawError')} msg={js('document.getElementById(\"runmsg\").textContent')}"
                         return
                 result["switched"] = other.name
+            err = _smoke_osm(window, js, player.run_dir / "viz" / "smoke_osm")
+            if err:
+                result["error"] = err
+                return
             if js("window.svcLayerIds && window.svcLayerIds.length") != 3:
                 result["error"] = f"wms: po przeładowaniu strony usługa zniknęła {js('window.svcLayerIds')}"
                 return

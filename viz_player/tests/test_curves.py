@@ -55,3 +55,50 @@ def test_cache_needs_same_origin(tmp_path):
     curves.write_cache(cache, c, (525000.0, 485000.0))
     assert curves.read_cache(cache, 1, net, None, (525000.0, 485000.0)) is not None
     assert curves.read_cache(cache, 1, net, None, (526000.0, 485000.0)) is None
+
+
+def _fake_run(tmp_path, monkeypatch, ways):
+    """Run z jednym linkiem o origid 5 (węzły 1 -> 3) i atrapą skanu OSM; zwraca (run, wywołania skanu)."""
+    run = tmp_path / "run"
+    (run / "viz").mkdir(parents=True)
+    (run / "output_network.xml.zst").write_bytes(b"x")
+    calls = []
+    monkeypatch.setattr(curves, "read_ends", lambda path: (["a"], ["1"], ["3"], ["5"]))
+    monkeypatch.setattr(curves, "grab_ways", lambda pbf, wanted: (calls.append(pbf.name), ways)[1])
+    return run, calls
+
+
+def _load(run, pbf):
+    import viz_buildings
+
+    original = curves.find_pbf
+    curves.find_pbf = lambda: pbf
+    try:
+        return curves.load(run, np.array(["a"]), np.array([[0.0, 0.0, 100.0, 100.0]]), np.array([200.0]), (0.0, 0.0))
+    finally:
+        curves.find_pbf = original
+
+
+def test_load_reports_osm_coverage_and_keys_cache_to_the_file(tmp_path, monkeypatch):
+    run, calls = _fake_run(tmp_path, monkeypatch, {})
+    pbf = tmp_path / "a.osm.pbf"
+    pbf.write_bytes(b"1")
+    built, note = _load(run, pbf)
+    assert built.n_bent == 0 and "nie pokrywa tej sieci (0 z 1 dróg)" in note, "plik bez dróg sieci: komunikat zamiast pustego rysunku"
+    _load(run, pbf)
+    assert calls == ["a.osm.pbf"], "ten sam plik: cache, bez ponownego skanu"
+    other = tmp_path / "b.osm.pbf"
+    other.write_bytes(b"22")
+    _load(run, other)
+    assert calls == ["a.osm.pbf", "b.osm.pbf"], "inny plik OSM unieważnia cache"
+    again, note = _load(run, None)
+    assert calls == ["a.osm.pbf", "b.osm.pbf"] and again.found == 0 and again.wanted == 1, "bez pliku (demo) cache jest używany i pamięta pokrycie"
+
+
+def test_load_counts_found_ways(tmp_path, monkeypatch):
+    run, _calls = _fake_run(tmp_path, monkeypatch, {5: BEND})
+    pbf = tmp_path / "a.osm.pbf"
+    pbf.write_bytes(b"1")
+    monkeypatch.setattr(curves, "project", lambda ways, origin: ways)
+    built, note = _load(run, pbf)
+    assert built.n_bent == 1 and "w pliku OSM 1 z 1 dróg sieci" in note

@@ -21,6 +21,7 @@ class Curves:
         self.off = np.asarray(off, dtype=np.int32)
         self.xy = np.asarray(xy, dtype=np.float32).reshape(-1, 2)
         self._seg = None
+        self.found = self.wanted = None  # ile potrzebnych dróg było w pliku OSM (None: nie wiadomo)
 
     @property
     def n_bent(self):
@@ -332,23 +333,36 @@ def assemble(link_xy, link_length, ends, ways):
     return Curves(np.asarray(off, dtype=np.int32), stacked)
 
 
-def _fresh(cache, network, pbf):
+def pbf_stamp(pbf):
+    """Tożsamość pliku OSM do klucza cache: nazwa, rozmiar i czas zapisu."""
+    st = Path(pbf).stat()
+    return f"{Path(pbf).name}:{st.st_size}:{st.st_mtime_ns}"
+
+
+def _fresh(cache, network):
     if not cache.is_file() or not network.is_file():
         return False
-    stamp = cache.stat().st_mtime
-    if stamp < network.stat().st_mtime:
-        return False
-    if pbf is not None and pbf.is_file() and stamp < pbf.stat().st_mtime:
-        return False
-    return True
+    return cache.stat().st_mtime >= network.stat().st_mtime
+
+
+def coverage(curves):
+    """„, w pliku OSM X z Y dróg sieci” albo pusty napis, gdy nie wiadomo."""
+    if curves.wanted is None or curves.found is None:
+        return ""
+    return f"; w pliku OSM {curves.found} z {curves.wanted} dróg sieci"
 
 
 def read_cache(cache, n, network, pbf, origin):
-    if not _fresh(cache, network, pbf):
+    if not _fresh(cache, network):
         return None
     with np.load(cache, allow_pickle=False) as blob:
         if "version" not in blob.files or int(blob["version"]) != VERSION:
             return None
+        if pbf is not None and pbf.is_file():  # bez pliku OSM (demo) cache bierzemy taki, jaki jest; z plikiem tylko zbudowany z tego pliku
+            if "pbf" not in blob.files or str(blob["pbf"]) != pbf_stamp(pbf):
+                return None
+        found = int(blob["found"]) if "found" in blob.files and int(blob["found"]) >= 0 else None
+        wanted = int(blob["wanted"]) if "wanted" in blob.files and int(blob["wanted"]) >= 0 else None
         if "origin" not in blob.files or [float(v) for v in blob["origin"]] != [float(origin[0]), float(origin[1])]:
             return None
         off = np.array(blob["off"])
@@ -357,10 +371,12 @@ def read_cache(cache, n, network, pbf, origin):
         return None
     if len(off) > 1 and np.any(np.diff(off.astype(np.int64)) < 0):
         return None
-    return Curves(off, xy)
+    out = Curves(off, xy)
+    out.found, out.wanted = found, wanted
+    return out
 
 
-def write_cache(cache, curves, origin):
+def write_cache(cache, curves, origin, pbf=None):
     cache.parent.mkdir(parents=True, exist_ok=True)
     tmp = cache.with_name("curves-partial.npz")
     with tmp.open("wb") as handle:
@@ -370,6 +386,9 @@ def write_cache(cache, curves, origin):
             origin=np.asarray(origin, dtype=np.float64),
             off=curves.off,
             xy=curves.xy,
+            pbf=np.str_(pbf_stamp(pbf) if pbf is not None else ""),
+            found=np.int32(-1 if curves.found is None else curves.found),
+            wanted=np.int32(-1 if curves.wanted is None else curves.wanted),
         )
     tmp.replace(cache)
 
@@ -382,7 +401,7 @@ def load(run_dir, link_id, link_xy, link_length, origin):
     pbf = find_pbf()
     cached = read_cache(cache, n, network, pbf, origin)
     if cached is not None:
-        return cached, f"łamane: {cached.n_bent} z {n}, cache"
+        return cached, f"łamane: {cached.n_bent} z {n}, cache{coverage(cached)}"
     try:
         ends = read_ends(network)
     except Exception as exc:
@@ -395,7 +414,11 @@ def load(run_dir, link_id, link_xy, link_length, origin):
         return empty(n), f"łamane: {why}; cięciwy"
     print("łamane: czytam OSM…", flush=True)
     started = time.perf_counter()
-    built = assemble(link_xy, link_length, ends, project(grab_ways(pbf, wanted), origin))
-    write_cache(cache, built, origin)
-    return built, f"łamane: {built.n_bent} z {n}, skan {time.perf_counter() - started:.1f} s"
+    ways = grab_ways(pbf, wanted)
+    built = assemble(link_xy, link_length, ends, project(ways, origin))
+    built.found, built.wanted = len(ways), len(wanted)
+    write_cache(cache, built, origin, pbf)
+    if not ways:
+        return built, f"łamane: plik OSM nie pokrywa tej sieci (0 z {len(wanted)} dróg); cięciwy"
+    return built, f"łamane: {built.n_bent} z {n}, skan {time.perf_counter() - started:.1f} s{coverage(built)}"
 
