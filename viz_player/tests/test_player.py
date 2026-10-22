@@ -129,9 +129,9 @@ def test_activity_panel_and_axis(player):
 
 
 def test_class_filter(player):
-    player.set_classes("rcoh")
+    player.set_classes(["resident", "commuter", "outbound", "ciezkie"])
     assert player.payload()["n"] == 0
-    player.set_classes("rcoth")
+    player.set_classes(player.chip_keys)
     player.t = 23050
     both = player.payload()
     assert both["n"] == 2 and sum(both["heavy"]) == 1

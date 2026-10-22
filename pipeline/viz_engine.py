@@ -23,8 +23,6 @@ import viz_index
 SPEED_CAP = 30.0
 DT_FLOOR = 1e-3
 RAM_BUDGET = 1 << 30
-LETTERS = {ch: i for i, ch in enumerate("rcoth")}
-LETTERS["?"] = viz_index.OTHER_CLASS
 
 
 class EngineFailed(Exception):
@@ -49,8 +47,8 @@ class Frame:
 class Index:
     __slots__ = (
         "run_dir", "meta", "nbytes",
-        "ids", "id_text", "id_of",
-        "track_id", "track_class", "track_t0", "track_t1", "knot_off",
+        "ids", "id_text", "id_of", "class_keys", "class_heavy",
+        "track_id", "track_person_i", "track_class", "track_t0", "track_t1", "knot_off",
         "knot_t", "knot_x", "knot_y", "knot_len", "knot_link",
         "link_xy",
         "bucket_sec", "bucket_t0", "bucket_off", "bucket_track",
@@ -67,6 +65,9 @@ class Index:
         self.id_text = [str(s) for s in ids]
         self.id_of = {name: i for i, name in enumerate(self.id_text)}
         self.track_id = arrays["track_id"]
+        self.track_person_i = arrays["track_person_i"]
+        self.class_keys = [row["key"] for row in meta["classes"]]
+        self.class_heavy = np.asarray([bool(row["heavy"]) for row in meta["classes"]], dtype=bool)
         self.track_class = arrays["track_class"]
         self.track_t0 = arrays["track_t0"]
         self.track_t1 = arrays["track_t1"]
@@ -89,7 +90,7 @@ class Index:
         self.act_x = arrays["act_x"]
         self.act_y = arrays["act_y"]
         n_ids = len(self.id_text)
-        self.track_order, self.track_off = _group(arrays["track_id_i"], n_ids, stable=True)
+        self.track_order, self.track_off = _group(arrays["track_person_i"], n_ids, stable=True)
         act_order = np.lexsort((np.arange(len(self.act_t)), self.act_t, arrays["act_id"]))
         self.act_order = act_order.astype(np.int32, copy=False)
         self.act_off = _offsets(arrays["act_id"], n_ids)
@@ -126,14 +127,15 @@ def load(run_dir):
     return index
 
 
-def _allow(classes_on):
+def _allow(index, classes_on):
+    """Maska klas z kluczy klas (meta["classes"]). None: wszystkie."""
     if classes_on is None:
         return None
-    allow = np.zeros(viz_index.OTHER_CLASS + 1, dtype=bool)
-    for ch in classes_on:
-        if ch not in LETTERS:
-            raise EngineFailed(f"nieznana klasa {ch!r}")
-        allow[LETTERS[ch]] = True
+    allow = np.zeros(len(index.class_keys), dtype=bool)
+    for key in classes_on:
+        if key not in index.class_keys:
+            raise EngineFailed(f"nieznana klasa {key!r}")
+        allow[index.class_keys.index(key)] = True
     return allow
 
 
@@ -185,7 +187,7 @@ def frame(index, t, classes_on=None):
         t0 = index.track_t0[cand]
         t1 = index.track_t1[cand]
         mask = (t0 <= t) & (t <= t1)
-        allow = _allow(classes_on)
+        allow = _allow(index, classes_on)
         if allow is not None:
             mask &= allow[index.track_class[cand]]
         sel = cand[mask]
@@ -351,20 +353,21 @@ def check(run_dir):
         meta = index.meta
         peak_t = float(meta["max_concurrent_time"])
         tick = time.perf_counter()
-        full = frame(index, peak_t, ("r", "c", "o", "t", "h", "?"))
-        no_t = frame(index, peak_t, ("r", "c", "o", "h", "?"))
+        full = frame(index, peak_t, index.class_keys)
+        biggest = max(range(len(index.class_keys)), key=lambda i: int(np.count_nonzero(full.cls == i)))
+        no_big = frame(index, peak_t, [k for i, k in enumerate(index.class_keys) if i != biggest])
         elapsed = time.perf_counter() - tick
         if len(full) != int(meta["max_concurrent"]):
             raise EngineFailed(
                 f"filtr pełny {len(full)} != przebieg enter/leave {meta['max_concurrent']} o {peak_t}"
             )
-        if len(no_t) >= len(full) or np.any(no_t.cls == LETTERS["t"]):
-            raise EngineFailed(f"filtr bez t: {len(no_t)} z {len(full)}")
-        first_r = next(str(s) for s in index.track_id if str(s).startswith("r"))
+        if len(no_big) >= len(full) or np.any(no_big.cls == biggest):
+            raise EngineFailed(f"filtr bez {index.class_keys[biggest]}: {len(no_big)} z {len(full)}")
+        first_r = index.id_text[int(index.track_person_i[0])]
         hits = lookup(index, first_r)
         if not hits or hits[0]["id"] != first_r or not hits[0]["tracks"]:
             raise EngineFailed(f"lookup {first_r!r} nie zwraca przejazdów")
-        want = {int(i) for i in np.where(index.track_id == first_r)[0]}
+        want = {int(i) for i in np.where(index.track_person_i == index.id_of[first_r])[0]}
         if set(hits[0]["tracks"]) != want:
             raise EngineFailed(f"lookup {first_r} ma {hits[0]['tracks']}, indeks {sorted(want)}")
         track = hits[0]["tracks"][0]
@@ -394,7 +397,7 @@ def check(run_dir):
             raise EngineFailed(f"czynności {who}: {types}")
         _log(
             log_path,
-            f"check OK full={len(full)} bez_t={len(no_t)} t={peak_t:.1f} "
+            f"check OK full={len(full)} bez_{index.class_keys[biggest]}={len(no_big)} t={peak_t:.1f} "
             f"lookup={first_r} tracks={len(hits[0]['tracks'])} knots_worst={worst:.6f} m "
             f"home={who} frame_sec={elapsed:.3f} bytes={index.nbytes} "
             f"sec={time.perf_counter() - t0:.1f}",

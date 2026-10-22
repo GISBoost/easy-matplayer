@@ -22,7 +22,7 @@ EXPECT = {
     "max_concurrent": 798, "max_concurrent_time": 57539.0,
     "max_concurrent_6_9": 728, "max_concurrent_6_9_time": 28704.0,
     "enters_6_9": 5726, "t_min": 14.0, "t_max": 116633.0, "sample_size": 0.25,
-    "class_counts": {"c": 2410, "r": 4336, "t": 11984, "h": 4842, "o": 732},
+    "class_counts": {"resident": 4336, "commuter": 2410, "outbound": 732, "tlo": 11984, "ciezkie": 4842},
 }
 PERSON = "r6510903_5"
 BENT_LINK = "1807611370009f"

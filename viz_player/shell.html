@@ -157,11 +157,11 @@ function applyBoot() {
     const b = document.createElement("button");
     b.type = "button";
     b.className = "chip" + (c.on ? " on" : "");
-    b.dataset.letter = c.letter;
+    b.dataset.key = c.key;
     b.textContent = c.name;
     b.addEventListener("click", () => {
       b.classList.toggle("on");
-      const on = [...chips.querySelectorAll(".chip.on")].map((x) => x.dataset.letter).join("");
+      const on = [...chips.querySelectorAll(".chip.on")].map((x) => x.dataset.key);
       py().then((api) => api.classes(on)).then(() => { dirty = true; });
     });
     chips.appendChild(b);

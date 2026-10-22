@@ -226,7 +226,7 @@ class Player:
         self.basemap = None
         self.t = 0.0
         self.classes = ()
-        self.chip_letters = []
+        self.chip_keys = []
         self.selected_id = None
         self.selected_link = None
         self.follow = False
@@ -287,20 +287,12 @@ class Player:
         meta = self.index.meta
         t0, t1 = float(meta["t_min"]), float(meta["t_max"])
         self.t = float(START if t0 <= START <= t1 else t0)
-        legend = meta["class_legend"]
-        self.class_name = {
-            "r": legend["0"], "c": legend["1"], "o": legend["2"],
-            "t": legend["3"], "h": legend["4"], "?": legend["5"],
-        }
-        self.letter_of = list(meta["class_letter"])
+        self.class_name = {row["key"]: row["name"] for row in meta["classes"]}
         types = meta["type_legend"]
         count = max((int(key) for key in types), default=-1) + 1
         self.type_names = [types[str(i)] for i in range(count)]
-        other = viz_engine.viz_index.OTHER_CLASS
-        self.chip_letters = ["r", "c", "o", "t", "h"]
-        if bool(np.any(self.index.track_class == other)):
-            self.chip_letters.append("?")
-        self.classes = tuple(self.chip_letters)
+        self.chip_keys = list(self.index.class_keys)
+        self.classes = tuple(self.chip_keys)
         self.selected_id = None
         self.selected_link = None
         self.follow = False
@@ -313,12 +305,12 @@ class Player:
             t = min(max(t, float(self.index.meta["t_min"])), float(self.index.meta["t_max"]))
         self.t = t
 
-    def set_classes(self, letters):
-        letters = str(letters or "")
-        for ch in letters:
-            if ch not in viz_engine.LETTERS:
-                raise viz_engine.EngineFailed(f"nieznana klasa {ch!r}")
-        self.classes = tuple(dict.fromkeys(letters))
+    def set_classes(self, keys):
+        keys = [str(k) for k in (keys or [])]
+        for key in keys:
+            if key not in self.index.class_keys:
+                raise viz_engine.EngineFailed(f"nieznana klasa {key!r}")
+        self.classes = tuple(dict.fromkeys(keys))
         self._key = None
 
     def clear(self):
@@ -410,11 +402,11 @@ class Player:
             if len(hit):
                 i = int(hit[0])
                 lid, typ, _leng, free = self.link_bits(int(fr.link[i]))
-                letter = self.letter(int(fr.cls[i]))
+                key = self.index.class_keys[int(fr.cls[i])]
                 return {
                     "kind": "vehicle",
                     "lines": [
-                        ident, self.class_name.get(letter, letter), kmh(fr.speed[i]),
+                        ident, self.class_name.get(key, key), kmh(fr.speed[i]),
                         "link " + lid, typ, "freespeed " + free,
                     ],
                     "axis": axis,
@@ -439,11 +431,6 @@ class Player:
             "lines": [lid, typ, leng, "freespeed " + free, line],
             "axis": [],
         }
-
-    def letter(self, code):
-        if 0 <= int(code) < len(self.letter_of):
-            return self.letter_of[int(code)]
-        return "?"
 
     def path_latlon(self, track):
         index = self.index
@@ -489,7 +476,7 @@ class Player:
             lat_l = np.round(lat, 6).tolist()
             speed = np.round(fr.speed.astype(np.float64), 3).tolist()
             heading = np.round(fr.heading.astype(np.float64), 4).tolist()
-            heavy = (fr.cls == viz_engine.LETTERS["h"]).astype(np.uint8).tolist()
+            heavy = self.index.class_heavy[fr.cls].astype(np.uint8).tolist()
         sel = None
         path = []
         pan = None
@@ -525,7 +512,7 @@ class Player:
         if track is not None:
             self.selected_link = None
             self.follow = False
-            self.selected_id = str(self.index.track_id[int(track)])
+            self.selected_id = str(self.index.ids[int(self.index.track_person_i[int(track)])])
             return self.panel()
         if self.curve is not None and self.curve.n_bent:
             link = self.curve.nearest(self.index.link_xy, x, y, tol)
@@ -588,8 +575,8 @@ class Player:
             ],
             "types": self.type_names,
             "classes": [
-                {"letter": letter, "name": self.class_name[letter], "on": letter in self.classes}
-                for letter in self.chip_letters
+                {"key": key, "name": self.class_name[key], "on": key in self.classes}
+                for key in self.chip_keys
             ],
             "nLinks": int(len(lon1)),
             "nCurve": int(len(self.curve.xy)) if self.curve is not None and self.curve.n_bent else 0,
@@ -628,8 +615,8 @@ class Api:
     def pick(self, lat, lon, lat2, lon2):
         return self._player.pick(lat, lon, lat2, lon2)
 
-    def classes(self, letters):
-        self._player.set_classes(letters)
+    def classes(self, keys):
+        self._player.set_classes(keys)
         return {"ok": True}
 
     def lookup(self, query):
@@ -688,11 +675,11 @@ def check(run):
     window = player.payload()
     need(window["n"] == int(meta["max_concurrent_6_9"]), f"okno 6–9 {window['n']} != {meta['max_concurrent_6_9']}")
     need(window["clock"] == clock(meta["max_concurrent_6_9_time"]), f"zegar {window['clock']}")
-    biggest = max(player.chip_letters, key=lambda ch: int(meta["class_counts"].get(ch, 0)))
-    player.set_classes("".join(ch for ch in player.chip_letters if ch != biggest))
+    biggest = max(player.chip_keys, key=lambda key: int(meta["class_counts"].get(key, 0)))
+    player.set_classes([key for key in player.chip_keys if key != biggest])
     thin = player.payload()
     need(thin["n"] < window["n"], f"filtr {biggest} {thin['n']} przy {window['n']}")
-    player.set_classes("".join(player.chip_letters))
+    player.set_classes(player.chip_keys)
     frame = player.frame_np()
     if len(frame) == 0:
         problems.append("pusta klatka 6–9")
@@ -821,9 +808,10 @@ def smoke(run):
             time.sleep(0.4)
             meta = player.index.meta
             player.clear()
-            player.set_classes("".join(player.chip_letters))
+            player.set_classes(player.chip_keys)
             player.t = float(meta["max_concurrent_6_9_time"])
             full = player.payload()
+            thin_key = player.chip_keys[int(np.bincount(player.frame_np().cls).argmax())]
             window.evaluate_js("draw(" + _dumps(full) + ")")
             err = window.evaluate_js("window.drawError")
             drawn = window.evaluate_js("window.drawnN")
@@ -855,10 +843,10 @@ def smoke(run):
             if back is not True:
                 result["error"] = "przycisk panelu " + str(back)
                 return
-            window.evaluate_js("document.querySelector('.chip[data-letter=\"t\"]').click()")
+            window.evaluate_js("document.querySelector('.chip[data-key=\"" + thin_key + "\"]').click()")
             time.sleep(0.8)
-            if "t" in player.classes:
-                result["error"] = "chip t został włączony"
+            if thin_key in player.classes:
+                result["error"] = f"chip {thin_key} został włączony"
                 return
             thin = player.payload()
             window.evaluate_js("draw(" + _dumps(thin) + ")")
@@ -866,10 +854,10 @@ def smoke(run):
             if drawn_thin != thin["n"] or not (thin["n"] < full["n"]):
                 result["error"] = f"filtr {drawn_thin} {thin['n']} {full['n']}"
                 return
-            window.evaluate_js("document.querySelector('.chip[data-letter=\"t\"]').click()")
+            window.evaluate_js("document.querySelector('.chip[data-key=\"" + thin_key + "\"]').click()")
             time.sleep(0.8)
-            if "t" not in player.classes:
-                result["error"] = "chip t nie wrócił"
+            if thin_key not in player.classes:
+                result["error"] = f"chip {thin_key} nie wrócił"
                 return
             player.t = float(meta["max_concurrent_6_9_time"])
             window.evaluate_js("draw(" + _dumps(player.payload()) + ")")
@@ -914,6 +902,9 @@ def smoke(run):
             result["thin"] = thin["n"]
             result["clock"] = full["clock"]
             result["size"] = size
+        except Exception:
+            import traceback
+            result["error"] = traceback.format_exc()
         finally:
             window.destroy()
 

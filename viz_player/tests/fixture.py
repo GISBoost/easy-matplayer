@@ -105,3 +105,15 @@ class TempRun:
 
     def __exit__(self, *exc):
         self._tmp.cleanup()
+
+
+def write_plans(run_dir, kinds):
+    """output_plans.xml.zst z samymi atrybutami osób ({person: {atrybut: wartość}}), w układzie linii MATSim."""
+    lines = ['<?xml version="1.0"?>', "<population>"]
+    for person, attrs in kinds.items():
+        lines.append(f'<person id="{person}">')
+        lines.append("<attributes>")
+        lines += [f'<attribute name="{k}" class="java.lang.String">{v}</attribute>' for k, v in attrs.items()]
+        lines += ["</attributes>", '<plan score="1" selected="yes">', "</plan>", "</person>"]
+    lines.append("</population>")
+    viz_index.write_zst(Path(run_dir) / "output_plans.xml.zst", "\n".join(lines) + "\n")

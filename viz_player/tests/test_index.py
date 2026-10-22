@@ -49,7 +49,8 @@ def test_build_positions_and_reuse(tmp_path):
         assert meta["format"] == viz_index.FORMAT
         assert meta["origin"] == list(fx.ORIGIN)
         assert set(meta["act_type_legend"].values()) == {"home", "work"}
-        assert meta["class_counts"] == {"r": 1, "c": 1, "o": 1, "t": 1, "h": 1, "q": 1}
+        assert meta["class_counts"] == {"resident": 1, "commuter": 1, "outbound": 1, "tlo": 1, "ciezkie": 1, "?": 1}
+        assert meta["class_source"] == "id" and meta["plans_sha256"] is None
         home = next(int(k) for k, v in meta["act_type_legend"].items() if v == "home")
         work = next(int(k) for k, v in meta["act_type_legend"].items() if v == "work")
         assert np.all(idx["act_kind"][idx["act_type"] == home] == 0), "home to actend"
@@ -98,3 +99,46 @@ def test_old_format_is_rebuilt(tmp_path):
     assert viz_index.run(run) == 0
     assert json.loads(meta_path.read_text(encoding="utf-8"))["format"] == viz_index.FORMAT
     assert _log(run).count("wrote index.npz") == 2
+
+
+def test_person_id_differs_from_vehicle(tmp_path):
+    """Tryby sieciowe mają id pojazdu inne niż id osoby: track zna osobę z eventu."""
+    rows = fx.trip("r9_car", 1000, person="r9") + fx.trip("r1", 2000) + fx.trip("r2", 3000) + fx.trip("r4", 4000)
+    run = fx.write_run(tmp_path / "mini", rows)
+    assert viz_index.run(run) == 0
+    _meta, idx = _load(run)
+    try:
+        assert "r9_car" in set(idx["track_id"])
+        j = list(idx["track_id"]).index("r9_car")
+        assert str(idx["ids"][int(idx["track_person_i"][j])]) == "r9"
+        assert "r9_car" not in set(idx["ids"]), "id pojazdu nie jest osobą"
+        assert "r9" in set(idx["ids"][idx["act_id"]])
+    finally:
+        idx.close()
+
+
+def test_classes_from_plan_attributes(tmp_path):
+    rows = fx.trip("p1", 1000) + fx.trip("p2", 1100) + fx.trip("p3", 1150) + fx.trip("r3", 1200)
+    run = fx.write_run(tmp_path / "mini", rows)
+    fx.write_plans(run, {"p1": {"kind": "student", "subpopulation": "person"}, "p2": {"subpopulation": "senior"}, "p3": {"kind": "student"}})
+    assert viz_index.run(run) == 0
+    meta, idx = _load(run)
+    try:
+        by_key = {row["key"]: row for row in meta["classes"]}
+        # kind wygrywa z subpopulation; p2 ma tylko subpopulation; r3 spoza planów wraca do litery id
+        assert meta["class_counts"] == {"resident": 1, "senior": 1, "student": 2}
+        assert by_key["student"]["name"] == "student" and by_key["resident"]["name"] == "mieszkaniec"
+        assert meta["class_source"] == "plans" and meta["plans_sha256"]
+        assert [r["key"] for r in meta["classes"]] == ["resident", "senior", "student"]
+    finally:
+        idx.close()
+
+
+def test_plans_change_invalidates(tmp_path):
+    run = fx.write_run(tmp_path / "mini", fx.trip("p1", 1000) + fx.trip("p2", 1100) + fx.trip("p3", 1200))
+    assert viz_index.run(run) == 0
+    fx.write_plans(run, {"p1": {"kind": "student"}, "p2": {"kind": "student"}, "p3": {"kind": "student"}})
+    assert viz_index.run(run) == 0
+    meta, idx = _load(run)
+    idx.close()
+    assert meta["class_counts"] == {"student": 3}

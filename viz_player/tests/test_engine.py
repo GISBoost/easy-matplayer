@@ -6,7 +6,6 @@ import viz_index
 
 from . import fixture as fx
 
-ALL = ("r", "c", "o", "t", "h", "?")
 
 
 @pytest.fixture(scope="module")
@@ -55,10 +54,10 @@ def test_frame_position_speed_pick(index):
 
 
 def test_class_filter(index):
-    both = viz_engine.frame(index, 1030, ALL)
-    quiet = viz_engine.frame(index, 1030, ("r", "c", "o", "h"))
+    both = viz_engine.frame(index, 1030, index.class_keys)
+    quiet = viz_engine.frame(index, 1030, [k for k in index.class_keys if k != "tlo"])
     assert len(both) == 2 and len(quiet) == 1
-    assert not np.any(quiet.cls == viz_engine.LETTERS["t"])
+    assert not np.any(quiet.cls == index.class_keys.index("tlo"))
     with pytest.raises(viz_engine.EngineFailed):
         viz_engine.frame(index, 1030, ("zz",))
 

@@ -36,16 +36,15 @@ import numpy as np
 import zstandard
 from lxml import etree
 
+import viz_classes
+
 EVENTS_NAME = "output_events.xml.zst"
 NETWORK_NAME = "output_network.xml.zst"
 CONFIG_NAME = "output_config.xml"
 BUCKET_SEC = 60
 WIN0, WIN1 = 6 * 3600.0, 9 * 3600.0
-CLASS_LETTERS = ("r", "c", "o", "t", "h")
-CLASS_NAMES = ("mieszkaniec", "przyjeżdżający", "wyjeżdżający", "tło lekkie", "ciężkie")
-OTHER_CLASS = 5
 MOVEMENT = ("vehicle enters traffic", "entered link", "left link", "vehicle leaves traffic")
-FORMAT = 2
+FORMAT = 3
 # Początek lokalnego układu (m): środek bbox węzłów sieci, zaokrąglony do ORIGIN_SNAP_M.
 ORIGIN_SNAP_M = 1000.0
 FILE_BUDGET = 200 * 1024 * 1024
@@ -94,19 +93,6 @@ def read_sample_size(run):
         return None
     j = text.find('"', i + len(key))
     return float(text[i + len(key):j])
-
-
-def class_code(vehicle_id):
-    if not vehicle_id:
-        return OTHER_CLASS
-    i = "rcoth".find(vehicle_id[0])
-    return i if i >= 0 else OTHER_CLASS
-
-
-def class_legend():
-    legend = {str(i): CLASS_NAMES[i] for i in range(len(CLASS_NAMES))}
-    legend[str(OTHER_CLASS)] = "inne"
-    return legend
 
 
 def network_origin(path):
@@ -202,7 +188,8 @@ def build(run, log_path, origin):
     knot_t, knot_x, knot_y = array.array("f"), array.array("f"), array.array("f")
     knot_len, knot_link = array.array("f"), array.array("i")
     cur = {}
-    track_vid, track_start, track_end = [], [], []
+    track_vid, track_person, track_start, track_end = [], [], [], []
+    cur_person = {}
     act_vid, act_type_name = [], []
     act_t, act_kind = array.array("f"), array.array("B")
     act_link, act_x, act_y = array.array("i"), array.array("f"), array.array("f")
@@ -217,6 +204,7 @@ def build(run, log_path, origin):
             knot_len.append(length)
             knot_link.append(li)
         track_vid.append(vehicle)
+        track_person.append(cur_person.pop(vehicle))
         track_start.append(start)
         track_end.append(len(knot_t))
 
@@ -257,6 +245,7 @@ def build(run, log_path, origin):
             p = 1.0 if rel is None else float(rel)
             x0, y0, x1, y1 = (float(v) for v in xy[li])
             cur[vehicle] = [(t, x0 + p * (x1 - x0), y0 + p * (y1 - y0), 0.0, li)]
+            cur_person[vehicle] = field(line, "person") or vehicle
         elif vehicle not in cur:
             continue
         elif typ == "entered link":
@@ -281,6 +270,7 @@ def build(run, log_path, origin):
         "knot_len": as_f32(knot_len),
         "knot_link": as_i32(knot_link),
         "track_vid": track_vid,
+        "track_person": track_person,
         "track_start": np.asarray(track_start, dtype=np.int64),
         "track_end": np.asarray(track_end, dtype=np.int64),
         "act_vid": act_vid,
@@ -293,11 +283,12 @@ def build(run, log_path, origin):
     }
 
 
-def pack(built, run_name):
+def pack(built, run_name, by_person):
     net = built["net"]
     vids = list(built["track_vid"])
+    persons = list(built["track_person"])
     act_vids = list(built["act_vid"])
-    id_list = sorted(set(vids) | set(act_vids))
+    id_list = sorted(set(persons) | set(act_vids))
     id_of = {name: i for i, name in enumerate(id_list)}
     n = len(vids)
     if n:
@@ -346,6 +337,9 @@ def pack(built, run_name):
     act_code = {name: i for i, name in enumerate(act_names)}
     if "car interaction" in act_code:
         raise CheckFailed("car interaction w legendzie czynności")
+    keys = [viz_classes.class_key(p, v, by_person) for p, v in zip(persons, vids)]
+    table = viz_classes.class_table(keys)
+    code = {row["key"]: i for i, row in enumerate(table)}
     arrays = {
         "link_id": np.asarray(net["id"], dtype=str),
         "link_xy": net["xy"].astype(np.float32),
@@ -354,8 +348,8 @@ def pack(built, run_name):
         "link_type": net["type"],
         "ids": np.asarray(id_list, dtype=str),
         "track_id": np.asarray(vids, dtype=str),
-        "track_id_i": np.asarray([id_of[v] for v in vids], dtype=np.int32),
-        "track_class": np.asarray([class_code(v) for v in vids], dtype=np.uint8),
+        "track_person_i": np.asarray([id_of[p] for p in persons], dtype=np.int32),
+        "track_class": np.asarray([code[k] for k in keys], dtype=np.uint8),
         "track_t0": np.asarray(track_t0, dtype=np.float32),
         "track_t1": np.asarray(track_t1, dtype=np.float32),
         "knot_off": knot_off,
@@ -383,6 +377,8 @@ def pack(built, run_name):
         "act_type_legend": {str(i): name for i, name in enumerate(act_names)},
         "source_run": run_name,
         "n_nodes": net["n_nodes"],
+        "classes": table,
+        "class_source": "plans" if by_person is not None else "id",
     }
     return arrays, info
 
@@ -425,13 +421,14 @@ def long_tracks(idx):
     return [i for i in range(len(idx["track_id"])) if int(off[i + 1]) - int(off[i]) > 8]
 
 
-def scan_check(path, wanted, log_path):
+def scan_check(path, wanted, log_path, by_person):
     """Osobny odczyt: licznik wjazdów i szczytu oraz sekwencje linków wybranych pojazdów."""
     started = time.perf_counter()
     enters = enters_win = 0
     active = peak = peak_win = 0
     peak_t = peak_win_t = None
     classes = {}
+    person_of = {}
     seq = {vid: [] for vid in wanted}
     for typ, line in event_lines(path, started, log_path):
         if typ not in MOVEMENT:
@@ -441,8 +438,10 @@ def scan_check(path, wanted, log_path):
         if typ == "vehicle enters traffic":
             enters += 1
             active += 1
-            letter = vid[0] if vid else "?"
-            classes[letter] = classes.get(letter, 0) + 1
+            key = viz_classes.class_key(field(line, "person") or vid, vid, by_person)
+            classes[key] = classes.get(key, 0) + 1
+            if vid in seq:
+                person_of[vid] = field(line, "person") or vid
             if active > peak:
                 peak, peak_t = active, t
             if WIN0 <= t <= WIN1:
@@ -466,11 +465,12 @@ def scan_check(path, wanted, log_path):
         "peak_win": peak_win,
         "peak_win_t": peak_win_t,
         "classes": classes,
+        "persons": person_of,
         "sequences": seq,
     }
 
 
-def geometry_check(idx, net, sequences, pick, log_path):
+def geometry_check(idx, net, sequences, persons, pick, log_path):
     ids = idx["ids"]
     for j in pick:
         vid = str(idx["track_id"][j])
@@ -490,20 +490,20 @@ def geometry_check(idx, net, sequences, pick, log_path):
             worst = max(worst, dist)
             if dist >= 0.5:
                 raise CheckFailed(f"{vid} t={float(t):.3f} link={hits} dist={dist:.3f} m")
-        if str(ids[int(idx["track_id_i"][j])]) != vid:
-            raise CheckFailed(f"track_id_i nie wskazuje ids: {vid}")
+        if str(ids[int(idx["track_person_i"][j])]) != persons[vid]:
+            raise CheckFailed(f"track_person_i {vid}: {ids[int(idx['track_person_i'][j])]} != {persons[vid]}")
         log_to(log_path, f"check OK {vid}: 20 chwil, najgorzej {worst:.4f} m, linków {len(intervals)}")
 
 
-def validate(run, index_path, log_path, origin):
+def validate(run, index_path, log_path, origin, table, by_person):
     idx = np.load(index_path, allow_pickle=False)
     try:
-        return _validate(run, index_path, log_path, idx, origin)
+        return _validate(run, index_path, log_path, idx, origin, table, by_person)
     finally:
         idx.close()
 
 
-def _validate(run, index_path, log_path, idx, origin):
+def _validate(run, index_path, log_path, idx, origin, table, by_person):
     net = read_network(run / NETWORK_NAME, origin)
     n = int(len(idx["track_id"]))
     long = long_tracks(idx)
@@ -512,33 +512,31 @@ def _validate(run, index_path, log_path, idx, origin):
     pick = random.Random(1).sample(long, 3)
     wanted = {str(idx["track_id"][i]) for i in pick}
     log_to(log_path, "validate: osobny odczyt eventów")
-    stats = scan_check(run / EVENTS_NAME, wanted, log_path)
+    stats = scan_check(run / EVENTS_NAME, wanted, log_path, by_person)
     if n != stats["enters"]:
         raise CheckFailed(f"przejazdy {n} != wjazdy z eventów {stats['enters']}")
     enters_win = int(np.count_nonzero((idx["track_t0"] >= WIN0) & (idx["track_t0"] <= WIN1))) if n else 0
     if enters_win != stats["enters_win"]:
         raise CheckFailed(f"wjazdy 6–9 z indeksu {enters_win} != z eventów {stats['enters_win']}")
-    letters = {}
-    for vid in idx["track_id"]:
-        text = str(vid)
-        letter = text[0] if text else "?"
-        letters[letter] = letters.get(letter, 0) + 1
-    if letters != stats["classes"]:
-        raise CheckFailed(f"klasy z indeksu {letters} != z eventów {stats['classes']}")
-    geometry_check(idx, net, stats["sequences"], pick, log_path)
+    counts = np.bincount(idx["track_class"], minlength=len(table))
+    class_counts = {row["key"]: int(counts[i]) for i, row in enumerate(table)}
+    if class_counts != stats["classes"]:
+        raise CheckFailed(f"klasy z indeksu {class_counts} != z eventów {stats['classes']}")
+
+    geometry_check(idx, net, stats["sequences"], stats["persons"], pick, log_path)
     size = index_path.stat().st_size
     if size >= FILE_BUDGET:
         raise CheckFailed(f"index.npz ma {size} B, budżet to < {FILE_BUDGET} B")
     log_to(
         log_path,
         f"OK tracks={n} enters_6_9={enters_win} peak={stats['peak']} "
-        f"peak_6_9={stats['peak_win']} bytes={size} classes={letters}",
+        f"peak_6_9={stats['peak_win']} bytes={size} classes={class_counts}",
     )
     stats["enters_win"] = enters_win
-    return stats, letters, size
+    return stats, class_counts, size
 
 
-def write_meta(path, run, ev_sha, net_sha, script_sha, origin, arrays, info, stats, letters, size, build_sec):
+def write_meta(path, run, ev_sha, net_sha, script_sha, plans_sha, origin, arrays, info, stats, class_counts, size, build_sec):
     meta = {
         "format": FORMAT,
         "checked": True,
@@ -562,11 +560,12 @@ def write_meta(path, run, ev_sha, net_sha, script_sha, origin, arrays, info, sta
         "max_concurrent_6_9": stats["peak_win"],
         "max_concurrent_6_9_time": stats["peak_win_t"],
         "enters_6_9": stats["enters_win"],
-        "class_counts": letters,
+        "class_counts": class_counts,
         "build_sec": round(build_sec, 3),
         "index_bytes": size,
-        "class_legend": class_legend(),
-        "class_letter": list(CLASS_LETTERS) + ["?"],
+        "classes": info["classes"],
+        "class_source": info["class_source"],
+        "plans_sha256": plans_sha,
         "type_legend": info["type_legend"],
         "act_type_legend": info["act_type_legend"],
         "source_run": info["source_run"],
@@ -575,7 +574,7 @@ def write_meta(path, run, ev_sha, net_sha, script_sha, origin, arrays, info, sta
     path.write_text(json.dumps(meta, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
 
 
-def reuse_meta(viz, ev_sha, net_sha, script_sha, origin):
+def reuse_meta(viz, ev_sha, net_sha, script_sha, plans_sha, origin):
     meta_path, index_path = viz / "meta.json", viz / "index.npz"
     if not meta_path.exists() or not index_path.exists():
         return None
@@ -586,6 +585,7 @@ def reuse_meta(viz, ev_sha, net_sha, script_sha, origin):
         and meta.get("events_sha256") == ev_sha
         and meta.get("network_sha256") == net_sha
         and meta.get("script_sha256") == script_sha
+        and meta.get("plans_sha256") == plans_sha
         and meta.get("origin") == [origin[0], origin[1]]
     )
     return meta if same else None
@@ -604,7 +604,9 @@ def run(run_dir):
     log_to(log_path, f"--- {time.strftime('%Y-%m-%dT%H:%M:%S')} {run_dir.name} ---")
     hash_t = time.perf_counter()
     ev_sha, net_sha = sha256_file(events), sha256_file(network)
-    script_sha = sha256_file(Path(__file__))
+    script_sha = sha256_file(Path(__file__)) + sha256_file(Path(viz_classes.__file__))
+    plans = run_dir / viz_classes.PLANS_NAME
+    plans_sha = sha256_file(plans) if plans.exists() else None
     log_to(log_path, f"sha256 sec={time.perf_counter() - hash_t:.1f}")
     try:
         origin = network_origin(network)
@@ -612,17 +614,18 @@ def run(run_dir):
         log_to(log_path, f"FAIL {exc}")
         return 1
     log_to(log_path, f"origin={origin[0]:.0f},{origin[1]:.0f}")
-    cached = reuse_meta(viz, ev_sha, net_sha, script_sha, origin)
+    cached = reuse_meta(viz, ev_sha, net_sha, script_sha, plans_sha, origin)
     if cached is not None:
         log_to(log_path, f"reuse tracks={cached['n_tracks']} knots={cached['n_knots']} sec={time.perf_counter() - t0:.1f}")
         return 0
     index_path, meta_path = viz / "index.npz", viz / "meta.json"
     try:
         built = build(run_dir, log_path, origin)
-        arrays, info = pack(built, run_dir.name)
+        by_person = viz_classes.read_person_classes(run_dir)
+        arrays, info = pack(built, run_dir.name, by_person)
         save_index(index_path, arrays)
-        stats, letters, size = validate(run_dir, index_path, log_path, origin)
-        write_meta(meta_path, run_dir, ev_sha, net_sha, script_sha, origin, arrays, info, stats, letters, size,
+        stats, class_counts, size = validate(run_dir, index_path, log_path, origin, info["classes"], by_person)
+        write_meta(meta_path, run_dir, ev_sha, net_sha, script_sha, plans_sha, origin, arrays, info, stats, class_counts, size,
                    time.perf_counter() - t0)
         log_to(
             log_path,
