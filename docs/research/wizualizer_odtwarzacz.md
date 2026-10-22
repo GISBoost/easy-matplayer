@@ -177,7 +177,7 @@ Grot z półkolem (`IconLayer`, atlas w `makeMarker` w `shell.html`): podstawa 1
 
 ## Modele 3D pojazdów
 
-Checkbox „modele 3D pojazdów”: `SimpleMeshLayer` z bryłami z kodu (`MESH` w `shell.html`, osobówka i ciężarówka, metry, przód w +x). Ikony chowają się od zoomu `MODEL_ICON_ZOOM` (16). Dane idą jako obiekty z akcesorami, bo binarne `getOrientation` jest w tej wersji deck.gl ignorowane. Kolor modelu jak ikony (prędkość albo klasa).
+Checkbox „modele 3D pojazdów”: `SimpleMeshLayer` z bryłami z kodu (`MESH` w `shell.html`, osobówka i ciężarówka, metry, przód w +x). Rozmiar na ekranie dorównuje znacznikowi (`MODEL_PX`, mnożnik zoomu znacznika), nie jest prawdziwymi metrami, bo te byłyby kilkupikselowe. Ikony chowają się od zoomu `MODEL_ICON_ZOOM` (17). Dane idą jako obiekty z akcesorami, bo binarne `getOrientation` jest w tej wersji deck.gl ignorowane. Kolor modelu jak ikony (prędkość albo klasa).
 
 ## Kolor auta
 

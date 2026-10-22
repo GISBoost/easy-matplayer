@@ -224,6 +224,10 @@ def smoke(run):
             if js("window._zi") < 0 or not _wait_js(window, "window.renders > window._r0 && !window.drawError", 15):
                 result["error"] = f"modele 3D zi={js('window._zi')} r={js('window.renders')} r0={js('window._r0')} hold={js('window.hold')} err={js('window.drawError')}"
                 return
+            scale = js("modelScale(false)")
+            if not (2.5 < scale < 3.5) or not js("modelScale(true) > 1"):
+                result["error"] = f"skala modelu {scale} (oczekiwane ok. 3 przy zoomie 18,5)"
+                return
             time.sleep(0.6)
             grab.window_png(shot.with_name("smoke_zoom.png"))
             js("window._r0 = window.renders; document.getElementById('models').click(); dirty = true;")

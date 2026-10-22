@@ -155,7 +155,15 @@ function markerScale(zoom) {
   return Math.min(MARKER.max, Math.max(MARKER.min, Math.pow(2, MARKER.exp * (zoom - MARKER.z0))));
 }
 // Modele 3D aut (checkbox): bryły z kodu, w metrach, oś +x = kierunek jazdy. Ikony chowają się od zoomu MODEL_ICON_ZOOM w górę.
-const MODEL_ICON_ZOOM = 16;
+const MODEL_ICON_ZOOM = 17;
+// Model nie jest mniejszy niż znacznik: długość osobówki na ekranie = MODEL_PX × mnożnik zoomu znacznika (to samo co grot).
+const MODEL_PX = 35, CAR_LEN = 4.5, HEAVY_LEN = 10;
+function modelScale(heavy) {
+  const lat = map.getCenter().lat, zoom = map.getZoom();
+  const pxPerM = Math.pow(2, zoom) * 512 / (40075016.686 * Math.cos(lat * Math.PI / 180));
+  const target = MODEL_PX * markerScale(zoom) * (heavy ? MARKER.heavy / MARKER.base : 1);
+  return Math.max(1, target / ((heavy ? HEAVY_LEN : CAR_LEN) * pxPerM));
+}
 function box(parts) {
   const pos = [], nor = [], idx = [];
   parts.forEach(([x0, x1, y0, y1, z0, z1]) => {
@@ -593,7 +601,7 @@ function render() {
       }
       ["car", "heavy"].forEach((key) => {
         layers.push(new deck.SimpleMeshLayer({
-          id: key + "-models", data: rows[key], mesh: MESH[key], sizeScale: 1,
+          id: key + "-models", data: rows[key], mesh: MESH[key], sizeScale: modelScale(key === "heavy"),
           getPosition: (d) => d.p, getColor: (d) => d.c, getOrientation: (d) => d.o,
           material: {ambient: 0.5, diffuse: 0.7, shininess: 20, specularColor: [60, 60, 60]},
         }));
