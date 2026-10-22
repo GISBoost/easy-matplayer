@@ -24,6 +24,11 @@ Cel: 30 FPS na Kutnie 100%. Łódź tylko 10%. Test tylko na GPU właściciela (
 - [x] 6. Budynki z preprocessingu (wysokość: tag > levels × 3 m > H0 wg klasy, ±15% z hasha, `h_source`).
 - [ ] 7. Nowe tryby, PT, atrybuty osób.
 - [ ] 8. (decyzja o wygaszeniu `g6_bake.py` zapisana w D26 2026-10-22; reszta:) test na iGPU (odłożony), przeglądarka opcjonalnie.
+- [ ] P1. Poprawki okna (plan `wizualizer_plan.md`, zlecenie 2026-10-22): mnożnik ze strzałkami co 1.
+- [ ] P2. Kolor dróg wg `type` (checkbox, legenda).
+- [ ] P3. Kolor auta: prędkość / klasa (przełącznik, legenda).
+- [ ] P4. Znacznik grot + półkole (`IconLayer`), skalowany z zoomem w granicach 0,25–3.
+- [ ] P5. (później, na zlecenie) własny raster, WMS, otwieranie runu przez wybór folderu.
 
 Wcześniej zrobione (fundamenty, D24): origin z sieci, `person_id` i klasyfikator, bezstanowa klatka, podział kodu, testy pytest. Patrz PROGRESS 2026-10-22.
 

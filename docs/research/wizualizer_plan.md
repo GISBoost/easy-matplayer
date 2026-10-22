@@ -269,7 +269,11 @@ Reszta kroku 4, decyzja 2026-10-20: klucz CARTO odłożony, Łódź odrzucona (z
 
 Data: 2026-10-21. Zlecenie Michała po obejrzeniu łuków. To plan, nie opis działania. Michał zaakceptował go w całości, łącznie z tabelą klas. Kod czeka na osobne zlecenie. Sieć, eventy, indeks i run bez zmian. Java i `g6_bake.py` bez zmian.
 
-Kolejność kodowania, każda rzecz osobno, w tej kolejności:
+**Stan 2026-10-22: stos zmieniony.** Plan pisano pod Leaflet. Okno jest teraz na MapLibre GL JS 6 + deck.gl 9 (D26, `wizualizer_odtwarzacz.md`), więc w tej sekcji: znacznik to `IconLayer` z atlasem (kontur, wypełnienie i obrys zaznaczenia jako trzy ikony), kolor drogi to akcesor `PathLayer` z `updateTriggers`, a WMS i własny raster (punkt 5) to natywne źródło `raster` MapLibre. Reszta (kształty, tabele kolorów, legendy, strzałki mnożnika) obowiązuje bez zmian.
+
+Doprecyzowanie Michała 2026-10-22: **znacznik skaluje się z zoomem, ale umiarkowanie i z granicami.** Bez tego przy dużym przybliżeniu stałe 16 px wygląda na malutkie, a przy widoku całej gminy 40-pikselowy znacznik zlewa tysiąc aut w plamę. Rozmiary 16/22 px z poniższych akapitów to rozmiar przy zoomie 15 (mnożnik 1). Mnożnik = `2^(0,5·(zoom−15))`, ograniczony do 0,25–3. Stałe w jednym miejscu w kodzie, do strojenia po obejrzeniu na kilku zoomach. Wymiary 16/22 px też są do sprawdzenia na ekranie.
+
+Kolejność kodowania (zlecenie 2026-10-22: mnożnik, kolor dróg, kolor auta, na końcu znacznik; punkt 5 później):
 
 1. Znacznik auta.
 2. Przełącznik koloru dróg według `type`.
