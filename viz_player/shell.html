@@ -156,8 +156,7 @@ const MARKER = {base: 16, heavy: 22, tip: 1.7, z0: 15, exp: 0.5, min: 0.25, max:
 function markerScale(zoom) {
   return Math.min(MARKER.max, Math.max(MARKER.min, Math.pow(2, MARKER.exp * (zoom - MARKER.z0))));
 }
-// Modele 3D aut (checkbox): bryły z kodu, w metrach, oś +x = kierunek jazdy. Ikony chowają się od zoomu MODEL_ICON_ZOOM w górę.
-const MODEL_ICON_ZOOM = 17;
+// Modele 3D aut (checkbox): bryły z kodu, w metrach, oś +x = kierunek jazdy. Przy włączonych modelach ikony (grot) nie są rysowane wcale.
 // Model nie jest mniejszy niż znacznik: długość osobówki na ekranie = MODEL_PX × mnożnik zoomu znacznika (to samo co grot).
 const MODEL_PX = 35, CAR_LEN = 4.5, HEAVY_LEN = 10;
 function modelScale(heavy) {
@@ -611,7 +610,7 @@ function render() {
         }));
       }
     }
-    const showIcons = !modelsOn || map.getZoom() < MODEL_ICON_ZOOM;
+    const showIcons = !modelsOn;
     if (modelsOn) {
       // modele idą jako obiekty z akcesorami (mało pojazdów w kadrze przy zoomie, od którego je widać)
       const rows = {car: [], heavy: []};
@@ -639,12 +638,20 @@ function render() {
       getPosition: {value: buf.pos, size: 2}, getAngle: {value: buf.ang, size: 1}, getSize: {value: buf.size, size: 1},
       getColor: {value: buf.col, size: 4},
     }}}));
-    if (sel >= 0) {
+    if (sel >= 0 && modelsOn) {
+      // zaznaczenie przy modelach: okrąg wokół modelu, nie kontur grota
+      const r = 0.6 * MODEL_PX * zs * (engine.classHeavy[fr.cls[sel]] ? MARKER.heavy / MARKER.base : 1);
+      layers.push(new deck.ScatterplotLayer({
+        id: "car-sel", data: [{p: [fr.lon[sel], fr.lat[sel]]}], getPosition: (d) => d.p, getRadius: r, radiusUnits: "pixels",
+        stroked: true, filled: false, getLineColor: [126, 182, 255], lineWidthUnits: "pixels", getLineWidth: 1.5,
+      }));
+    } else if (sel >= 0) {
       layers.push(marker("car-sel", "ring", {
         data: [{p: [fr.lon[sel], fr.lat[sel]], a: buf.ang[sel], s: buf.size[sel]}],
         getPosition: (d) => d.p, getAngle: (d) => d.a, getSize: (d) => d.s, getColor: [126, 182, 255, 255],
       }));
     }
+    window.layerIds = layers.map((l) => l.id);
     overlay.setProps({layers});
     lastSel = sel >= 0 ? {link: fr.link[sel], speed: fr.speed[sel], cls: engine.classKeys[fr.cls[sel]]} : null;
     if (follow && !window.hold) {
