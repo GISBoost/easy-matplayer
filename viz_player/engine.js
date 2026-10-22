@@ -57,13 +57,15 @@ class Engine {
     this._byPerson = null;
   }
 
-  static async load(base, get, curves, linkLL) {
-    const manifest = await get(base + "manifest.json", "json");
+  static async load(base, get, curves, linkLL, manifestName) {
+    const manifest = await get(base + (manifestName || "manifest.json"), "json");
     if (manifest.format !== 1) throw new Error("nieznany format eksportu " + manifest.format);
-    const persons = await get(base + manifest.persons, "json");
-    const buf = await get(base + manifest.tracks.file, "buf");
+    // ?v=klucz: serwer pywebview nie ustawia Cache-Control, a pliki danych zmieniają się bez zmiany adresu
+    const q = "?v=" + manifest.source_key.slice(0, 12);
+    const persons = await get(base + manifest.persons + q, "json");
+    const buf = await get(base + manifest.tracks.file + q, "buf");
     const tracks = readColumns(buf, manifest.tracks.columns, manifest.tracks.columns.map(() => manifest.n_tracks), manifest.align);
-    return new Engine(manifest, persons, tracks, curves, linkLL, (name, kind) => get(base + name, kind));
+    return new Engine(manifest, persons, tracks, curves, linkLL, (name, kind) => get(base + name + q, kind));
   }
 
   // ---- porcje ----

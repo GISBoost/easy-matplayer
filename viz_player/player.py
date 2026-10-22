@@ -222,6 +222,7 @@ class Player:
         self.sample = "brak"
         self.curve = None
         self.curve_note = ""
+        self.export_key = ""
         self.origin = (0.0, 0.0)
         self.fwd = Transformer.from_crs("EPSG:2180", "EPSG:4326", always_xy=True)
         self.inv = Transformer.from_crs("EPSG:4326", "EPSG:2180", always_xy=True)
@@ -551,7 +552,7 @@ class Player:
             "nLinks": int(len(lon1)),
             "nCurve": int(len(self.curve.xy)) if self.curve is not None and self.curve.n_bent else 0,
             "curveNote": self.curve_note,
-            "data": "data/manifest.json",
+            "data": "data/manifest.json?v=" + self.export_key[:12],
         })
         return base
 
@@ -573,7 +574,7 @@ class Player:
 
     def write_site(self, dest=None):
         dest = dest or self.run_dir / "viz" / "site"
-        viz_export.build(self.run_dir, out=Path(dest) / "data")
+        self.export_key = viz_export.build(self.run_dir, out=Path(dest) / "data")["source_key"]
         return site.write_site(dest, self.boot(), self.boot_arrays())
 
 

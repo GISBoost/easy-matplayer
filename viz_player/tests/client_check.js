@@ -10,7 +10,7 @@ const expected = JSON.parse(fs.readFileSync(process.argv[3], "utf8"));
 const M = 111194.93;
 
 const get = async (name, kind) => {
-  const raw = fs.readFileSync(path.join(site, name));
+  const raw = fs.readFileSync(path.join(site, name.split("?")[0]));
   if (kind === "json") return JSON.parse(raw.toString("utf8"));
   return raw.buffer.slice(raw.byteOffset, raw.byteOffset + raw.byteLength);
 };

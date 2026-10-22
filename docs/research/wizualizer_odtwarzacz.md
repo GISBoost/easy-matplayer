@@ -48,6 +48,7 @@ Otwarte: wskaźnik postępu budowy indeksu w oknie (okno otwiera się po indeksi
 
 - **Porcja jest samowystarczalna.** Dla każdego przejazdu dotykającego przedziału zawiera węzły z przedziału plus po jednym węźle po obu stronach, więc klient interpoluje w obrębie jednej porcji. Powtórzone są tylko węzły graniczne: Kutno 25% 3 399 518 → 3 460 575 węzłów (+1,8%), 100% 13 733 294 → 13 974 338.
 - **Pozycje** to przesunięcia lon/lat względem `origin_lonlat` w float32 (ok. 2 mm); klient dodaje origin w float64. Kolumny porcji: `track` (i32, globalny numer przejazdu), `knot_off` (i32, n+1), `knot_t`, `knot_dlon`, `knot_dlat`, `knot_len` (f32), `knot_link` (i32), każda dopełniona do 8 bajtów; liczby elementów są w manifeście (`n_tracks`, `n_knots`).
+- **Adresy z kluczem.** `boot.json` wskazuje `data/manifest.json?v=<12 znaków source_key>`, a silnik dopisuje to samo `?v=` do `persons.json`, `tracks.bin` i porcji. Serwer pywebview nie ustawia `Cache-Control`, a profil WebView2 jest trwały, więc bez tego po ponownym eksporcie przeglądarka oddawała stary plik pod tym samym adresem (naprawdę się zdarzyło: `RangeError: Invalid typed array length`).
 - **`tracks.bin`**: `person_i` (i32, indeks do `persons.json`), `cls` (u8, indeks do `classes` w manifeście), `mode` (u8, indeks do `modes`), `t0`, `t1` (f32). Dziś `modes = ["car"]`: indeks zna tylko ruch aut po sieci.
 - **Rozmiary:** Kutno 25% 130 porcji, 69,7 MB, budowa 1,4 s; Kutno 100% 131 porcji, 281 MB (ok. 2,1 MB na porcję), budowa 4 s. Pierwszy test: `viz_player/tests/test_export.py` (pozycja z porcji = pozycja z silnika klatek, rozmiar nadmiaru, tabele, cache).
 
@@ -76,13 +77,13 @@ Potem Python zapisuje katalog strony `output/<run>/viz/site/` (`index.html`, `ve
 
 ## Okno
 
-Rozmiar startowy 1440×900, tło `#121418`. Stos: pywebview 6.2.1 (`uv.lock`, wymaganie `pywebview>=6.2.1`), silnik `edgechromium` (WebView2), Leaflet 1.9.4 w `viz_player/vendor/` razem z `leaflet.LICENSE`. Leaflet leży w katalogu strony (`vendor/`). Strona nie ściąga go z sieci. `PySide6` nie jest zależnością.
+Rozmiar startowy 1440×900, tło `#121418`. Stos: pywebview 6.2.1 (`uv.lock`, wymaganie `pywebview>=6.2.1`), silnik `edgechromium` (WebView2), MapLibre GL JS 6.0.0 (BSD-3-Clause, tylko moduły ES, WebGL2 obowiązkowe) i deck.gl 9.4.0 (MIT, `deck.min.js`) w `viz_player/vendor/` razem z licencjami. Biblioteki leżą w katalogu strony (`vendor/`), strona nie ściąga ich z sieci. Wymaga WebGL2: bez niego zamiast mapy jest komunikat (`#nogl`) z prośbą o aktualizację sterownika, a nie biały ekran. `PySide6` nie jest zależnością.
 
 Układ to siatka: mapa, panel 320 px po prawej, pasek 52 px na dole przez obie kolumny (`grid-column: 1 / -1`). Dzięki temu przycisk panelu zostaje na pasku, gdy panel znika.
 
-Mapa Leaflet: zoom od 8 do 19, krok 0,25, dopasowanie do obwiedni wszystkich końców linków z marginesem 20 px. Auta, drogi, ślad i podświetlenie linku rysuje kanwa nad mapą (`#draw`, `pointer-events: none`). Klik przechodzi do mapy pod spodem. Przesuwanie i zoom są gestami Leaflet.
+Mapa MapLibre: zoom od 8 do 19, pochylenie do 70°, dopasowanie do obwiedni wszystkich końców linków z marginesem 20 px. Drogi (łamana OSM albo cięciwa), ślad zaznaczonego auta, podświetlenie linku, auta, kreski kierunku i obwódka zaznaczenia to warstwy deck.gl (`MapboxOverlay`): `PathLayer` dla dróg, śladu i linku, `ScatterplotLayer` dla aut (atrybuty binarne, promień w pikselach: 2,5, ciężkie 3,5), `IconLayer` dla kresek kierunku. Przesuwanie i zoom to gesty MapLibre; prawy przycisk myszy albo kontrolka w lewym górnym rogu obraca i pochyla mapę. Klik rozstrzyga kod w `shell.html` (`pickAt`: najbliższe auto w 8 px, inaczej najbliższy odcinek drogi), nie picking GPU.
 
-Warstwa dróg jest przerysowywana, gdy zmieni się rozmiar, zoom albo środek mapy (klucz z dokładnością środka do 5 miejsc po przecinku). Kropki aut przychodzą osobno, z Pythona, dla bieżącego czasu.
+Nakładka deck.gl działa w trybie `interleaved: false` (osobna kanwa nad mapą): tryb `interleaved: true` z MapLibre 6.0.0 i deck.gl 9.4.0 kończy się wyjątkiem w `deck.min.js` (odczyt `height` z undefined) i mapa nie dochodzi do `load`. Skutek: warstwy deck.gl nie są sortowane w głębi z warstwami MapLibre (np. budynki 3D w kroku 6 zasłonią się nie tak jak auta). Kropki aut liczy klient, dla bieżącego czasu. Serwer pywebview odpowiada `text/plain` dla `.mjs`, więc `window.py` rejestruje `mimetypes.add_type("text/javascript", ".mjs")`; bez tego przeglądarka odrzuca moduły. Serwer nie wysyła też `Cache-Control`, więc `site.py` kopiuje pliki bez zachowania daty (`shutil.copy`), żeby WebView2 po zmianie kodu sprawdzał je ponownie.
 
 ## Pasek
 
@@ -253,7 +254,7 @@ Strona nie jest stringiem. `NavigateToString` odrzucał duże HTML (lekcja 29), 
 
 Origin to środek bbox węzłów sieci runu (EPSG:2180, wschód, północ), zaokrąglony do 1000 m, zapisany w `meta.json`. W plikach odtwarzacza x i y są już po odjęciu originu. Na mapę wracają przez `pyproj`, oś zawsze x = wschód, y = północ, potem EPSG:4326. Dla R7b origin to 528 000 / 488 000. Zmiana originu (inna sieć, inna reguła) przebudowuje indeks i cache łamanych.
 
-Kolejność w JSON Leaflet to szerokość, długość. W transformacji pyproj najpierw jest długość.
+Kolejność w JSON `boot.json` i w ścieżkach śladu jest szerokość–długość tam, gdzie to wynik Pythona (`panel`, `anchor`); MapLibre i deck.gl biorą długość pierwszą. W transformacji pyproj najpierw jest długość.
 
 ## Pliki
 
@@ -270,8 +271,8 @@ Kod, w gicie:
 | `viz_player/site.py`, `grab.py` | katalog strony; zrzut okna |
 | `viz_player/tests/` | pytest, fixtura mini-runu, `accept_r7b.py` |
 | `viz_player/curves.py` | łamane OSM i ich cache |
-| `viz_player/shell.html` | układ, rysunek, klawisze |
-| `viz_player/vendor/` | Leaflet 1.9.4 |
+| `viz_player/shell.html`, `engine.js` | układ, rysunek, klawisze; klatka po stronie klienta |
+| `viz_player/vendor/` | MapLibre GL JS 6.0.0 (`maplibre/`), deck.gl 9.4.0 (`deck.min.js`) |
 | `viz_player/__main__.py` | `python -m viz_player` |
 
 Wynik runu, poza gitem, pod `output/<run>/viz/`:

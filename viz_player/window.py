@@ -6,6 +6,7 @@
 Testy: uv run --group viz pytest viz_player/tests
 """
 import json
+import mimetypes
 import sys
 import time
 
@@ -13,6 +14,9 @@ import numpy as np
 
 from viz_player import check, grab
 from viz_player.player import ROOT, Player, clock, note, pick_ident, saved_run
+
+# MapLibre 6 to moduły ES; przeglądarka odrzuca je bez typu JavaScript, a rejestr Windows bywa pusty
+mimetypes.add_type("text/javascript", ".mjs")
 
 
 class Api:
@@ -60,7 +64,7 @@ def smoke(run):
 
     def body():
         try:
-            if not _wait_js(window, "window.mapReady === true && window.apiReady === true"):
+            if not _wait_js(window, "window.mapReady === true && window.apiReady === true", 30):
                 result["error"] = "mapa nie wstała"
                 return
             n_curve = int(js("boot.curveLon ? boot.curveLon.length : 0") or 0)
@@ -129,8 +133,8 @@ def smoke(run):
                 result["error"] = f"rysunek {js('window.drawnN')} aut, Python {len(ref)} {js('window.drawError')}"
                 return
             # Kliknięcie w auto na mapie: zaznaczona jest osoba tego auta
-            ident_vehicle = js("(function(){var tr=lastPick.track[0];var ev={containerPoint:L.point(lastPick.x[0],lastPick.y[0])};"
-                               "map.fire('click', ev);return engine.personId(tr);})()")
+            ident_vehicle = js("(function(){var o=engine.out;var tr=o.track[0];var q=map.project([o.lon[0],o.lat[0]]);"
+                               "map.fire('click', {point: q});return engine.personId(tr);})()")
             if js("selected && selected.id") != ident_vehicle or not ident_vehicle:
                 result["error"] = f"klik w auto: zaznaczono {js('selected')}, auto {ident_vehicle}"
                 return

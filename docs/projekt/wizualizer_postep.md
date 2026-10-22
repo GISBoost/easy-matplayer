@@ -20,7 +20,7 @@ Cel: 30 FPS na Kutnie 100%. Łódź tylko 10%. Test tylko na GPU właściciela (
 - [x] 2. Strona okna po lokalnym HTTP, bez `_push_curves` i limitu strony (commit `3f3a684`).
 - [x] 3. Eksport v2: porcje czasowe, `person_id`, tryb, `manifest.json`, origin z bbox sieci. Szczegóły niżej.
 - [x] 4. Klient (JS) liczy klatkę, stan tylko po stronie klienta, Python poza pętlą klatek.
-- [ ] 5. Leaflet → MapLibre 6 + deck.gl, kamera pitch/bearing, komunikat przy braku WebGL2.
+- [x] 5. Leaflet → MapLibre 6 + deck.gl, kamera pitch/bearing, komunikat przy braku WebGL2.
 - [ ] 6. Budynki z preprocessingu (wysokość: tag > levels × 3 m > H0 wg klasy, ±15% z hasha, `h_source`).
 - [ ] 7. Nowe tryby, PT, atrybuty osób.
 - [ ] 8. Wygaszenie `g6_bake.py`, test na iGPU (odłożony), przeglądarka opcjonalnie.
@@ -44,3 +44,11 @@ Wcześniej zrobione (fundamenty, D24): origin z sieci, `person_id` i klasyfikato
 - Zgodność: R7b w prawdziwym oknie: 728 aut w oknie 6–9, 452 bez klasy `tlo` (jak przed zmianą), klatka klienta = klatka Pythona (te same przejazdy; pozycja mediana 5 mm, p90 16 cm, max 0,87 m na linku 6 km, nieliniowość lon/lat vs EPSG:2180).
 - Dowód: `pytest` 47 passed (w tym `test_client.py` pod node: z łamaną i bez, ślad, `lookup`), `--smoke` na R7b OK (klik w auto, chip, oś, Esc), `accept_r7b` R7b OK.
 - Otwarte: RAM Pythona (indeks 316 MB dla 100%) zostaje, bo `describe` czyta czynności z indeksu; wyniesienie tego do eksportu jest kandydatem na krok 7.
+
+### Krok 5: MapLibre 6 + deck.gl (2026-10-22)
+
+- Leaflet usunięty. `vendor/`: MapLibre GL JS 6.0.0 (BSD-3-Clause), deck.gl 9.4.0 (MIT), pobrane z rejestru npm (`npm pack`), licencje obok. Tło mapy to styl z samą warstwą `background` (opcjonalnie raster CARTO z kluczem), drogi/auta/ślad to warstwy deck.gl, kamera pitch/bearing z MapLibre (kontrolka w lewym górnym rogu, prawy przycisk). Brak WebGL2: komunikat zamiast białego ekranu (sprawdzone na stronie z wymuszonym brakiem `webgl2`).
+- Liczby (prawdziwe okno WebView2, RTX 4070, pętla klatek przy 1× odtwarzaniu): Kutno 25% (674 aut) 169,8 FPS, Kutno 100% (2746 aut, bez łamanych) 169,8 FPS, czyli limit monitora; cel 30 FPS spełniony z zapasem. Wcześniej (Leaflet + Python) klatka ok. 17 ms bez rysowania.
+- Dowód: `--smoke` w prawdziwym oknie na R7b OK (728 aut w oknie 6–9, 452 bez `tlo`, klatka klienta = klatka Pythona, klik w auto, chip, oś, Esc), pytest 47 passed, widok z pochyleniem 55° i obrotem 30° sprawdzony zrzutem w panelu przeglądarki (drogi i auta zgodne z kamerą).
+- Odstępstwa i otwarte: (1) `interleaved: true` nie działa z tą parą wersji (wyjątek w deck.gl), nakładka jest osobną kanwą; dla budynków 3D (krok 6) oznacza to brak sortowania w głębi z autami, do sprawdzenia przy kroku 6 (inna wersja MapLibre 5 albo deck.gl, albo budynki jako deck `SolidPolygonLayer` w tej samej kanwie). (2) Serwer pywebview daje `.mjs` jako `text/plain`; obejście w `window.py`. (3) Biblioteki dodają do repo ok. 3,2 MB.
+- Poprawka po drodze: adresy danych eksportu mają `?v=<klucz>` (stary cache WebView2 oddawał porcję sprzed zmiany układu).
