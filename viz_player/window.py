@@ -13,7 +13,7 @@ import time
 import numpy as np
 
 from viz_player import check, grab
-from viz_player.player import ROOT, Player, clock, note, pick_ident, saved_run
+from viz_player.player import ROOT, Player, clock, note, pick_ident, save_state, saved_run
 
 # MapLibre 6 to moduły ES; przeglądarka odrzuca je bez typu JavaScript, a rejestr Windows bywa pusty
 mimetypes.add_type("text/javascript", ".mjs")
@@ -22,11 +22,45 @@ mimetypes.add_type("text/javascript", ".mjs")
 class Api:
     """Mostek JS: klatkę liczy klient (engine.js), Python opisuje zaznaczenie. Bez własnego stanu."""
 
-    def __init__(self, player):
+    def __init__(self, player, site=None):
+        # pola z _ : pywebview wystawia do JS tylko publiczne atrybuty
         self._player = player
+        self._site = site or player.run_dir / "viz" / "site"  # katalog, z którego okno ładuje stronę
+        self._window = None
+
+    def attach(self, window):
+        self._window = window
 
     def describe(self, t, selected, veh, now):
         return self._player.describe(t, selected, veh, now)
+
+    def pick_run(self):
+        """Okno wyboru katalogu runu. Anulowanie zwraca {"status": "cancel"}, bieżący run zostaje."""
+        import webview
+        start = ROOT / "output"
+        sel = self._window.create_file_dialog(
+            webview.FileDialog.FOLDER, directory=str(start if start.is_dir() else ROOT),
+        )
+        if not sel:
+            return {"status": "cancel"}
+        return {"status": "path", "path": str(sel[0] if isinstance(sel, (list, tuple)) else sel)}
+
+    def open_path(self, path):
+        """Otwiera run w nowym Playerze. Błąd zostawia bieżący run; sukces zapisuje stan i strona ma się przeładować."""
+        fresh = Player()
+        try:
+            fresh.open(path, remember=False)
+        except Exception as exc:
+            return {"status": "error", "message": f"Nie udało się otworzyć: {exc}"}
+        if fresh.error:
+            return {"status": "error", "message": fresh.error}
+        try:
+            fresh.write_site(self._site)
+        except Exception as exc:
+            return {"status": "error", "message": f"Nie udało się przygotować strony: {exc}"}
+        save_state(fresh.run_dir)
+        self._player = fresh
+        return {"status": "ok", "run": fresh.run_name}
 
 
 def _dumps(payload):
@@ -52,10 +86,12 @@ def smoke(run):
         note(player.run_dir, f"FAIL {player.error}")
         return 1
     import webview
+    api = Api(player)
     window = webview.create_window(
-        "easy-matviz smoke", url=str(player.write_site()), js_api=Api(player),
+        "easy-matviz smoke", url=str(player.write_site()), js_api=api,
         width=1440, height=900, background_color="#121418", text_select=True,
     )
+    api.attach(window)
     shot = player.run_dir / "viz" / "smoke.png"
     result = {"ok": False}
 
@@ -263,6 +299,21 @@ def smoke(run):
             if js("selected === null && follow === false") is not True:
                 result["error"] = "escape nie czyści zaznaczenia"
                 return
+            # „otwórz run”: zły katalog zostawia bieżący run i pisze zdanie, drugi run podmienia stronę, powrót przywraca
+            home = player.run_name
+            js("window._or = undefined; window.openRunPath('C:/nie/ma/takiego/runu').then(function(r){window._or = r;});")
+            if not _wait_js(window, "window._or !== undefined", 20) or js("window._or.status") != "error"                     or js("document.getElementById('runmsg').hidden") or js("boot.run") != home:
+                result["error"] = f"otwórz run, zły katalog: {js('window._or')} / {js('boot.run')}"
+                return
+            other = player.run_dir.parent / "g5r6_25pct_s4711"
+            if (other / "output_events.xml.zst").exists():
+                for want in (other.name, home):
+                    path = str((other if want == other.name else player.run_dir)).replace("\\", "/")
+                    js(f"window.openRunPath({json.dumps(path)});")
+                    if not _wait_js(window, f"boot.run === {json.dumps(want)} && window.mapReady === true && window.apiReady === true && window.drawnN > 0", 180):
+                        result["error"] = f"otwórz run {want}: {js('boot.run')} {js('window.drawError')} msg={js('document.getElementById(\"runmsg\").textContent')}"
+                        return
+                result["switched"] = other.name
             result.update(ok=True, n=len(ref), thin=thin_n, clock=clock(t_win), size=size, key=thin_key)
         except Exception:
             import traceback
@@ -283,7 +334,7 @@ def smoke(run):
     note(
         player.run_dir,
         f"smoke OK n={result['n']} bez_{result['key']}={result['thin']} zegar={result['clock']} "
-        f"mapa={result['size']} klient_vs_python_max={result['worst_m']:.2f} m budynki3D={result.get('buildings', 'brak')} {png}",
+        f"mapa={result['size']} klient_vs_python_max={result['worst_m']:.2f} m budynki3D={result.get('buildings', 'brak')} otwarcie_runu={result.get('switched', 'brak')} {png}",
     )
     return 0
 
@@ -292,10 +343,13 @@ def serve(run):
     player = Player()
     player.open(run)
     import webview
+    site = ROOT / "output" / "viz_player_site"  # stały katalog strony: „otwórz run” podmienia jego zawartość i przeładowuje stronę
+    api = Api(player, site)
     window = webview.create_window(
-        "easy-matviz", url=str(player.write_site()), js_api=Api(player),
+        "easy-matviz", url=str(player.write_site(site)), js_api=api,
         width=1440, height=900, background_color="#121418", text_select=True,
     )
+    api.attach(window)
 
     def kick():
         if not _wait_js(window, "window.mapReady === true && window.apiReady === true", seconds=20):

@@ -28,7 +28,8 @@ Cel: 30 FPS na Kutnie 100%. Łódź tylko 10%. Test tylko na GPU właściciela (
 - [x] P2. Kolor dróg wg `type` (checkbox, legenda).
 - [x] P3. Kolor auta: prędkość / klasa (przełącznik, legenda).
 - [x] P4. Znacznik grot + półkole (`IconLayer`), skalowany z zoomem w granicach 0,25–3.
-- [ ] P5. (później, na zlecenie) własny raster, WMS, otwieranie runu przez wybór folderu.
+- [ ] P5. Własny raster, WMS, otwieranie runu przez wybór folderu. Zrobione: P5a otwieranie runu (niżej). Czeka: P5b WMS, P5c własny raster.
+- [x] P5a. Przycisk „otwórz run…” (wybór folderu, błąd zostawia bieżący run, sukces przeładowuje stronę).
 
 Wcześniej zrobione (fundamenty, D24): origin z sieci, `person_id` i klasyfikator, bezstanowa klatka, podział kodu, testy pytest. Patrz PROGRESS 2026-10-22.
 
@@ -116,3 +117,9 @@ Wcześniej zrobione (fundamenty, D24): origin z sieci, `person_id` i klasyfikato
 - Komputer właściciela: Ryzen 5 5600X, brak zintegrowanej grafiki, jedyny GPU to RTX 4070. Render na CPU wymusza `WEBVIEW2_ADDITIONAL_BROWSER_ARGUMENTS="--disable-gpu --enable-unsafe-swiftshader"`; okno raportuje renderer „SwiftShader (Vulkan, CPU)”. To nie jest to samo co prawdziwe iGPU: SwiftShader jest zwykle o rząd wielkości wolniejszy, więc wynik to dolna granica.
 - Kutno 100%, 2843 auta, 8 wariantów jak wyżej (6 s na wariant, ~1 klatka na rozgrzewkę): ikony płasko **2,1 FPS** (gmina) i **2,5 FPS** (zoom 16,5); budynki 3D **0,26–0,31 FPS**; modele 3D płasko 0,29 (gmina) i 0,64 (zoom); modele + 3D 0,2 FPS. Czas `render()` po stronie CPU bez zmian (≈1,5–2,3 ms), czyli cały koszt to rasteryzacja w SwiftShader.
 - Wniosek: bez GPU 100% jest nieużywalne (cel 30 FPS niespełniony ponad 10×), a 3D i modele dodatkowo go zabijają. Prawdziwe iGPU (krok 8) trzeba sprawdzić na innym komputerze. Opcje na później: tryb „lekki” (bez budynków i modeli, rzadsze klatki, mniej aut), jeśli ktoś ma otwierać to bez GPU.
+
+### P5a: otwórz run (2026-10-22)
+
+- Przycisk „otwórz run…” nad polem id. `Api.pick_run` woła `create_file_dialog(FOLDER)` (start w `output/`), anulowanie nic nie zmienia. `Api.open_path` otwiera run w świeżym `Player`: brak katalogu albo `output_events.xml.zst` / `output_network.xml.zst` daje zdanie pod przyciskiem i bieżący run zostaje; sukces buduje indeks, łamane, eksport i budynki, zapisuje `output/viz_player_state.json` i strona się przeładowuje. Na czas otwierania panel pisze „Run się otwiera…” (nowy indeks 100% to ok. 80 s).
+- Okno uruchamiane z konsoli ładuje teraz stronę ze stałego katalogu `output/viz_player_site/`, bo przeładowanie wymaga tego samego adresu, a run się zmienia. Smoke i `--check` dalej piszą do `<run>/viz/site`.
+- Dowód: smoke w prawdziwym oknie: zły katalog daje błąd i `boot.run` bez zmiany, potem przełączenie na `g5r6_25pct_s4711` (nowa strona, mapa i rysunek wstają), powrót do R7b; 53 testy. **Nie sprawdzone automatem:** sam systemowy dialog wyboru folderu (klika go człowiek).

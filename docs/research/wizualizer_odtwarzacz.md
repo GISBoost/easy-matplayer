@@ -398,6 +398,10 @@ Różnice względem wzorca z Pythona: pozycja z łamaną do ok. 1 m na długim l
 
 Wydajność silnika klienta pod node (Kutno 100%, szczyt 6–9, 2834 aut, bez łamanych): mediana 0,21 ms, p95 0,39 ms na klatkę (wcześniej Python 13,8 ms plus most 3,3 ms). Kutno 25%: 717 aut, 0,035 ms.
 
+## Otwieranie runu z okna
+
+Przycisk „otwórz run…” (`#openrun` w `shell.html`): `Api.pick_run` pokazuje systemowy wybór folderu, `Api.open_path(path)` otwiera run w nowym `Player` i dopiero po sukcesie (indeks, łamane, `write_site`) zapisuje stan i podmienia model w `Api`. Strona potem robi `location.reload()`. Błędy (brak katalogu, brak eventów/sieci, wyjątek budowy) wracają jako `{status: "error", message}` i bieżący run zostaje. `Api` trzyma katalog strony (`_site`); okno z konsoli używa stałego `output/viz_player_site/`.
+
 ## Podkład
 
 Bez `config/viz_basemap.local.toml` mapa jest tłem `#121418`, drogi i auta na kanwie, na pasku zdanie „Podkład wyłączony.” Klucz dokłada Michał później. Do tego czasu kafelków nie ma, i tak ma być.

@@ -85,6 +85,8 @@ body.panel-off #panel { display: none; }
 <aside id="panel">
   <h1>easy-matviz</h1>
   <p class="run" id="run"></p>
+  <button id="openrun" type="button" class="chip">otwórz run…</button>
+  <p id="runmsg" class="muted" hidden></p>
   <form id="find"><input id="q" type="text" placeholder="id pojazdu" autocomplete="off" spellcheck="false"></form>
   <div id="hits"></div>
   <div id="chips"></div>
@@ -740,6 +742,24 @@ function setPlaying(on) {
   b.classList.toggle("on", playing);
 }
 document.getElementById("three").addEventListener("click", () => setThreeD(!threeD));
+// „otwórz run”: wybór folderu w Pythonie, potem otwarcie; sukces przeładowuje stronę (świeży boot.json), błąd zostawia bieżący run
+async function openRunPath(path) {
+  const api = window.pywebview && window.pywebview.api, msg = document.getElementById("runmsg");
+  const say = (text) => { msg.textContent = text; msg.hidden = !text; };
+  say("Run się otwiera…");
+  let r;
+  try { r = await api.open_path(path); } catch (err) { r = {status: "error", message: String(err)}; }
+  if (r.status === "ok") { location.reload(); return r; }
+  say(r.message || "");
+  return r;
+}
+window.openRunPath = openRunPath;
+document.getElementById("openrun").addEventListener("click", async () => {
+  const api = window.pywebview && window.pywebview.api;
+  if (!api) return;
+  const r = await api.pick_run();
+  if (r.status === "path") openRunPath(r.path);
+});
 document.getElementById("models").addEventListener("change", (ev) => { modelsOn = ev.target.checked; document.getElementById("credit").hidden = !modelsOn; dirty = true; });
 document.getElementById("carcolor").addEventListener("click", () => setCarColor(!carByClass));
 document.getElementById("osmroads").addEventListener("change", (ev) => setOsmRoads(ev.target.checked));
