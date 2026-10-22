@@ -13,7 +13,7 @@ LEN_M = 1.0
 END_M = 1.0
 # ponytail: odchylenie <= 2 m zostaje cięciwą. Na ekranie i tak prosta.
 DEV_M = 2.0
-VERSION = 1
+VERSION = 2
 
 
 class Curves:
@@ -288,14 +288,13 @@ def grab_ways(pbf, wanted):
     return found.ways
 
 
-def project(ways):
-    import viz_index
+def project(ways, origin):
     from pyproj import Transformer
 
     if not ways:
         return {}
     tr = Transformer.from_crs("EPSG:4326", "EPSG:2180", always_xy=True)
-    ox, oy = viz_index.ORIGIN
+    ox, oy = origin
     order, lons, lats = [], [], []
     for wid, (refs, lon, lat) in ways.items():
         order.append((wid, refs, len(lon)))
@@ -340,11 +339,13 @@ def _fresh(cache, network, pbf):
     return True
 
 
-def read_cache(cache, n, network, pbf):
+def read_cache(cache, n, network, pbf, origin):
     if not _fresh(cache, network, pbf):
         return None
     with np.load(cache, allow_pickle=False) as blob:
         if "version" not in blob.files or int(blob["version"]) != VERSION:
+            return None
+        if "origin" not in blob.files or [float(v) for v in blob["origin"]] != [float(origin[0]), float(origin[1])]:
             return None
         off = np.array(blob["off"])
         xy = np.array(blob["xy"])
@@ -355,26 +356,27 @@ def read_cache(cache, n, network, pbf):
     return Curves(off, xy)
 
 
-def write_cache(cache, curves):
+def write_cache(cache, curves, origin):
     cache.parent.mkdir(parents=True, exist_ok=True)
     tmp = cache.with_name("curves-partial.npz")
     with tmp.open("wb") as handle:
         np.savez(
             handle,
             version=np.int32(VERSION),
+            origin=np.asarray(origin, dtype=np.float64),
             off=curves.off,
             xy=curves.xy,
         )
     tmp.replace(cache)
 
 
-def load(run_dir, link_id, link_xy, link_length):
+def load(run_dir, link_id, link_xy, link_length, origin):
     run_dir = Path(run_dir)
     n = len(link_id)
     network = run_dir / "output_network.xml.zst"
     cache = run_dir / "viz" / "curves.npz"
     pbf = find_pbf()
-    cached = read_cache(cache, n, network, pbf)
+    cached = read_cache(cache, n, network, pbf, origin)
     if cached is not None:
         return cached, f"łamane: {cached.n_bent} z {n}, cache"
     try:
@@ -389,44 +391,7 @@ def load(run_dir, link_id, link_xy, link_length):
         return empty(n), f"łamane: {why}; cięciwy"
     print("łamane: czytam OSM…", flush=True)
     started = time.perf_counter()
-    built = assemble(link_xy, link_length, ends, project(grab_ways(pbf, wanted)))
-    write_cache(cache, built)
+    built = assemble(link_xy, link_length, ends, project(grab_ways(pbf, wanted), origin))
+    write_cache(cache, built, origin)
     return built, f"łamane: {built.n_bent} z {n}, skan {time.perf_counter() - started:.1f} s"
 
-
-def self_test():
-    if between(7, 0) != [7, 6, 5, 4, 3, 2, 1, 0] or between(1, 3) != [1, 2, 3] or between(3, 1) != [3, 2, 1] or between(2, 2) is not None:
-        raise SystemExit(f"self-test: cięcie {between(7, 0)} {between(3, 1)}")
-    straight = ([1, 2, 3], np.array([0.0, 50.0, 100.0]), np.array([0.0, 0.0, 0.0]))
-    chord = np.array([0.0, 0.0, 100.0, 0.0])
-    if best_chain(straight, "1", "3", chord, 100.0) is not None:
-        raise SystemExit("self-test: prosta dostała łamaną")
-    bend = ([1, 2, 3], np.array([0.0, 100.0, 100.0]), np.array([0.0, 0.0, 100.0]))
-    forward = best_chain(bend, "1", "3", np.array([0.0, 0.0, 100.0, 100.0]), 200.0)
-    back = best_chain(bend, "3", "1", np.array([100.0, 100.0, 0.0, 0.0]), 200.0)
-    if forward is None or back is None or abs(arc_length(forward) - 200) > 1e-6:
-        raise SystemExit("self-test: łamana L")
-    if abs(back[0, 0] - 100) > 1e-6 or abs(back[-1, 0]) > 1e-6 or abs(back[1, 1]) > 1e-6:
-        raise SystemExit(f"self-test: cięcie wstecz {back}")
-    if best_chain(bend, "1", "3", np.array([0.0, 0.0, 100.0, 100.0]), 100.0) is not None:
-        raise SystemExit("self-test: łuk niezgodny z length")
-    x, y, heading = point_at(forward, 0.5)
-    if abs(x - 100) > 1e-6 or abs(y) > 1e-6 or abs(heading - math.pi / 2) > 1e-6:
-        raise SystemExit(f"self-test: środek łamanej {x} {y} {heading}")
-    _x, _y, east = point_at(forward, 0.25)
-    if abs(east) > 1e-6:
-        raise SystemExit("self-test: kierunek na pierwszym odcinku")
-    curves = Curves(np.array([0, 3, 3], dtype=np.int32), forward)
-    chords = np.array([[0.0, 0.0, 100.0, 100.0], [200.0, 0.0, 300.0, 0.0]])
-    px, py, _hd, mask = curves.place(chords, [0], [50.0], [50.0])
-    if not mask[0] or abs(px[0] - 100) > 1e-3 or abs(py[0]) > 1e-3:
-        raise SystemExit(f"self-test: auto na łamanej {px} {py}")
-    path = curves.follow(chords, [0.0, 100.0], [0.0, 100.0], [0, 0])
-    if not any(abs(p[0] - 100) < 1e-3 and abs(p[1]) < 1e-3 for p in path):
-        raise SystemExit(f"self-test: ślad omija róg {path}")
-    if curves.nearest(chords, 100.0, 1.0, 5) != 0:
-        raise SystemExit("self-test: klik w róg")
-    if curves.nearest(chords, 50.0, 50.0, 5) is not None:
-        raise SystemExit("self-test: klik w cięciwę łuku")
-    if curves.nearest(chords, 250.0, 1.0, 5) != 1:
-        raise SystemExit("self-test: klik w prosty link")

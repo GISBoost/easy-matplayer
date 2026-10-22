@@ -3,7 +3,6 @@
 Czyta output/<run>/viz/ albo buduje go przez pipeline/viz_index.py.
 Nie rysuje, nie czyta XML sam i nic nie zapisuje do MATSim, sieci ani planów.
 
-  uv run python pipeline/viz_engine.py --self-test
   uv run python pipeline/viz_engine.py output/g5r6_25pct_s4711
 
 Pozycja jest liniowa między węzłami. Auto widać w [track_t0, track_t1].
@@ -317,7 +316,7 @@ def _knot_span(index, track):
     return a, b
 
 
-def _assert_knots(index, track, tol=0.001):
+def assert_knots(index, track, tol=0.001):
     a, b = _knot_span(index, track)
     worst = 0.0
     for j in range(a, b):
@@ -361,8 +360,6 @@ def check(run_dir):
             )
         if len(no_t) >= len(full) or np.any(no_t.cls == LETTERS["t"]):
             raise EngineFailed(f"filtr bez t: {len(no_t)} z {len(full)}")
-        if run_dir.name == viz_index.R6_NAME and len(full) != viz_index.R6_PEAK:
-            raise EngineFailed(f"R6 szczyt klatki {len(full)}")
         first_r = next(str(s) for s in index.track_id if str(s).startswith("r"))
         hits = lookup(index, first_r)
         if not hits or hits[0]["id"] != first_r or not hits[0]["tracks"]:
@@ -371,7 +368,7 @@ def check(run_dir):
         if set(hits[0]["tracks"]) != want:
             raise EngineFailed(f"lookup {first_r} ma {hits[0]['tracks']}, indeks {sorted(want)}")
         track = hits[0]["tracks"][0]
-        worst = _assert_knots(index, track)
+        worst = assert_knots(index, track)
         picked = None
         a, b = _knot_span(index, track)
         for j in range(a, b):
@@ -408,160 +405,12 @@ def check(run_dir):
     return 0
 
 
-def self_test():
-    import tempfile
-
-    ox, oy = viz_index.ORIGIN
-    with tempfile.TemporaryDirectory(prefix="viz_engine_") as tmp:
-        run_dir = Path(tmp) / "mini"
-        run_dir.mkdir()
-        nodes = "".join(
-            f'<node id="n{i}" x="{ox + 100 * i}" y="{oy}"/>' for i in range(7)
-        )
-        links = "".join(
-            f'<link id="l{i}" from="n{i}" to="n{i + 1}" length="100" freespeed="10" '
-            f'permlanes="1" capacity="600" oneway="1" modes="car">'
-            f'<attributes><attribute name="type" class="java.lang.String">residential</attribute></attributes>'
-            f'</link>'
-            for i in range(6)
-        )
-        viz_index.write_zst(
-            run_dir / viz_index.NETWORK_NAME,
-            f'<?xml version="1.0"?><network>{nodes}{links}</network>',
-        )
-        (run_dir / viz_index.CONFIG_NAME).write_text(
-            '<config><module name="qsim"><param name="sampleSize" value="0.25"/></module></config>',
-            encoding="utf-8",
-        )
-
-        def trip(vid, t_enter):
-            rows = [
-                f'<event time="{t_enter - 1}" type="actend" person="{vid}" link="l0" '
-                f'x="{ox}" y="{oy}" actType="home"/>',
-                f'<event time="{t_enter}" type="actstart" person="{vid}" link="l0" '
-                f'x="{ox}" y="{oy}" actType="car interaction"/>',
-                f'<event time="{t_enter}" type="vehicle enters traffic" person="{vid}" vehicle="{vid}" '
-                f'link="l0" relativePosition="0"/>',
-            ]
-            t = t_enter
-            for i in range(6):
-                t += 10
-                rows.append(f'<event time="{t}" type="left link" vehicle="{vid}" link="l{i}"/>')
-                if i < 5:
-                    rows.append(f'<event time="{t}" type="entered link" vehicle="{vid}" link="l{i + 1}"/>')
-            rows.append(
-                f'<event time="{t}" type="vehicle leaves traffic" person="{vid}" vehicle="{vid}" link="l5"/>'
-            )
-            rows.append(
-                f'<event time="{t + 1}" type="actstart" person="{vid}" link="l5" '
-                f'x="{ox + 600}" y="{oy}" actType="work"/>'
-            )
-            return rows
-
-        rows = []
-        rows.extend(trip("r1", 1000))
-        rows.extend(trip("t1", 1030))
-        rows.extend(trip("c1", 5000))
-        rows.append(
-            f'<event time="50" type="vehicle enters traffic" vehicle="h1" link="l0" relativePosition="0"/>'
-        )
-        rows.append('<event time="51" type="vehicle leaves traffic" vehicle="h1" link="l0"/>')
-        rows.append(
-            f'<event time="8000" type="vehicle enters traffic" vehicle="r1" link="l0" relativePosition="0"/>'
-        )
-        rows.append('<event time="8010" type="vehicle leaves traffic" vehicle="r1" link="l0"/>')
-        rows.append(
-            f'<event time="9000" type="vehicle enters traffic" vehicle="r1b" link="l0" relativePosition="0"/>'
-        )
-        rows.append('<event time="9010" type="vehicle leaves traffic" vehicle="r1b" link="l0"/>')
-        rows.sort(key=lambda line: float(viz_index.field(line, "time")))
-        viz_index.write_zst(
-            run_dir / viz_index.EVENTS_NAME,
-            '<?xml version="1.0"?>\n<events>\n' + "\n".join(rows) + "\n</events>\n",
-        )
-        try:
-            index = load(run_dir)
-        except EngineFailed:
-            log_file = run_dir / "viz" / "index.log"
-            if log_file.exists():
-                print(log_file.read_text(encoding="utf-8"))
-            raise
-        npz = run_dir / "viz" / "index.npz"
-        moved = npz.with_name("index.moved.npz")
-        npz.replace(moved)
-        moved.replace(npz)
-
-        x, y, heading, speed, _link = pose_at(
-            np.array([0, 10, 10], np.float32),
-            np.array([0, 100, 100], np.float32),
-            np.array([0, 0, 0], np.float32),
-            np.array([0, 100, 0], np.float32),
-            np.array([0, 0, 0], np.int32),
-            10,
-        )
-        if abs(x - 100) > 1e-6 or abs(y) > 1e-6 or heading != 0.0 or speed != 0.0:
-            raise SystemExit(f"self-test: dziedziczenie kierunku {x, y, heading, speed}")
-
-        r_hits = lookup(index, "r1")
-        if [hit["id"] for hit in r_hits] != ["r1", "r1b"]:
-            raise SystemExit(f"self-test: lookup r1 {r_hits}")
-        if len(r_hits[0]["tracks"]) != 2:
-            raise SystemExit("self-test: r1 ma dwa przejazdy")
-        if lookup(index, "") or lookup(index, "brak"):
-            raise SystemExit("self-test: puste lookup")
-        track = r_hits[0]["tracks"][0]
-        worst = _assert_knots(index, track)
-        if worst > 0.001:
-            raise SystemExit(f"self-test: węzeł {worst}")
-        fr = frame(index, 1005, None)
-        if len(fr) != 1 or int(fr.track[0]) != track:
-            raise SystemExit(f"self-test: klatka 1005 {list(fr.track)}")
-        if abs(float(fr.xy[0, 0]) - 50) > 0.001 or abs(float(fr.xy[0, 1])) > 0.001:
-            raise SystemExit(f"self-test: pozycja {fr.xy[0]}")
-        if abs(float(fr.speed[0]) - 10) > 1e-3 or abs(float(fr.heading[0])) > 1e-6:
-            raise SystemExit(f"self-test: prędkość/kierunek {float(fr.speed[0])} {float(fr.heading[0])}")
-        if pick_vehicle(fr, (50.0, 0.0), 0.5) != track or pick_vehicle(fr, (50.0, 20.0), 0.5) is not None:
-            raise SystemExit("self-test: pick_vehicle")
-        both = frame(index, 1030, ("r", "c", "o", "t", "h", "?"))
-        quiet = frame(index, 1030, ("r", "c", "o", "h"))
-        if len(both) != 2 or len(quiet) != 1 or np.any(quiet.cls == LETTERS["t"]):
-            raise SystemExit(f"self-test: filtr {len(both)} {len(quiet)}")
-        try:
-            frame(index, 1030, ("zz",))
-            raise SystemExit("self-test: zła klasa przeszła")
-        except EngineFailed:
-            pass
-        cap = frame(index, 50.5, None)
-        if len(cap) != 1 or abs(float(cap.speed[0]) - 30) > 1e-3 or abs(float(cap.xy[0, 0]) - 50) > 0.001:
-            raise SystemExit(f"self-test: sufit prędkości {float(cap.speed[0]) if len(cap) else 'brak'}")
-        if pick_link(index, (50.0, 0.2), 1.0) != 0 or pick_link(index, (50.0, 30.0), 1.0) is not None:
-            raise SystemExit("self-test: pick_link")
-        now = link_now(fr, 0)
-        if now != {"n": 1, "speed_mean": 10.0, "speed_median": 10.0}:
-            raise SystemExit(f"self-test: link_now {now}")
-        if link_now(fr, 5)["n"] != 0 or link_now(fr, 5)["speed_mean"] is not None:
-            raise SystemExit("self-test: pusty link")
-        acts = activities(index, "r1")
-        if [row["type"] for row in acts] != ["home", "work"]:
-            raise SystemExit(f"self-test: czynności {[row['type'] for row in acts]}")
-        if acts[0]["kind"] != "actend" or acts[1]["kind"] != "actstart":
-            raise SystemExit("self-test: rodzaj czynności")
-        if "car interaction" in {row["type"] for row in acts}:
-            raise SystemExit("self-test: car interaction")
-        load(run_dir)
-    print("self-test OK")
-    return 0
-
-
 def main(argv):
     ap = argparse.ArgumentParser(description="Silnik klatki odtwarzacza runu MATSim, bez okna (D24, krok 2).")
     ap.add_argument("run", nargs="?", help="katalog runu, np. output/g5r6_25pct_s4711")
-    ap.add_argument("--self-test", action="store_true")
     args = ap.parse_args(argv)
     if hasattr(sys.stdout, "reconfigure"):
         sys.stdout.reconfigure(encoding="utf-8", errors="replace")
-    if args.self_test:
-        return self_test()
     if not args.run:
         ap.print_help()
         return 2

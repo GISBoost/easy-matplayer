@@ -13,7 +13,7 @@ liczy silnik klatki w kroku 2 z knot_len i dt. Tu jej nie zapisujemy.
 
 Uruchomienie z katalogu projektu:
   uv run python pipeline/viz_index.py output/g5r6_25pct_s4711
-  uv run python pipeline/viz_index.py --self-test
+  uv run --group viz pytest viz_player/tests   (testy indeksu, silnika i okna)
 
 Drugi start przy tym samym sha256 eventów, sieci i tego pliku nie parsuje XML
 (log: reuse). Zmiana tego skryptu unieważnia indeks.
@@ -36,8 +36,6 @@ import numpy as np
 import zstandard
 from lxml import etree
 
-from g6_bake import ORIGIN
-
 EVENTS_NAME = "output_events.xml.zst"
 NETWORK_NAME = "output_network.xml.zst"
 CONFIG_NAME = "output_config.xml"
@@ -47,15 +45,9 @@ CLASS_LETTERS = ("r", "c", "o", "t", "h")
 CLASS_NAMES = ("mieszkaniec", "przyjeżdżający", "wyjeżdżający", "tło lekkie", "ciężkie")
 OTHER_CLASS = 5
 MOVEMENT = ("vehicle enters traffic", "entered link", "left link", "vehicle leaves traffic")
-FORMAT = 1
-# Akceptacja runu zmierzonego 2026-10-20. Inny katalog przechodzi geometrię, nie te liczby.
-R6_NAME = "g5r6_25pct_s4711"
-R6_TRACKS = 29660
-R6_ENTERS_WIN = 6641
-R6_PEAK = 961
-R6_PEAK_WIN = 849
-R6_LINKS = 10383
-R6_NODES = 4534
+FORMAT = 2
+# Początek lokalnego układu (m): środek bbox węzłów sieci, zaokrąglony do ORIGIN_SNAP_M.
+ORIGIN_SNAP_M = 1000.0
 FILE_BUDGET = 200 * 1024 * 1024
 PARSE_BUDGET_SEC = 300
 
@@ -117,15 +109,31 @@ def class_legend():
     return legend
 
 
-def read_network(path):
-    """Węzły i linki. xy to metry względem ORIGIN, jeszcze w float64."""
+def network_origin(path):
+    """Origin z bbox węzłów sieci (EPSG:2180, E, N). Węzły są w pliku przed linkami."""
+    xs, ys = [], []
+    stream = zstandard.ZstdDecompressor().stream_reader(path.open("rb"))
+    for _, el in etree.iterparse(stream, tag=("node", "link"), load_dtd=False, no_network=True):
+        if el.tag == "link":
+            break
+        xs.append(float(el.get("x")))
+        ys.append(float(el.get("y")))
+        el.clear()
+    if not xs:
+        raise CheckFailed("sieć bez węzłów, brak origin")
+    snap = ORIGIN_SNAP_M
+    return (round((min(xs) + max(xs)) / 2 / snap) * snap, round((min(ys) + max(ys)) / 2 / snap) * snap)
+
+
+def read_network(path, origin):
+    """Węzły i linki. xy to metry względem origin, jeszcze w float64."""
     nodes = {}
     ids, xy, length, freespeed, types = [], [], [], [], []
     stream = zstandard.ZstdDecompressor().stream_reader(path.open("rb"))
     for _, el in etree.iterparse(stream, tag=("node", "link"), load_dtd=False, no_network=True):
         a = el.attrib
         if el.tag == "node":
-            nodes[a["id"]] = (float(a["x"]) - ORIGIN[0], float(a["y"]) - ORIGIN[1])
+            nodes[a["id"]] = (float(a["x"]) - origin[0], float(a["y"]) - origin[1])
         else:
             ids.append(a["id"])
             x0, y0 = nodes[a["from"]]
@@ -182,13 +190,13 @@ def as_i32(buf):
     return np.frombuffer(buf, dtype=np.int32).copy()
 
 
-def build(run, log_path):
+def build(run, log_path, origin):
     """Jeden przebieg XML. Węzły przejazdu trzymamy do jego końca, potem doklejamy zwartym blokiem.
 
     Eventy pojazdów są przeplatane, a specyfikacja chce zwarty wycinek knot_off.
     """
     started = time.perf_counter()
-    net = read_network(run / NETWORK_NAME)
+    net = read_network(run / NETWORK_NAME, origin)
     link_index = net["index"]
     xy, leng = net["xy"], net["length"]
     knot_t, knot_x, knot_y = array.array("f"), array.array("f"), array.array("f")
@@ -227,7 +235,7 @@ def build(run, log_path):
             raw_x, raw_y = field(line, "x"), field(line, "y")
             if raw_x is None or raw_y is None:
                 raise CheckFailed(f"czynność bez x/y: {line.strip()[:180]}")
-            x, y = float(raw_x) - ORIGIN[0], float(raw_y) - ORIGIN[1]
+            x, y = float(raw_x) - origin[0], float(raw_y) - origin[1]
             act_vid.append(person)
             act_t.append(t)
             act_kind.append(1 if typ == "actstart" else 0)
@@ -487,16 +495,16 @@ def geometry_check(idx, net, sequences, pick, log_path):
         log_to(log_path, f"check OK {vid}: 20 chwil, najgorzej {worst:.4f} m, linków {len(intervals)}")
 
 
-def validate(run, index_path, log_path):
+def validate(run, index_path, log_path, origin):
     idx = np.load(index_path, allow_pickle=False)
     try:
-        return _validate(run, index_path, log_path, idx)
+        return _validate(run, index_path, log_path, idx, origin)
     finally:
         idx.close()
 
 
-def _validate(run, index_path, log_path, idx):
-    net = read_network(run / NETWORK_NAME)
+def _validate(run, index_path, log_path, idx, origin):
+    net = read_network(run / NETWORK_NAME, origin)
     n = int(len(idx["track_id"]))
     long = long_tracks(idx)
     if len(long) < 3:
@@ -521,36 +529,16 @@ def _validate(run, index_path, log_path, idx):
     size = index_path.stat().st_size
     if size >= FILE_BUDGET:
         raise CheckFailed(f"index.npz ma {size} B, budżet to < {FILE_BUDGET} B")
-    if run.name == R6_NAME:
-        if n != R6_TRACKS or enters_win != R6_ENTERS_WIN:
-            raise CheckFailed(f"R6 przejazdy {n}, wjazdy 6–9 {enters_win}")
-        if stats["peak"] != R6_PEAK or stats["peak_win"] != R6_PEAK_WIN:
-            raise CheckFailed(
-                f"R6 szczyt {stats['peak']} o {stats['peak_t']}, "
-                f"w oknie {stats['peak_win']} o {stats['peak_win_t']}")
-        if len(idx["link_id"]) != R6_LINKS or net["n_nodes"] != R6_NODES:
-            raise CheckFailed(f"R6 sieć linki={len(idx['link_id'])} węzły={net['n_nodes']}")
-        for letter in CLASS_LETTERS:
-            if letters.get(letter, 0) < 1:
-                raise CheckFailed(f"R6 brak klasy {letter}")
-        log_to(
-            log_path,
-            f"R6 OK tracks={n} enters_6_9={enters_win} "
-            f"peak={stats['peak']}@{stats['peak_t']} "
-            f"peak_6_9={stats['peak_win']}@{stats['peak_win_t']} "
-            f"bytes={size} classes={letters}",
-        )
-    else:
-        log_to(
-            log_path,
-            f"OK tracks={n} enters_6_9={enters_win} peak={stats['peak']} "
-            f"peak_6_9={stats['peak_win']} bytes={size} classes={letters}",
-        )
+    log_to(
+        log_path,
+        f"OK tracks={n} enters_6_9={enters_win} peak={stats['peak']} "
+        f"peak_6_9={stats['peak_win']} bytes={size} classes={letters}",
+    )
     stats["enters_win"] = enters_win
     return stats, letters, size
 
 
-def write_meta(path, run, ev_sha, net_sha, script_sha, arrays, info, stats, letters, size, build_sec):
+def write_meta(path, run, ev_sha, net_sha, script_sha, origin, arrays, info, stats, letters, size, build_sec):
     meta = {
         "format": FORMAT,
         "checked": True,
@@ -559,7 +547,7 @@ def write_meta(path, run, ev_sha, net_sha, script_sha, arrays, info, stats, lett
         "script_sha256": script_sha,
         "events_bytes": (run / EVENTS_NAME).stat().st_size,
         "network_bytes": (run / NETWORK_NAME).stat().st_size,
-        "origin": [ORIGIN[0], ORIGIN[1]],
+        "origin": [origin[0], origin[1]],
         "crs": "EPSG:2180",
         "sample_size": read_sample_size(run),
         "t_min": info["t_min"],
@@ -587,7 +575,7 @@ def write_meta(path, run, ev_sha, net_sha, script_sha, arrays, info, stats, lett
     path.write_text(json.dumps(meta, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
 
 
-def reuse_meta(viz, ev_sha, net_sha, script_sha):
+def reuse_meta(viz, ev_sha, net_sha, script_sha, origin):
     meta_path, index_path = viz / "meta.json", viz / "index.npz"
     if not meta_path.exists() or not index_path.exists():
         return None
@@ -598,6 +586,7 @@ def reuse_meta(viz, ev_sha, net_sha, script_sha):
         and meta.get("events_sha256") == ev_sha
         and meta.get("network_sha256") == net_sha
         and meta.get("script_sha256") == script_sha
+        and meta.get("origin") == [origin[0], origin[1]]
     )
     return meta if same else None
 
@@ -617,17 +606,23 @@ def run(run_dir):
     ev_sha, net_sha = sha256_file(events), sha256_file(network)
     script_sha = sha256_file(Path(__file__))
     log_to(log_path, f"sha256 sec={time.perf_counter() - hash_t:.1f}")
-    cached = reuse_meta(viz, ev_sha, net_sha, script_sha)
+    try:
+        origin = network_origin(network)
+    except CheckFailed as exc:
+        log_to(log_path, f"FAIL {exc}")
+        return 1
+    log_to(log_path, f"origin={origin[0]:.0f},{origin[1]:.0f}")
+    cached = reuse_meta(viz, ev_sha, net_sha, script_sha, origin)
     if cached is not None:
         log_to(log_path, f"reuse tracks={cached['n_tracks']} knots={cached['n_knots']} sec={time.perf_counter() - t0:.1f}")
         return 0
     index_path, meta_path = viz / "index.npz", viz / "meta.json"
     try:
-        built = build(run_dir, log_path)
+        built = build(run_dir, log_path, origin)
         arrays, info = pack(built, run_dir.name)
         save_index(index_path, arrays)
-        stats, letters, size = validate(run_dir, index_path, log_path)
-        write_meta(meta_path, run_dir, ev_sha, net_sha, script_sha, arrays, info, stats, letters, size,
+        stats, letters, size = validate(run_dir, index_path, log_path, origin)
+        write_meta(meta_path, run_dir, ev_sha, net_sha, script_sha, origin, arrays, info, stats, letters, size,
                    time.perf_counter() - t0)
         log_to(
             log_path,
@@ -648,139 +643,12 @@ def write_zst(path, text):
     path.write_bytes(zstandard.ZstdCompressor().compress(text.encode("utf-8")))
 
 
-def self_test():
-    """Mały run: geometria, relativePosition, klasy, brak car interaction, reuse."""
-    import tempfile
-
-    with tempfile.TemporaryDirectory(prefix="viz_index_") as tmp:
-        run_dir = Path(tmp) / "mini"
-        run_dir.mkdir()
-        nodes = "".join(
-            f'<node id="n{i}" x="{ORIGIN[0] + 100 * i}" y="{ORIGIN[1]}"/>' for i in range(7)
-        )
-        links = "".join(
-            f'<link id="l{i}" from="n{i}" to="n{i + 1}" length="100" freespeed="10" '
-            f'permlanes="1" capacity="600" oneway="1" modes="car">'
-            f'<attributes><attribute name="type" class="java.lang.String">residential</attribute></attributes>'
-            f'</link>'
-            for i in range(6)
-        )
-        write_zst(run_dir / NETWORK_NAME, f'<?xml version="1.0"?><network>{nodes}{links}</network>')
-        (run_dir / CONFIG_NAME).write_text(
-            '<config><module name="qsim"><param name="sampleSize" value="0.25"/></module>'
-            '<module name="controler"><param name="flowCapacityFactor" value="1.0"/></module></config>',
-            encoding="utf-8",
-        )
-        if read_sample_size(run_dir) != 0.25:
-            raise SystemExit("self-test: sampleSize")
-        bare = Path(tmp) / "nosize"
-        bare.mkdir()
-        (bare / CONFIG_NAME).write_text("<config/>", encoding="utf-8")
-        if read_sample_size(bare) is not None:
-            raise SystemExit("self-test: brak sampleSize ma być null")
-
-        def trip(vid, t_enter):
-            rows = [
-                f'<event time="{t_enter - 1}" type="actend" person="{vid}" link="l0" '
-                f'x="{ORIGIN[0]}" y="{ORIGIN[1]}" actType="home"/>',
-                f'<event time="{t_enter}" type="actstart" person="{vid}" link="l0" '
-                f'x="{ORIGIN[0]}" y="{ORIGIN[1]}" actType="car interaction"/>',
-                f'<event time="{t_enter}" type="vehicle enters traffic" person="{vid}" vehicle="{vid}" '
-                f'link="l0" relativePosition="0"/>',
-            ]
-            t = t_enter
-            for i in range(6):
-                t += 10
-                rows.append(f'<event time="{t}" type="left link" vehicle="{vid}" link="l{i}"/>')
-                if i < 5:
-                    rows.append(f'<event time="{t}" type="entered link" vehicle="{vid}" link="l{i + 1}"/>')
-            rows.append(f'<event time="{t}" type="vehicle leaves traffic" person="{vid}" vehicle="{vid}" link="l5"/>')
-            rows.append(
-                f'<event time="{t + 1}" type="actstart" person="{vid}" link="l5" '
-                f'x="{ORIGIN[0] + 600}" y="{ORIGIN[1]}" actType="work"/>'
-            )
-            return rows
-
-        rows = []
-        for k, vid in enumerate(("r1", "c1", "o1", "t1", "h1")):
-            rows.extend(trip(vid, 1000 + 10 * k))
-        rows.append(
-            '<event relativePosition="0.25" link="l0" vehicle="q1" type="vehicle enters traffic" time="50"/>'
-        )
-        rows.append('<event time="60" type="vehicle leaves traffic" vehicle="q1" link="l0"/>')
-        # Czas globalny, nie blokami pojazdu: węzły w pliku są przeplatane, jak w MATSim.
-        rows.sort(key=lambda line: float(field(line, "time")))
-        body = "\n".join(rows)
-        write_zst(run_dir / EVENTS_NAME, f'<?xml version="1.0"?>\n<events>\n{body}\n</events>\n')
-
-        def fail_with_log(message):
-            log_file = run_dir / "viz" / "index.log"
-            if log_file.exists():
-                print(log_file.read_text(encoding="utf-8"))
-            raise SystemExit(message)
-
-        if run(run_dir) != 0:
-            fail_with_log("self-test: pierwsza budowa nie przeszła")
-        meta = json.loads((run_dir / "viz" / "meta.json").read_text(encoding="utf-8"))
-        if meta["sample_size"] != 0.25 or meta["source_run"] != "mini" or meta["crs"] != "EPSG:2180":
-            fail_with_log("self-test: meta")
-        if meta["origin"] != [ORIGIN[0], ORIGIN[1]]:
-            fail_with_log("self-test: origin")
-        if set(meta["act_type_legend"].values()) != {"home", "work"}:
-            fail_with_log(f"self-test: czynności {meta['act_type_legend']}")
-        for letter in CLASS_LETTERS:
-            if meta["class_counts"].get(letter, 0) < 1:
-                fail_with_log(f"self-test: brak klasy {letter}")
-        if meta["class_counts"].get("q", 0) != 1:
-            fail_with_log(f"self-test: klasa q {meta['class_counts']}")
-        idx = np.load(run_dir / "viz" / "index.npz", allow_pickle=False)
-        try:
-            home_code = next(int(k) for k, name in meta["act_type_legend"].items() if name == "home")
-            work_code = next(int(k) for k, name in meta["act_type_legend"].items() if name == "work")
-            if not np.all(idx["act_kind"][idx["act_type"] == home_code] == 0):
-                fail_with_log("self-test: home ma być actend")
-            if not np.all(idx["act_kind"][idx["act_type"] == work_code] == 1):
-                fail_with_log("self-test: work ma być actstart")
-            j = int(np.where(idx["track_id"] == "r1")[0][0])
-            a, b = int(idx["knot_off"][j]), int(idx["knot_off"][j + 1])
-            px, py = position_at(idx["knot_t"][a:b], idx["knot_x"][a:b], idx["knot_y"][a:b], 1005.0)
-            if abs(px - 50.0) > 1e-3 or abs(py) > 1e-3:
-                fail_with_log(f"self-test: pozycja r1 o 1005 to {px},{py}")
-            k = int(np.where(idx["track_id"] == "q1")[0][0])
-            c0 = int(idx["knot_off"][k])
-            if abs(float(idx["knot_x"][c0]) - 25.0) > 1e-3 or abs(float(idx["knot_y"][c0])) > 1e-3:
-                fail_with_log("self-test: relativePosition 0.25")
-            if int(idx["track_class"][k]) != OTHER_CLASS:
-                fail_with_log("self-test: klasa q")
-            bt0 = float(idx["bucket_t0"])
-            first = int(math.floor((1000 - bt0) / BUCKET_SEC))
-            last = int(math.floor((1060 - bt0) / BUCKET_SEC))
-            got = set()
-            for bkt in range(first, last + 1):
-                lo, hi = int(idx["bucket_off"][bkt]), int(idx["bucket_off"][bkt + 1])
-                got.update(int(x) for x in idx["bucket_track"][lo:hi])
-            if j not in got:
-                fail_with_log("self-test: kubełek nie zawiera r1")
-        finally:
-            idx.close()
-        if run(run_dir) != 0:
-            fail_with_log("self-test: drugie otwarcie")
-        log = (run_dir / "viz" / "index.log").read_text(encoding="utf-8")
-        if "reuse" not in log or "check OK" not in log:
-            fail_with_log("self-test: log bez reuse albo geometrii")
-    print("self-test OK")
-    return 0
-
-
 def main(argv):
     ap = argparse.ArgumentParser(description="Rzadki indeks odtwarzacza runu MATSim (D24, krok 1).")
     ap.add_argument("run", nargs="?", help="katalog runu, np. output/g5r6_25pct_s4711")
-    ap.add_argument("--self-test", action="store_true", help="syntetyczny run w katalogu tymczasowym")
     args = ap.parse_args(argv)
     if hasattr(sys.stdout, "reconfigure"):
         sys.stdout.reconfigure(encoding="utf-8", errors="replace")
-    if args.self_test:
-        return self_test()
     if not args.run:
         ap.print_help()
         return 2

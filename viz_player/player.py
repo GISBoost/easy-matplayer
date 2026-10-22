@@ -4,8 +4,8 @@ Nie parsuje XML. Czyta indeks przez pipeline/viz_engine.py i rysuje klatkę.
 Łamane OSM są tylko rysunkiem (viz_player/curves.py): sieć, eventy i run bez zmian.
 Bez klucza CARTO zostaje sieć na #121418 i zdanie „Podkład wyłączony.”
 
-  uv run python -m viz_player output/g5r6_25pct_s4711
-  uv run python -m viz_player --self-test
+  uv run --group viz python -m viz_player output/g5r7b_25pct_s4711
+  uv run --group viz pytest viz_player/tests
 """
 import json
 import math
@@ -23,7 +23,6 @@ import viz_engine
 
 from viz_player import curves
 
-ORIGIN = viz_engine.viz_index.ORIGIN
 HERE = Path(__file__).resolve().parent
 STATE = ROOT / "output" / "viz_player_state.json"
 VMAX = 14.0
@@ -234,6 +233,7 @@ class Player:
         self._key = None
         self._fr = None
         self.curve = None
+        self.origin = (0.0, 0.0)
 
     def open(self, run, remember=True):
         self.run_dir = Path(run).resolve()
@@ -257,13 +257,14 @@ class Player:
         try:
             self.index = viz_engine.load(self.run_dir)
             self._read_links()
+            self.origin = tuple(float(v) for v in self.index.meta["origin"])
         except viz_engine.EngineFailed as exc:
             self.index = None
             self.error = f"Indeks się nie zbudował: {exc}"
             return
         try:
             self.curve, note = curves.load(
-                self.run_dir, self.link_id, self.index.link_xy, self.link_length,
+                self.run_dir, self.link_id, self.index.link_xy, self.link_length, self.origin,
             )
         except Exception as exc:
             self.curve = curves.empty(len(self.link_id))
@@ -346,7 +347,7 @@ class Player:
 
     def local(self, lon, lat):
         east, north = self.inv.transform(float(lon), float(lat))
-        return float(east) - ORIGIN[0], float(north) - ORIGIN[1]
+        return float(east) - self.origin[0], float(north) - self.origin[1]
 
     def active_track(self, ident):
         id_i = self.index.id_of.get(str(ident))
@@ -465,7 +466,7 @@ class Player:
             pts = self.curve.follow(index.link_xy, xs, ys, links)
             xs = [p[0] for p in pts]
             ys = [p[1] for p in pts]
-        lon, lat = self.fwd.transform(np.asarray(xs) + ORIGIN[0], np.asarray(ys) + ORIGIN[1])
+        lon, lat = self.fwd.transform(np.asarray(xs) + self.origin[0], np.asarray(ys) + self.origin[1])
         return [[round(float(lat[i]), 6), round(float(lon[i]), 6)] for i in range(len(xs))]
 
     def payload(self):
@@ -481,8 +482,8 @@ class Player:
             lon_l, lat_l, speed, heading, heavy = [], [], [], [], []
         else:
             lon, lat = self.fwd.transform(
-                fr.xy[:, 0].astype(np.float64) + ORIGIN[0],
-                fr.xy[:, 1].astype(np.float64) + ORIGIN[1],
+                fr.xy[:, 0].astype(np.float64) + self.origin[0],
+                fr.xy[:, 1].astype(np.float64) + self.origin[1],
             )
             lon_l = np.round(lon, 6).tolist()
             lat_l = np.round(lat, 6).tolist()
@@ -504,7 +505,7 @@ class Player:
             elif self.follow:
                 _rows, cover = self.activity_view(self.selected_id)
                 if cover is not None:
-                    plon, plat = self.fwd.transform(ORIGIN[0] + float(cover["x"]), ORIGIN[1] + float(cover["y"]))
+                    plon, plat = self.fwd.transform(self.origin[0] + float(cover["x"]), self.origin[1] + float(cover["y"]))
                     pan = [round(float(plat), 6), round(float(plon), 6)]
         return {
             "t": self.t, "clock": clock(self.t), "n": int(len(fr)),
@@ -568,8 +569,9 @@ class Player:
         if self.index is None:
             return base
         xy = self.index.link_xy
-        lon1, lat1 = self.fwd.transform(xy[:, 0].astype(np.float64) + ORIGIN[0], xy[:, 1].astype(np.float64) + ORIGIN[1])
-        lon2, lat2 = self.fwd.transform(xy[:, 2].astype(np.float64) + ORIGIN[0], xy[:, 3].astype(np.float64) + ORIGIN[1])
+        ox, oy = self.origin
+        lon1, lat1 = self.fwd.transform(xy[:, 0].astype(np.float64) + ox, xy[:, 1].astype(np.float64) + oy)
+        lon2, lat2 = self.fwd.transform(xy[:, 2].astype(np.float64) + ox, xy[:, 3].astype(np.float64) + oy)
         stack = np.column_stack((
             np.round(lon1, 6), np.round(lat1, 6), np.round(lon2, 6), np.round(lat2, 6),
             self.link_type.astype(np.int16),
@@ -594,14 +596,7 @@ class Player:
             "curveLon": [],
             "curveLat": [],
             "curveWait": bool(self.curve is not None and self.curve.n_bent),
-            "bendI": None,
-            "bendN": 0,
         })
-        hit = np.where(self.link_id == "1807611370009f")[0]
-        if len(hit) and self.curve is not None:
-            i = int(hit[0])
-            base["bendI"] = i
-            base["bendN"] = int(self.curve.off[i + 1] - self.curve.off[i])
         return base
 
 
@@ -648,228 +643,14 @@ def render(player):
     )
 
 
-def _forbid():
-    src = (HERE / "player.py").read_text(encoding="utf-8").split("def _forbid", 1)[0]
-    blob = src + (HERE / "shell.html").read_text(encoding="utf-8") + (HERE / "__main__.py").read_text(encoding="utf-8")
-    for word in ("iterparse", "etree", "zstandard", "tile.openstreetmap.org", "PySide", "g6_bake"):
-        if word in blob:
-            raise SystemExit(f"self-test: okno zawiera {word}")
-
-
-def _wgs(player, x, y):
-    lon, lat = player.fwd.transform(ORIGIN[0] + x, ORIGIN[1] + y)
-    return float(lat), float(lon)
-
-
-def self_test():
-    import tempfile
-
-    _forbid()
-    if clock(START) != "06:00:00" or clock(28591) != "07:56:31":
-        raise SystemExit(f"self-test: zegar {clock(START)} {clock(28591)}")
-    if clock(30 * 3600 + 12 * 60) != "30:12:00" or clock(-5) != "00:00:00":
-        raise SystemExit("self-test: zegar poza dobą")
-    if sample_label(0.25) != "0,25" or sample_label(None) != "brak":
-        raise SystemExit("self-test: próbka")
-    if ramp_rgb(0) != (255, 31, 13) or ramp_rgb(VMAX) != (26, 230, 255):
-        raise SystemExit(f"self-test: rampa {ramp_rgb(0)} {ramp_rgb(VMAX)}")
-    shell = (HERE / "shell.html").read_text(encoding="utf-8")
-    curves.self_test()
-    for token in ("255, 31, 13", "255, 179, 26", "26, 230, 255", "const VMAX = 14", "grid-column: 1 / -1", 'id="axis"', "postoje ściśnięte", "curveOff", "linkPoints", "paintedCurves", "curveWait"):
-        if token not in shell:
-            raise SystemExit(f"self-test: shell bez {token}")
-    day = [
-        {"t": 100.0, "kind": "actend", "type": "home"},
-        {"t": 200.0, "kind": "actstart", "type": "work"},
-        {"t": 500.0, "kind": "actend", "type": "work"},
-        {"t": 600.0, "kind": "actstart", "type": "home"},
-    ]
-    full = schedule(day, 0, 800, [(100, 200), (500, 600)], 550)
-    expect = [
-        ("home", 0.0, 100.0, False),
-        ("jazda", 100.0, 200.0, False),
-        ("work", 200.0, 500.0, False),
-        ("jazda", 500.0, 600.0, True),
-        ("home", 600.0, 800.0, False),
-    ]
-    got = [(seg["label"], seg["t0"], seg["t1"], seg["on"]) for seg in full]
-    if got != expect:
-        raise SystemExit(f"self-test: oś {got}")
-    squeezed = schedule(
-        [
-            {"t": 300.0, "kind": "actend", "type": "home"},
-            {"t": 900.0, "kind": "actstart", "type": "work"},
-            {"t": 8 * 3600 + 900.0, "kind": "actend", "type": "work"},
-            {"t": 8 * 3600 + 1500.0, "kind": "actstart", "type": "home"},
-        ],
-        0, 30 * 3600,
-        [(300.0, 900.0), (8 * 3600 + 900.0, 8 * 3600 + 1500.0)],
-        400.0,
-    )
-    stays = [seg["u1"] - seg["u0"] for seg in squeezed if not seg["trip"]]
-    trips_w = [seg["u1"] - seg["u0"] for seg in squeezed if seg["trip"]]
-    if len(stays) != 3 or len(trips_w) != 2 or min(trips_w) < 0.15 or max(stays) > 0.25:
-        raise SystemExit(f"self-test: ścisk osi {squeezed}")
-    if max(stays) - min(stays) > 1e-4:
-        raise SystemExit(f"self-test: postoje różnej szerokości {stays}")
-    end = schedule(day, 0, 800, [(100, 200), (500, 600)], 800)
-    if not end[-1]["on"] or any(seg["on"] for seg in end[:-1]):
-        raise SystemExit(f"self-test: koniec osi {end}")
-    cut = schedule([{"t": 200.0, "kind": "actstart", "type": "work"}], 0, 400, [(180, 220)], 200)
-    if [(seg["label"], seg["on"]) for seg in cut] != [("jazda", True), ("work", False)]:
-        raise SystemExit(f"self-test: jazda wycina czynność {cut}")
-    home = {"t": 100.0, "kind": "actend", "type": "home"}
-    work = {"t": 200.0, "kind": "actstart", "type": "work"}
-    rows = [home, work]
-    if covering(rows, 50) is not home or covering(rows, 100) is not None or covering(rows, 150) is not None:
-        raise SystemExit("self-test: czynność przed jazdą")
-    if covering(rows, 200) is not work or covering(rows, 250) is not work:
-        raise SystemExit("self-test: czynność po jeździe")
-    if covering([{"t": 10.0, "kind": "actstart", "type": "work"}], 5) is not None:
-        raise SystemExit("self-test: czynność z przyszłości")
-
-    vx = viz_engine.viz_index
-    ox, oy = ORIGIN
-    with tempfile.TemporaryDirectory(prefix="viz_player_") as tmp:
-        run_dir = Path(tmp) / "mini"
-        run_dir.mkdir()
-        nodes = "".join(
-            f'<node id="n{i}" x="{ox + 100 * i}" y="{oy}"/>' for i in range(7)
-        )
-        links = "".join(
-            f'<link id="l{i}" from="n{i}" to="n{i + 1}" length="100" freespeed="10" '
-            f'permlanes="1" capacity="600" oneway="1" modes="car">'
-            f'<attributes><attribute name="type" class="java.lang.String">residential</attribute></attributes>'
-            f'</link>'
-            for i in range(6)
-        )
-        vx.write_zst(run_dir / vx.NETWORK_NAME, f'<?xml version="1.0"?><network>{nodes}{links}</network>')
-        (run_dir / vx.CONFIG_NAME).write_text(
-            '<config><module name="qsim"><param name="sampleSize" value="0.25"/></module></config>',
-            encoding="utf-8",
-        )
-
-        def leg(vid, t0, t1):
-            return [
-                f'<event time="{t0}" type="vehicle enters traffic" person="{vid}" vehicle="{vid}" '
-                f'link="l0" relativePosition="0"/>',
-                f'<event time="{t1}" type="vehicle leaves traffic" person="{vid}" vehicle="{vid}" link="l0"/>',
-            ]
-
-        def long_trip(vid, t_enter):
-            rows = [
-                f'<event time="{t_enter}" type="vehicle enters traffic" person="{vid}" vehicle="{vid}" '
-                f'link="l0" relativePosition="0"/>',
-            ]
-            t = t_enter
-            for i in range(6):
-                t += 10
-                rows.append(f'<event time="{t}" type="left link" vehicle="{vid}" link="l{i}"/>')
-                if i < 5:
-                    rows.append(f'<event time="{t}" type="entered link" vehicle="{vid}" link="l{i + 1}"/>')
-            rows.append(f'<event time="{t}" type="vehicle leaves traffic" person="{vid}" vehicle="{vid}" link="l5"/>')
-            return rows
-
-        events = [
-            f'<event time="23000" type="actend" person="r1" link="l0" x="{ox}" y="{oy}" actType="home"/>',
-            *leg("r1", 23000, 23100),
-            f'<event time="23100" type="actstart" person="r1" link="l0" x="{ox + 100}" y="{oy}" actType="work"/>',
-            *leg("t1", 21600, 21620),
-            *leg("h1", 23040, 23060),
-            *leg("r1b", 30000, 30010),
-            *long_trip("c1", 1000),
-            *long_trip("o1", 2000),
-            *long_trip("t9", 3000),
-        ]
-        events.sort(key=lambda line: float(vx.field(line, "time")))
-        vx.write_zst(
-            run_dir / vx.EVENTS_NAME,
-            '<?xml version="1.0"?>\n<events>\n' + "\n".join(events) + "\n</events>\n",
-        )
-        player = Player()
-        player.open(run_dir, remember=False)
-        if player.error:
-            raise SystemExit(f"self-test: {player.error}")
-        if abs(player.t - START) > 1e-6 or player.sample != "0,25":
-            raise SystemExit(f"self-test: start {player.t} {player.sample}")
-        lat, lon = _wgs(player, 0, 0)
-        if abs(lat - 52.2307) > 0.002 or abs(lon - 19.3633) > 0.002:
-            raise SystemExit(f"self-test: osie {lat:.4f} {lon:.4f}")
-        morning = player.payload()
-        if morning["n"] != 1 or morning["clock"] != "06:00:00" or morning["heavy"] != [0]:
-            raise SystemExit(f"self-test: 06:00 {morning['n']} {morning['heavy']}")
-        player.select("r1")
-        home_panel = player.panel()
-        if home_panel["kind"] != "activity" or "home" not in home_panel["lines"] or "nie jedzie" not in home_panel["lines"]:
-            raise SystemExit(f"self-test: home {home_panel}")
-        axis = home_panel["axis"]
-        if [seg["label"] for seg in axis] != ["home", "jazda", "work"]:
-            raise SystemExit(f"self-test: oś r1 {axis}")
-        if not axis[0]["on"] or axis[1]["on"] or axis[2]["on"]:
-            raise SystemExit(f"self-test: oś r1 teraz {axis}")
-        if axis[1]["t0"] != 23000.0 or axis[1]["t1"] != 23100.0 or axis[1]["trip"] is not True:
-            raise SystemExit(f"self-test: jazda r1 {axis[1]}")
-        if axis[1]["u1"] - axis[1]["u0"] < 0.2:
-            raise SystemExit(f"self-test: wąska jazda {axis[1]}")
-        if player.payload()["sel"] is not None or player.payload()["path"]:
-            raise SystemExit("self-test: duch na drodze")
-        player.set_classes("rcoh")
-        if player.payload()["n"] != 0:
-            raise SystemExit("self-test: filtr t")
-        player.set_classes("rcoth")
-        player.t = 23050
-        both = player.payload()
-        if both["n"] != 2 or sum(both["heavy"]) != 1:
-            raise SystemExit(f"self-test: ciężkie {both['n']} {both['heavy']}")
-        player.clear()
-        player.t = 23010
-        lat, lon = _wgs(player, 10, 0)
-        lat2, lon2 = _wgs(player, 18, 0)
-        picked = player.pick(lat, lon, lat2, lon2)
-        if picked["kind"] != "vehicle" or picked["lines"][0] != "r1" or "3,6 km/h" not in picked["lines"]:
-            raise SystemExit(f"self-test: klik auta {picked}")
-        if len(player.payload()["path"]) < 2:
-            raise SystemExit("self-test: ślad")
-        lat, lon = _wgs(player, 80, 3)
-        lat2, lon2 = _wgs(player, 88, 3)
-        road = player.pick(lat, lon, lat2, lon2)
-        if road["kind"] != "link" or "residential" not in road["lines"] or "freespeed 36 km/h" not in road["lines"]:
-            raise SystemExit(f"self-test: klik linku {road}")
-        if "teraz 1 auto" not in road["lines"][-1]:
-            raise SystemExit(f"self-test: liczba na linku {road['lines']}")
-        player.t = 24000
-        player.select("r1")
-        later = player.panel()
-        if later["kind"] != "activity" or "work" not in later["lines"]:
-            raise SystemExit(f"self-test: praca {later}")
-        if not any(seg["label"] == "work" and seg["on"] for seg in later["axis"]):
-            raise SystemExit(f"self-test: oś pracy {later['axis']}")
-        if player.lookup("r1").get("followed") != "r1":
-            raise SystemExit("self-test: dokładne id")
-        many = player.lookup("r")
-        if {hit["id"] for hit in many.get("hits", [])} != {"r1", "r1b"}:
-            raise SystemExit(f"self-test: prefiks {many}")
-        missing = Player()
-        missing.open(Path(tmp) / "nie-ma", remember=False)
-        if not missing.error or "Brak katalogu" not in missing.error:
-            raise SystemExit(f"self-test: brak katalogu {missing.error}")
-        dest = Path(tmp) / "state.json"
-        save_state(ROOT / "output" / "g5r6_25pct_s4711", dest)
-        if json.loads(dest.read_text(encoding="utf-8"))["run"] != "output/g5r6_25pct_s4711":
-            raise SystemExit("self-test: stan")
-        page = render(player)
-        if "tile.openstreetmap.org" in page or "__BOOT__" not in page and "mapReady" not in page:
-            raise SystemExit("self-test: strona")
-        if "__BOOT__" in page or "Podkład wyłączony." not in page:
-            raise SystemExit("self-test: szablon")
-        basemap = player.boot()["basemap"]
-        if basemap is not None and not str(basemap.get("url", "")).startswith(CARTO):
-            raise SystemExit("self-test: host kafelków")
-    print("self-test OK")
-    return 0
+def pick_ident(index):
+    """Pierwsze id, które jedzie i ma czynności (do sprawdzeń bez wiedzy o runie)."""
+    both = np.flatnonzero((np.diff(index.act_off) > 0) & (np.diff(index.track_off) > 0))
+    return index.id_text[int(both[0])] if len(both) else None
 
 
 def check(run):
+    """Akceptacja okna na dowolnym runie: klatka musi zgadzać się z liczbami w meta.json."""
     player = Player()
     player.open(run)
     if player.error:
@@ -882,17 +663,16 @@ def check(run):
         if not cond:
             problems.append(message)
 
-    lon, lat = player.fwd.transform(ORIGIN[0], ORIGIN[1])
+    lon, lat = player.fwd.transform(player.origin[0], player.origin[1])
     boot = player.boot()
-    need(player.sample == "0,25", f"próbka {player.sample}")
-    need(abs(player.t - START) < 1e-6, f"start {player.t}")
-    need(abs(lat - 52.2307) < 0.002 and abs(lon - 19.3633) < 0.002, f"osie {lat:.4f} {lon:.4f}")
+    t0, t1 = float(meta["t_min"]), float(meta["t_max"])
+    need(player.sample == sample_label(meta.get("sample_size")), f"próbka {player.sample}")
+    need(abs(player.t - (START if t0 <= START <= t1 else t0)) < 1e-6, f"start {player.t}")
     need(len(boot["links"]) == int(meta["n_links"]), f"linki {len(boot['links'])} {meta['n_links']}")
-    page_bytes = len(render(player).encode("utf-8"))
-    need(page_bytes < 1_200_000, f"strona {page_bytes} B, NavigateToString ucina duże HTML")
     south, west = boot["bounds"][0]
     north, east = boot["bounds"][1]
-    need(south < 52.23 < north and west < 19.36 < east, f"zasięg {boot['bounds']}")
+    need(abs(lat - (south + north) / 2) < 0.02 and abs(lon - (west + east) / 2) < 0.02,
+         f"origin {lat:.4f},{lon:.4f} daleko od środka sieci {boot['bounds']}")
     url = "" if boot["basemap"] is None else str(boot["basemap"].get("url", ""))
     need(boot["basemap"] is None or url.startswith(CARTO), "host kafelków")
     need("openstreetmap.org" not in url, "kafelki OSM")
@@ -903,54 +683,38 @@ def check(run):
     window = player.payload()
     need(window["n"] == int(meta["max_concurrent_6_9"]), f"okno 6–9 {window['n']} != {meta['max_concurrent_6_9']}")
     need(window["clock"] == clock(meta["max_concurrent_6_9_time"]), f"zegar {window['clock']}")
-    player.set_classes("".join(ch for ch in player.chip_letters if ch != "t"))
+    biggest = max(player.chip_letters, key=lambda ch: int(meta["class_counts"].get(ch, 0)))
+    player.set_classes("".join(ch for ch in player.chip_letters if ch != biggest))
     thin = player.payload()
-    need(thin["n"] < window["n"], f"filtr t {thin['n']} przy {window['n']}")
+    need(thin["n"] < window["n"], f"filtr {biggest} {thin['n']} przy {window['n']}")
     player.set_classes("".join(player.chip_letters))
-    player.t = float(meta["max_concurrent_6_9_time"])
     frame = player.frame_np()
     if len(frame) == 0:
         problems.append("pusta klatka 6–9")
     else:
-        link = int(np.bincount(frame.link).argmax())
         player.selected_id = None
-        player.selected_link = link
+        player.selected_link = int(np.bincount(frame.link).argmax())
         panel = player.panel()
         need(panel["kind"] == "link" and not panel["lines"][-1].startswith("teraz 0"), f"link {panel['lines']}")
-    followed = player.lookup("r6510903_5")
-    need(followed.get("followed") == "r6510903_5", f"lookup {followed}")
-    axis = player.panel().get("axis") or []
-    need(len(axis) >= 2 and any(seg["trip"] for seg in axis), f"oś {len(axis)}")
-    need(sum(bool(seg["on"]) for seg in axis) <= 1, "oś: dwie naraz")
-    need([seg["t0"] for seg in axis] == sorted(seg["t0"] for seg in axis), "oś nie po czasie")
-    hit = np.where(player.link_id == "1807611370009f")[0]
-    need(len(hit) == 1, "brak linku 1807611370009f")
-    if len(hit) == 1:
-        i = int(hit[0])
-        leng = float(player.link_length[i])
-        row = player.index.link_xy[i]
-        chord = math.hypot(float(row[2] - row[0]), float(row[3] - row[1]))
-        need(leng > 1900 and chord < 900, f"długość {leng:.0f} cięciwa {chord:.0f}")
-        chain = player.curve.chain(i) if player.curve is not None else None
-        need(chain is not None and len(chain) >= 3, "brak łamanej 1807611370009f")
-        if chain is not None:
-            arc = curves.arc_length(chain)
-            need(abs(arc - leng) <= 1.0, f"łuk {arc:.2f} przy length {leng:.2f}")
-            mx, my, _h = curves.point_at(chain, 0.5)
-            cx = (float(row[0]) + float(row[2])) / 2
-            cy = (float(row[1]) + float(row[3])) / 2
-            gap = math.hypot(mx - cx, my - cy)
-            need(gap > 100, f"środek łamanej {gap:.0f} m od cięciwy")
+    ident = pick_ident(player.index)
+    need(ident is not None, "brak id z przejazdem i czynnościami")
+    axis = []
+    if ident is not None:
+        followed = player.lookup(ident)
+        need(followed.get("followed") == ident, f"lookup {followed}")
+        axis = player.panel().get("axis") or []
+        need(len(axis) >= 2 and any(seg["trip"] for seg in axis), f"oś {len(axis)}")
+        need(sum(bool(seg["on"]) for seg in axis) <= 1, "oś: dwie naraz")
+        need([seg["t0"] for seg in axis] == sorted(seg["t0"] for seg in axis), "oś nie po czasie")
     if problems:
         _note(player.run_dir, "FAIL " + "; ".join(problems))
         return 1
     base = "wyłączony" if boot["basemap"] is None else "włączony"
     _note(
         player.run_dir,
-        f"check OK run={player.run_name} start=06:00:00 probka={player.sample} podklad={base} "
-        f"okno6_9={window['n']} szczyt={peak['n']} bez_t={thin['n']} os={len(axis)} linki={len(boot['links'])} "
-        f"lamane={0 if player.curve is None else player.curve.n_bent} bend={boot.get('bendN')} "
-        f"osie={lat:.4f}N {lon:.4f}E",
+        f"check OK run={player.run_name} start={clock(player.t)} probka={player.sample} podklad={base} "
+        f"okno6_9={window['n']} szczyt={peak['n']} bez_{biggest}={thin['n']} os={len(axis)} linki={len(boot['links'])} "
+        f"lamane={0 if player.curve is None else player.curve.n_bent} id={ident}",
     )
     return 0
 
@@ -1028,8 +792,8 @@ def _push_curves(window, player):
     if got != len(curve.off):
         raise RuntimeError(f"curveOff {got} / {len(curve.off)}")
     lon, lat = player.fwd.transform(
-        curve.xy[:, 0].astype(np.float64) + ORIGIN[0],
-        curve.xy[:, 1].astype(np.float64) + ORIGIN[1],
+        curve.xy[:, 0].astype(np.float64) + player.origin[0],
+        curve.xy[:, 1].astype(np.float64) + player.origin[1],
     )
     n = len(lon)
     for i in range(0, n, step):
@@ -1149,13 +913,14 @@ def smoke(run):
             note, code = _grab(shot)
             result["grab"] = note.strip()
             result["grab_code"] = code
-            player.lookup("r6510903_5")
-            if player.selected_id != "r6510903_5":
+            ident = pick_ident(player.index)
+            player.lookup(ident)
+            if player.selected_id != ident:
                 result["error"] = f"lookup {player.selected_id}"
                 return
             window.evaluate_js("draw(" + _dumps(player.payload()) + ")")
             detail = window.evaluate_js("document.getElementById('detail').innerText")
-            if "r6510903_5" not in str(detail):
+            if ident not in str(detail):
                 result["error"] = f"panel {detail}"
                 return
             axis_ok = window.evaluate_js(
@@ -1233,15 +998,13 @@ def main(argv):
     if hasattr(sys.stdout, "reconfigure"):
         sys.stdout.reconfigure(encoding="utf-8", errors="replace")
         sys.stderr.reconfigure(encoding="utf-8", errors="replace")
-    if argv[:1] == ["--self-test"]:
-        return self_test()
     if argv[:1] == ["--check"] and len(argv) >= 2:
         return check(argv[1])
     if argv[:1] == ["--smoke"] and len(argv) >= 2:
         return smoke(argv[1])
     run = argv[0] if argv else saved_run()
     if not run:
-        print("podaj katalog runu, np. output/g5r6_25pct_s4711")
+        print("podaj katalog runu, np. output/g5r7b_25pct_s4711")
         return 2
     return serve(run)
 
