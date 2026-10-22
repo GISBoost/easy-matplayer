@@ -163,11 +163,33 @@ def test_state_file(tmp_path):
     assert Path(json.loads(dest.read_text(encoding="utf-8"))["run"]) == tmp_path / "x"
 
 
-def test_page_has_no_foreign_tiles(player):
-    page = pl.render(player)
-    assert "tile.openstreetmap.org" not in page and "__BOOT__" not in page
-    basemap = player.boot()["basemap"]
-    assert basemap is None or str(basemap["url"]).startswith(pl.CARTO)
+def test_site_files(player, tmp_path):
+    index = player.write_site(tmp_path / "site")
+    site_dir = index.parent
+    boot = json.loads((site_dir / "boot.json").read_text(encoding="utf-8"))
+    assert boot["nLinks"] == 6 and boot["run"] == "mini" and boot["error"] is None
+    assert boot["basemap"] is None or str(boot["basemap"]["url"]).startswith(pl.CARTO)
+    assert (site_dir / "link_ll.bin").stat().st_size == 6 * 4 * 8
+    assert (site_dir / "link_type.bin").stat().st_size == 6
+    assert (site_dir / "vendor" / "leaflet.js").is_file()
+    assert not (site_dir / "curve_off.bin").exists(), "mini-run nie ma łamanych"
+    assert "tile.openstreetmap.org" not in index.read_text(encoding="utf-8")
+
+
+def test_site_curves(player, tmp_path):
+    import numpy as np
+
+    from viz_player import curves
+
+    player.curve = curves.Curves(
+        np.array([0, 3, 3, 3, 3, 3, 3], dtype=np.int32),
+        np.array([[0, 0], [50, 0], [100, 0]], dtype=np.float32),
+    )
+    site_dir = player.write_site(tmp_path / "site").parent
+    assert player.boot()["nCurve"] == 3
+    assert (site_dir / "curve_off.bin").stat().st_size == 7 * 4
+    assert (site_dir / "curve_lon.bin").stat().st_size == 3 * 8
+    assert (site_dir / "curve_lat.bin").stat().st_size == 3 * 8
 
 
 def test_generic_check_passes(run_dir):

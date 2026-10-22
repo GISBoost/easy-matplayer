@@ -21,7 +21,7 @@ from pyproj import Transformer
 
 import viz_engine
 
-from viz_player import curves
+from viz_player import curves, site
 
 HERE = Path(__file__).resolve().parent
 STATE = ROOT / "output" / "viz_player_state.json"
@@ -560,44 +560,61 @@ class Player:
         self.selected_link = None
         self.follow = True
 
+    def link_lonlat(self):
+        xy = self.index.link_xy.astype(np.float64)
+        ox, oy = self.origin
+        lon1, lat1 = self.fwd.transform(xy[:, 0] + ox, xy[:, 1] + oy)
+        lon2, lat2 = self.fwd.transform(xy[:, 2] + ox, xy[:, 3] + oy)
+        return lon1, lat1, lon2, lat2
+
     def boot(self):
+        """Małe metadane okna (boot.json). Tablice linków i łamanych: boot_arrays()."""
         base = {
             "error": self.error, "run": self.run_name, "t": self.t,
             "tMin": 0, "tMax": 1, "sample": "brak", "basemap": self.basemap,
-            "bounds": None, "types": [], "classes": [], "links": [],
+            "bounds": None, "types": [], "classes": [], "nLinks": 0, "nCurve": 0,
         }
         if self.index is None:
             return base
-        xy = self.index.link_xy
-        ox, oy = self.origin
-        lon1, lat1 = self.fwd.transform(xy[:, 0].astype(np.float64) + ox, xy[:, 1].astype(np.float64) + oy)
-        lon2, lat2 = self.fwd.transform(xy[:, 2].astype(np.float64) + ox, xy[:, 3].astype(np.float64) + oy)
-        stack = np.column_stack((
-            np.round(lon1, 6), np.round(lat1, 6), np.round(lon2, 6), np.round(lat2, 6),
-            self.link_type.astype(np.int16),
-        ))
-        south = float(min(lat1.min(), lat2.min()))
-        north = float(max(lat1.max(), lat2.max()))
-        west = float(min(lon1.min(), lon2.min()))
-        east = float(max(lon1.max(), lon2.max()))
+        lon1, lat1, lon2, lat2 = self.link_lonlat()
         base.update({
             "error": None,
             "tMin": float(self.index.meta["t_min"]),
             "tMax": float(self.index.meta["t_max"]),
             "sample": self.sample,
-            "bounds": [[south, west], [north, east]],
+            "bounds": [
+                [float(min(lat1.min(), lat2.min())), float(min(lon1.min(), lon2.min()))],
+                [float(max(lat1.max(), lat2.max())), float(max(lon1.max(), lon2.max()))],
+            ],
             "types": self.type_names,
             "classes": [
                 {"letter": letter, "name": self.class_name[letter], "on": letter in self.classes}
                 for letter in self.chip_letters
             ],
-            "links": stack.tolist(),
-            "curveOff": [],
-            "curveLon": [],
-            "curveLat": [],
-            "curveWait": bool(self.curve is not None and self.curve.n_bent),
+            "nLinks": int(len(lon1)),
+            "nCurve": int(len(self.curve.xy)) if self.curve is not None and self.curve.n_bent else 0,
         })
         return base
+
+    def boot_arrays(self):
+        if self.index is None:
+            return {}
+        lon1, lat1, lon2, lat2 = self.link_lonlat()
+        arrays = {
+            "link_ll": np.column_stack((lon1, lat1, lon2, lat2)),
+            "link_type": self.link_type.astype(np.uint8),
+        }
+        if self.curve is not None and self.curve.n_bent:
+            lon, lat = self.fwd.transform(
+                self.curve.xy[:, 0].astype(np.float64) + self.origin[0],
+                self.curve.xy[:, 1].astype(np.float64) + self.origin[1],
+            )
+            arrays.update({"curve_off": self.curve.off, "curve_lon": np.asarray(lon), "curve_lat": np.asarray(lat)})
+        return arrays
+
+    def write_site(self, dest=None):
+        dest = dest or self.run_dir / "viz" / "site"
+        return site.write_site(dest, self.boot(), self.boot_arrays())
 
 
 class Api:
@@ -631,18 +648,6 @@ class Api:
         return {"ok": True}
 
 
-def render(player):
-    shell = (HERE / "shell.html").read_text(encoding="utf-8")
-    css = (HERE / "vendor" / "leaflet.css").read_text(encoding="utf-8")
-    js = (HERE / "vendor" / "leaflet.js").read_text(encoding="utf-8")
-    boot = json.dumps(player.boot(), ensure_ascii=False, separators=(",", ":")).replace("<", "\\u003c")
-    return (
-        shell.replace("/*__LEAFLET_CSS__*/", css)
-        .replace("/*__LEAFLET_JS__*/", js)
-        .replace("__BOOT__", boot)
-    )
-
-
 def pick_ident(index):
     """Pierwsze id, które jedzie i ma czynności (do sprawdzeń bez wiedzy o runie)."""
     both = np.flatnonzero((np.diff(index.act_off) > 0) & (np.diff(index.track_off) > 0))
@@ -668,7 +673,7 @@ def check(run):
     t0, t1 = float(meta["t_min"]), float(meta["t_max"])
     need(player.sample == sample_label(meta.get("sample_size")), f"próbka {player.sample}")
     need(abs(player.t - (START if t0 <= START <= t1 else t0)) < 1e-6, f"start {player.t}")
-    need(len(boot["links"]) == int(meta["n_links"]), f"linki {len(boot['links'])} {meta['n_links']}")
+    need(boot["nLinks"] == int(meta["n_links"]), f"linki {boot['nLinks']} {meta['n_links']}")
     south, west = boot["bounds"][0]
     north, east = boot["bounds"][1]
     need(abs(lat - (south + north) / 2) < 0.02 and abs(lon - (west + east) / 2) < 0.02,
@@ -713,7 +718,7 @@ def check(run):
     _note(
         player.run_dir,
         f"check OK run={player.run_name} start={clock(player.t)} probka={player.sample} podklad={base} "
-        f"okno6_9={window['n']} szczyt={peak['n']} bez_{biggest}={thin['n']} os={len(axis)} linki={len(boot['links'])} "
+        f"okno6_9={window['n']} szczyt={peak['n']} bez_{biggest}={thin['n']} os={len(axis)} linki={boot['nLinks']} "
         f"lamane={0 if player.curve is None else player.curve.n_bent} id={ident}",
     )
     return 0
@@ -773,40 +778,6 @@ Write-Output "OK $w $h"
         Path(ps1).unlink(missing_ok=True)
 
 
-def _fnums(values):
-    return ",".join(f"{float(v):.6f}" for v in values)
-
-
-def _push_curves(window, player):
-    """Współrzędne łamanych idą po starcie okna. NavigateToString ucina stronę przy ~1,5 MB."""
-    curve = player.curve
-    if player.index is None or curve is None or curve.n_bent == 0:
-        window.evaluate_js("window.curvesReady = true; dirty = true;")
-        return
-    window.evaluate_js("boot.curveOff=[];boot.curveLon=[];boot.curveLat=[];")
-    step = 2000
-    for i in range(0, len(curve.off), step):
-        part = ",".join(str(int(v)) for v in curve.off[i:i + step])
-        window.evaluate_js("boot.curveOff.push(" + part + ");")
-    got = int(window.evaluate_js("boot.curveOff.length") or 0)
-    if got != len(curve.off):
-        raise RuntimeError(f"curveOff {got} / {len(curve.off)}")
-    lon, lat = player.fwd.transform(
-        curve.xy[:, 0].astype(np.float64) + player.origin[0],
-        curve.xy[:, 1].astype(np.float64) + player.origin[1],
-    )
-    n = len(lon)
-    for i in range(0, n, step):
-        sl = slice(i, i + step)
-        window.evaluate_js(
-            "boot.curveLon.push(" + _fnums(lon[sl]) + ");boot.curveLat.push(" + _fnums(lat[sl]) + ");"
-        )
-    got = int(window.evaluate_js("boot.curveLon.length") or 0)
-    if got != n:
-        raise RuntimeError(f"curveLon {got} / {n}")
-    window.evaluate_js("window.paintedCurves = 0; window.curvesReady = true; linkKey = ''; dirty = true;")
-
-
 def _wait_js(window, expr, seconds=8):
     deadline = time.perf_counter() + seconds
     value = None
@@ -826,7 +797,7 @@ def smoke(run):
         return 1
     import webview
     window = webview.create_window(
-        "easy-matviz", html=render(player), js_api=Api(player),
+        "easy-matviz", url=str(player.write_site()), js_api=Api(player),
         width=1440, height=900, background_color="#121418", text_select=True,
     )
     shot = ROOT / "docs" / "research" / "wizualizer_okno.png"
@@ -838,11 +809,9 @@ def smoke(run):
             if not ready:
                 result["error"] = "mapa nie wstała"
                 return
-            _push_curves(window, player)
-            if not _wait_js(window, "window.paintedCurves > 100", seconds=15):
-                result["error"] = "namalowane łamane " + str(window.evaluate_js(
-                    "[window.paintedCurves, window.drawError, window.curvesReady]"
-                ))
+            n_curve = int(window.evaluate_js("boot.curveLon ? boot.curveLon.length : 0") or 0)
+            if n_curve != player.boot()["nCurve"]:
+                result["error"] = f"łamane w oknie {n_curve}, w indeksie {player.boot()['nCurve']}"
                 return
             opened = _wait_js(window, "document.getElementById('clock').textContent === '06:00:00'", seconds=15)
             if not opened:
@@ -951,7 +920,7 @@ def smoke(run):
     storage = ROOT / "output" / "viz_player_webview"
     storage.mkdir(parents=True, exist_ok=True)
     webview.start(
-        body, gui="edgechromium", private_mode=False,
+        body, gui="edgechromium", private_mode=False, http_server=True,
         storage_path=str(storage), user_agent="easy-matviz",
     )
     if not result.get("ok"):
@@ -973,14 +942,12 @@ def serve(run):
     player.open(run)
     import webview
     window = webview.create_window(
-        "easy-matviz", html=render(player), js_api=Api(player),
+        "easy-matviz", url=str(player.write_site()), js_api=Api(player),
         width=1440, height=900, background_color="#121418", text_select=True,
     )
 
     def kick():
-        if _wait_js(window, "window.mapReady === true && window.apiReady === true", seconds=20):
-            _push_curves(window, player)
-        else:
+        if not _wait_js(window, "window.mapReady === true && window.apiReady === true", seconds=20):
             _note(player.run_dir, "FAIL okno nie wstało")
 
     where = "wyłączony" if player.basemap is None else "włączony"
@@ -988,7 +955,7 @@ def serve(run):
     storage = ROOT / "output" / "viz_player_webview"
     storage.mkdir(parents=True, exist_ok=True)
     webview.start(
-        kick, gui="edgechromium", private_mode=False,
+        kick, gui="edgechromium", private_mode=False, http_server=True,
         storage_path=str(storage), user_agent="easy-matviz",
     )
     return 0

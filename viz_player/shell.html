@@ -3,8 +3,8 @@
 <head>
 <meta charset="utf-8">
 <title>easy-matviz</title>
+<link rel="stylesheet" href="vendor/leaflet.css">
 <style>
-/*__LEAFLET_CSS__*/
 html, body { margin: 0; height: 100%; background: #121418; color: #e7e9ee;
   font-family: "Segoe UI", sans-serif; font-size: 14px; }
 body { display: grid; grid-template-columns: 1fr 320px; grid-template-rows: 1fr 52px; overflow: hidden; }
@@ -90,10 +90,9 @@ body.panel-off #panel { display: none; }
   <span id="base">Podkład wyłączony.</span>
   <button id="hide" type="button">ukryj</button>
 </div>
-<script id="boot" type="application/json">__BOOT__</script>
-<script>/*__LEAFLET_JS__*/</script>
+<script src="vendor/leaflet.js"></script>
 <script>
-const boot = JSON.parse(document.getElementById("boot").textContent);
+let boot = {};
 const VMAX = 14;
 const ROAD = {
   motorway: "#d5dde6", motorway_link: "#d5dde6",
@@ -102,7 +101,7 @@ const ROAD = {
   tertiary: "#7d8694", tertiary_link: "#7d8694",
   boundary_turnaround: "#2a3038"
 };
-let t = boot.t, tMin = boot.tMin, tMax = boot.tMax;
+let t = 0, tMin = 0, tMax = 1;
 let playing = false, mult = 1, scrub = false, busy = false, dirty = false;
 let lastPayload = null, linkKey = "", linkCanvas = document.createElement("canvas");
 window.hold = false;
@@ -111,8 +110,6 @@ window.drawError = "";
 window.mapReady = false;
 window.apiReady = false;
 window.mapSize = "";
-window.paintedCurves = 0;
-window.curvesReady = !boot.curveWait;
 
 function clock(sec) {
   sec = Math.max(0, Math.floor(sec));
@@ -142,30 +139,52 @@ function roadWidth(name) {
   return 1;
 }
 
-document.getElementById("run").textContent = boot.run || "";
-document.getElementById("sample").textContent = "próbka " + boot.sample;
-document.getElementById("clock").textContent = clock(t);
 const slider = document.getElementById("slider");
-slider.min = tMin;
-slider.max = tMax;
-slider.step = "1";
-slider.value = String(t);
-if (boot.basemap) document.getElementById("base").hidden = true;
-
 const chips = document.getElementById("chips");
-(boot.classes || []).forEach((c) => {
-  const b = document.createElement("button");
-  b.type = "button";
-  b.className = "chip" + (c.on ? " on" : "");
-  b.dataset.letter = c.letter;
-  b.textContent = c.name;
-  b.addEventListener("click", () => {
-    b.classList.toggle("on");
-    const on = [...chips.querySelectorAll(".chip.on")].map((x) => x.dataset.letter).join("");
-    py().then((api) => api.classes(on)).then(() => { dirty = true; });
+function applyBoot() {
+  t = boot.t;
+  tMin = boot.tMin;
+  tMax = boot.tMax;
+  document.getElementById("run").textContent = boot.run || "";
+  document.getElementById("sample").textContent = "próbka " + boot.sample;
+  document.getElementById("clock").textContent = clock(t);
+  slider.min = tMin;
+  slider.max = tMax;
+  slider.step = "1";
+  slider.value = String(t);
+  if (boot.basemap) document.getElementById("base").hidden = true;
+  (boot.classes || []).forEach((c) => {
+    const b = document.createElement("button");
+    b.type = "button";
+    b.className = "chip" + (c.on ? " on" : "");
+    b.dataset.letter = c.letter;
+    b.textContent = c.name;
+    b.addEventListener("click", () => {
+      b.classList.toggle("on");
+      const on = [...chips.querySelectorAll(".chip.on")].map((x) => x.dataset.letter).join("");
+      py().then((api) => api.classes(on)).then(() => { dirty = true; });
+    });
+    chips.appendChild(b);
   });
-  chips.appendChild(b);
-});
+}
+
+// boot.json to małe metadane; tablice (linki, łamane) idą jako pliki binarne tego samego serwera.
+async function loadBoot() {
+  const get = async (name, kind) => {
+    const res = await fetch(name);
+    if (!res.ok) throw new Error(name + " " + res.status);
+    return kind === "json" ? res.json() : new kind(await res.arrayBuffer());
+  };
+  boot = await get("boot.json", "json");
+  if (boot.error) return;
+  boot.linkLL = await get("link_ll.bin", Float64Array);
+  boot.linkType = await get("link_type.bin", Uint8Array);
+  if (boot.nCurve) {
+    boot.curveOff = await get("curve_off.bin", Int32Array);
+    boot.curveLon = await get("curve_lon.bin", Float64Array);
+    boot.curveLat = await get("curve_lat.bin", Float64Array);
+  }
+}
 
 const STAY_NAME = {home: "dom", work: "praca", tlo_start: "tło", tlo_end: "tło"};
 function segName(seg) {
@@ -280,8 +299,8 @@ function linkPoints(i) {
     for (let k = a; k < b; k++) pts.push(map.latLngToContainerPoint([boot.curveLat[k], boot.curveLon[k]]));
     return pts;
   }
-  const lk = boot.links[i];
-  return [map.latLngToContainerPoint([lk[1], lk[0]]), map.latLngToContainerPoint([lk[3], lk[2]])];
+  const ll = boot.linkLL, k = 4 * i;
+  return [map.latLngToContainerPoint([ll[k + 1], ll[k]]), map.latLngToContainerPoint([ll[k + 3], ll[k + 2]])];
 }
 function offScreen(pts, w, h, margin) {
   let left = true, right = true, above = true, below = true;
@@ -313,19 +332,16 @@ function paintLinks() {
   g.lineJoin = "round";
   const groups = new Map();
   const w = size.x, h = size.y, margin = 48;
-  const links = boot.links, types = boot.types;
-  let bent = 0;
-  for (let i = 0; i < links.length; i++) {
+  const types = boot.types;
+  for (let i = 0; i < boot.nLinks; i++) {
     const pts = linkPoints(i);
-    if (pts.length >= 3) bent++;
     if (offScreen(pts, w, h, margin)) continue;
-    const name = types[links[i][4]] || "";
+    const name = types[boot.linkType[i]] || "";
     const style = roadColor(name) + "|" + roadWidth(name);
     let bucket = groups.get(style);
     if (!bucket) { bucket = []; groups.set(style, bucket); }
     bucket.push(pts);
   }
-  window.paintedCurves = bent;
   groups.forEach((rows, style) => {
     const parts = style.split("|");
     g.strokeStyle = parts[0];
@@ -350,7 +366,7 @@ function draw(payload) {
     g.setTransform(dpr, 0, 0, dpr, 0, 0);
     paintLinks();
     g.drawImage(linkCanvas, 0, 0, size.x, size.y);
-    if (payload.link != null && boot.links[payload.link]) {
+    if (payload.link != null && payload.link < boot.nLinks) {
       const pts = linkPoints(payload.link);
       g.strokeStyle = "#7eb6ff";
       g.lineWidth = 3;
@@ -415,7 +431,7 @@ function py() {
 }
 function pull() {
   const api = window.pywebview && window.pywebview.api;
-  if (window.hold || busy || !window.curvesReady || !api || !api.frame) return;
+  if (window.hold || busy || !map || !api || !api.frame) return;
   busy = true;
   const sent = t;
   let pending;
@@ -541,7 +557,7 @@ function bootMap() {
   });
 }
 window.addEventListener("pywebviewready", () => { window.apiReady = true; dirty = true; });
-bootMap();
+loadBoot().then(() => { applyBoot(); bootMap(); }).catch((err) => { window.drawError = String(err); });
 requestAnimationFrame(loop);
 </script>
 </body>
