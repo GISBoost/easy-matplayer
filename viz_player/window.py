@@ -5,15 +5,21 @@
   uv run --group viz python -m viz_player --smoke output/<run>       automat okna (zrzut do output/<run>/viz/)
 Testy: uv run --group viz pytest viz_player/tests
 """
+import base64
 import json
 import mimetypes
 import sys
+import threading
 import time
+import uuid
+from pathlib import Path
 
 import numpy as np
 
-from viz_player import check, grab
+from viz_player import check, grab, ogc
 from viz_player.player import ROOT, Player, clock, note, pick_ident, save_state, saved_run
+
+SERVICES = ROOT / "output" / "viz_player_services.json"
 
 # MapLibre 6 to moduły ES; przeglądarka odrzuca je bez typu JavaScript, a rejestr Windows bywa pusty
 mimetypes.add_type("text/javascript", ".mjs")
@@ -22,14 +28,93 @@ mimetypes.add_type("text/javascript", ".mjs")
 class Api:
     """Mostek JS: klatkę liczy klient (engine.js), Python opisuje zaznaczenie. Bez własnego stanu."""
 
-    def __init__(self, player, site=None):
+    def __init__(self, player, site=None, services=None):
         # pola z _ : pywebview wystawia do JS tylko publiczne atrybuty
         self._player = player
+        self._services_file = Path(services) if services else SERVICES
+        self._lock = threading.Lock()
+        self._caps = {}
+        self._services = self._load_services()
         self._site = site or player.run_dir / "viz" / "site"  # katalog, z którego okno ładuje stronę
         self._window = None
 
     def attach(self, window):
         self._window = window
+
+    # ---- podkłady WMS / WMTS (jak „dodaj warstwę” w QGIS): lista usług jest globalna dla użytkownika, nie dla runu ----
+    def _load_services(self):
+        try:
+            return json.loads(self._services_file.read_text(encoding="utf-8"))
+        except Exception:
+            return []
+
+    def _save_services(self):
+        self._services_file.parent.mkdir(parents=True, exist_ok=True)
+        self._services_file.write_text(json.dumps(self._services, ensure_ascii=False, indent=1) + "\n", encoding="utf-8")
+
+    def ogc_connect(self, url):
+        """GetCapabilities: lista warstw z adnotacją, czy da się je narysować w tej mapie."""
+        try:
+            cap = ogc.capabilities(url)
+        except ogc.OgcError as exc:
+            return {"status": "error", "message": str(exc)}
+        self._caps[url.strip()] = cap
+        layers = []
+        for layer in cap["layers"]:
+            row = {"name": layer["name"], "title": layer["title"], "path": layer["path"]}
+            try:
+                spec = ogc.make_spec(cap, layer["name"])
+                how = {"3857": "", "4326": " (przeliczany ze stopni)", "proj": " (przeliczany)"}.get(spec.get("mode", "3857"), "")
+                row.update(ok=True, note=(spec.get("crs") or "EPSG:3857") + how)
+            except ogc.OgcError as exc:
+                row.update(ok=False, note=str(exc))
+            layers.append(row)
+        return {"status": "ok", "kind": cap["kind"], "title": cap["title"], "layers": layers}
+
+    def ogc_add(self, name, url, layer):
+        cap = self._caps.get(url.strip())
+        try:
+            if cap is None:
+                cap = ogc.capabilities(url)
+            spec = ogc.make_spec(cap, layer)
+        except ogc.OgcError as exc:
+            return {"status": "error", "message": str(exc)}
+        entry = {"id": uuid.uuid4().hex[:8], "name": (name or "").strip() or layer, "url": url.strip(), "spec": spec, "on": True, "opacity": 1.0}
+        with self._lock:
+            self._services.append(entry)
+            self._save_services()
+        return {"status": "ok", "service": entry}
+
+    def ogc_list(self):
+        return list(self._services)
+
+    def ogc_remove(self, ident):
+        with self._lock:
+            self._services = [s for s in self._services if s["id"] != ident]
+            self._save_services()
+        return True
+
+    def ogc_set(self, ident, on, opacity):
+        with self._lock:
+            for s in self._services:
+                if s["id"] == ident:
+                    s["on"] = bool(on)
+                    s["opacity"] = min(1.0, max(0.0, float(opacity)))
+            self._save_services()
+        return True
+
+    def ogc_tile(self, ident, z, x, y):
+        """Kafelek z/x/y usługi jako base64; błąd jako {"error": zdanie}."""
+        spec = next((s["spec"] for s in self._services if s["id"] == ident), None)
+        if spec is None:
+            return {"error": "nieznana usługa"}
+        try:
+            mime, body = ogc.tile(spec, int(z), int(x), int(y))
+        except ogc.OgcError as exc:
+            return {"error": str(exc)}
+        except Exception as exc:
+            return {"error": f"{type(exc).__name__}: {exc}"}
+        return {"mime": mime, "b64": base64.b64encode(body).decode("ascii")}
 
     def describe(self, t, selected, veh, now):
         return self._player.describe(t, selected, veh, now)
@@ -78,6 +163,48 @@ def _wait_js(window, expr, seconds=8):
     return value
 
 
+def _fake_wms():
+    """Lokalna usługa WMS do smoke: opis z jedną warstwą w EPSG:3857, kafelki to jednolity PNG. Zwraca (adres, lista GetMap, zamknięcie)."""
+    import http.server
+    import io
+    import threading
+    import urllib.parse
+
+    from PIL import Image
+
+    png = io.BytesIO()
+    Image.new("RGBA", (256, 256), (255, 0, 160, 255)).save(png, "PNG")
+    requests = []
+
+    class Handler(http.server.BaseHTTPRequestHandler):
+        def do_GET(self):
+            q = {k.upper(): v[0] for k, v in urllib.parse.parse_qs(urllib.parse.urlsplit(self.path).query).items()}
+            if q.get("REQUEST") == "GetCapabilities":
+                body = (
+                    '<?xml version="1.0"?><WMS_Capabilities version="1.3.0" xmlns="http://www.opengis.net/wms" xmlns:xlink="http://www.w3.org/1999/xlink">'
+                    "<Service><Title>Lokalny test</Title></Service><Capability><Request><GetMap><Format>image/png</Format>"
+                    f'<DCPType><HTTP><Get><OnlineResource xlink:href="http://127.0.0.1:{self.server.server_port}/wms?"/></Get></HTTP></DCPType></GetMap></Request>'
+                    "<Layer><Title>Korzeń</Title><Layer><Name>rozowa</Name><Title>Różowa warstwa</Title><CRS>EPSG:3857</CRS></Layer></Layer>"
+                    "</Capability></WMS_Capabilities>"
+                ).encode("utf-8")
+                ctype = "text/xml"
+            else:
+                requests.append(q)
+                body, ctype = png.getvalue(), "image/png"
+            self.send_response(200)
+            self.send_header("Content-Type", ctype)
+            self.send_header("Content-Length", str(len(body)))
+            self.end_headers()
+            self.wfile.write(body)
+
+        def log_message(self, *args):
+            pass
+
+    server = http.server.ThreadingHTTPServer(("127.0.0.1", 0), Handler)
+    threading.Thread(target=server.serve_forever, daemon=True).start()
+    return f"http://127.0.0.1:{server.server_port}/wms", requests, server.shutdown
+
+
 def smoke(run):
     """Automat okna: prawdziwy WebView2, strona z lokalnego HTTP, klik w chip, szukanie id, Esc."""
     player = Player()
@@ -86,7 +213,10 @@ def smoke(run):
         note(player.run_dir, f"FAIL {player.error}")
         return 1
     import webview
-    api = Api(player)
+    services_file = player.run_dir / "viz" / "smoke_services.json"
+    services_file.unlink(missing_ok=True)
+    api = Api(player, services=services_file)
+    wms_url, wms_requests, wms_stop = _fake_wms()
     window = webview.create_window(
         "easy-matviz smoke", url=str(player.write_site()), js_api=api,
         width=1440, height=900, background_color="#121418", text_select=True,
@@ -299,6 +429,30 @@ def smoke(run):
             if js("selected === null && follow === false") is not True:
                 result["error"] = "escape nie czyści zaznaczenia"
                 return
+            # podkład WMS jak w QGIS: dialog, połączenie, wybór warstwy, kafelki z usługi (lokalna atrapa)
+            js("document.getElementById('svc-add').click()")
+            js(f"document.getElementById('svc-url').value = {json.dumps(wms_url)}; document.getElementById('svc-form').requestSubmit();")
+            if not _wait_js(window, "document.querySelectorAll('#svc-layers input:not(:disabled)').length === 1", 20):
+                result["error"] = f"wms: lista warstw {js('document.getElementById(\"svc-msg\").textContent')}"
+                return
+            js("document.querySelector('#svc-layers input').click(); document.getElementById('svc-ok').click();")
+            if not _wait_js(window, "window.svcLayerIds && window.svcLayerIds.length === 1 && document.getElementById('svc-dlg').hidden", 20):
+                result["error"] = f"wms: warstwa nie dodana {js('window.drawError')}"
+                return
+            js("map.jumpTo({zoom: 12}); 0")
+            if not _wait_js(window, "map.isSourceLoaded(window.svcLayerIds[0])", 30) or not wms_requests:
+                result["error"] = f"wms: brak kafelków, zapytań {len(wms_requests)}"
+                return
+            q = wms_requests[0]
+            if q.get("CRS") != "EPSG:3857" or q.get("LAYERS") != "rozowa" or len(q.get("BBOX", "").split(",")) != 4:
+                result["error"] = f"wms: zapytanie {q}"
+                return
+            js("document.querySelector('#svc-list .svc input[type=checkbox]').click()")
+            if js("map.getLayoutProperty(window.svcLayerIds[0], 'visibility')") != "none":
+                result["error"] = "wms: wyłączenie nie chowa warstwy"
+                return
+            js("document.querySelector('#svc-list .svc input[type=checkbox]').click()")
+            result["wms_tiles"] = len(wms_requests)
             # „otwórz run”: zły katalog zostawia bieżący run i pisze zdanie, drugi run podmienia stronę, powrót przywraca
             home = player.run_name
             js("window._or = undefined; window.openRunPath('C:/nie/ma/takiego/runu').then(function(r){window._or = r;});")
@@ -314,11 +468,20 @@ def smoke(run):
                         result["error"] = f"otwórz run {want}: {js('boot.run')} {js('window.drawError')} msg={js('document.getElementById(\"runmsg\").textContent')}"
                         return
                 result["switched"] = other.name
+            if js("window.svcLayerIds && window.svcLayerIds.length") != 1:
+                result["error"] = f"wms: po przeładowaniu strony usługa zniknęła {js('window.svcLayerIds')}"
+                return
+            js("document.querySelector('#svc-list .svc button').click()")
+            if not _wait_js(window, "window.svcLayerIds.length === 0", 10) \
+                    or json.loads(services_file.read_text(encoding="utf-8")) != []:
+                result["error"] = "wms: usunięcie nie czyści listy"
+                return
             result.update(ok=True, n=len(ref), thin=thin_n, clock=clock(t_win), size=size, key=thin_key)
         except Exception:
             import traceback
             result["error"] = traceback.format_exc()
         finally:
+            wms_stop()
             window.destroy()
 
     storage = ROOT / "output" / "viz_player_webview"
@@ -334,7 +497,7 @@ def smoke(run):
     note(
         player.run_dir,
         f"smoke OK n={result['n']} bez_{result['key']}={result['thin']} zegar={result['clock']} "
-        f"mapa={result['size']} klient_vs_python_max={result['worst_m']:.2f} m budynki3D={result.get('buildings', 'brak')} otwarcie_runu={result.get('switched', 'brak')} {png}",
+        f"mapa={result['size']} klient_vs_python_max={result['worst_m']:.2f} m budynki3D={result.get('buildings', 'brak')} otwarcie_runu={result.get('switched', 'brak')} wms_kafelki={result.get('wms_tiles', 'brak')} {png}",
     )
     return 0
 

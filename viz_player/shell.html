@@ -40,6 +40,28 @@ body { display: grid; grid-template-columns: 1fr 320px; grid-template-rows: 1fr 
 #chips { display: flex; flex-wrap: wrap; gap: 6px; margin: 14px 0; }
 .chip { background: transparent; color: #9aa3b2; border: 1px solid #2a3140; border-radius: 999px; padding: 4px 10px; }
 .chip.on { color: #e7e9ee; border-color: #7eb6ff; }
+#svc { margin: 0 0 14px; display: flex; flex-direction: column; gap: 6px; }
+#svc-list { display: flex; flex-direction: column; gap: 6px; }
+#svc-list .svc { display: grid; grid-template-columns: auto 1fr auto; gap: 6px 8px; align-items: center; color: #e7e9ee; }
+#svc-list .svc span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+#svc-list .svc input[type=range] { grid-column: 2; accent-color: #7eb6ff; width: 100%; }
+#svc-list .svc button { background: transparent; color: #9aa3b2; border: 0; cursor: pointer; font: inherit; }
+#svc .chip { align-self: flex-start; }
+#svc-dlg { position: fixed; inset: 0; background: rgba(0,0,0,.55); display: flex; align-items: center; justify-content: center; z-index: 10; }
+#svc-dlg[hidden] { display: none; }
+#svc-form { background: #1b1f27; border: 1px solid #2a3140; border-radius: 10px; padding: 18px; width: min(560px, 92vw);
+  max-height: 86vh; display: flex; flex-direction: column; gap: 10px; overflow: auto; }
+#svc-form h2 { margin: 0; font-size: 15px; }
+#svc-form label { display: flex; flex-direction: column; gap: 4px; color: #9aa3b2; font-size: 12px; }
+#svc-form input[type=text] { background: #121418; color: #e7e9ee; border: 1px solid #2a3140; border-radius: 6px; padding: 8px; font: inherit; }
+#svc-form .row { display: flex; gap: 10px; align-items: center; }
+#svc-form .row.end { justify-content: flex-end; }
+#svc-form button { background: #121418; color: #e7e9ee; border: 1px solid #2a3140; border-radius: 6px; padding: 6px 12px; font: inherit; cursor: pointer; }
+#svc-form button:disabled { opacity: .45; cursor: default; }
+#svc-layers { display: flex; flex-direction: column; gap: 2px; overflow: auto; max-height: 36vh; border: 1px solid #2a3140; border-radius: 6px; padding: 6px; }
+#svc-layers label { flex-direction: row; align-items: baseline; gap: 8px; color: #e7e9ee; font-size: 13px; cursor: pointer; }
+#svc-layers label.bad { color: #6b7385; cursor: default; }
+#svc-layers small { color: #9aa3b2; }
 #detail { line-height: 1.45; }
 #detail div { margin: 0; }
 #axis { margin-top: 14px; }
@@ -95,6 +117,11 @@ body.panel-off #panel { display: none; }
     <label><input type="checkbox" id="models"> modele 3D pojazdów</label>
     <button id="carcolor" type="button" class="chip">kolor auta: prędkość</button>
   </div>
+  <div id="svc">
+    <div class="muted">Podkłady WMS / WMTS</div>
+    <div id="svc-list"></div>
+    <button id="svc-add" type="button" class="chip">dodaj WMS / WMTS…</button>
+  </div>
   <div id="detail" class="muted">Kliknij auto albo drogę.</div>
   <div id="axis" hidden>
     <div id="axis-bar"></div>
@@ -120,6 +147,16 @@ body.panel-off #panel { display: none; }
   <span id="curves"></span>
   <button id="three" type="button">3D</button>
   <button id="hide" type="button">ukryj</button>
+</div>
+<div id="svc-dlg" hidden>
+  <form id="svc-form">
+    <h2>Dodaj usługę WMS / WMTS</h2>
+    <label>Nazwa<input id="svc-name" type="text" autocomplete="off" spellcheck="false"></label>
+    <label>Adres usługi<input id="svc-url" type="text" autocomplete="off" spellcheck="false" placeholder="https://…/wms albo …/wmts"></label>
+    <div class="row"><button id="svc-connect" type="submit">połącz</button><span id="svc-msg" class="muted"></span></div>
+    <div id="svc-layers" hidden></div>
+    <div class="row end"><button id="svc-ok" type="button" disabled>dodaj warstwę</button><button id="svc-cancel" type="button">zamknij</button></div>
+  </form>
 </div>
 <script>
 // MapLibre 6 jest tylko ESM i wymaga WebGL2; błąd ładowania pokazuje bootMap().
@@ -760,6 +797,101 @@ document.getElementById("openrun").addEventListener("click", async () => {
   const r = await api.pick_run();
   if (r.status === "path") openRunPath(r.path);
 });
+// Podkłady WMS / WMTS: kafelki pobiera Python (CORS), MapLibre dostaje je przez protokół ogc://<id>/{z}/{x}/{y}
+let services = [], svcLoaded = false;
+function svcApi() { return window.pywebview && window.pywebview.api; }
+async function svcTile(params) {
+  const m = /^ogc:\/\/([^/]+)\/(\d+)\/(\d+)\/(\d+)/.exec(params.url);
+  const r = await svcApi().ogc_tile(m[1], +m[2], +m[3], +m[4]);
+  if (r.error) throw new Error(r.error);
+  return {data: await (await fetch("data:" + r.mime + ";base64," + r.b64)).arrayBuffer()};
+}
+function svcSync() {
+  if (!map || !svcLoaded) return;
+  const want = new Set(services.map((s) => "svc-" + s.id));
+  (map.getStyle().layers || []).forEach((l) => {
+    if (l.id.startsWith("svc-") && !want.has(l.id)) { map.removeLayer(l.id); map.removeSource(l.id); }
+  });
+  services.forEach((s) => {
+    const id = "svc-" + s.id;
+    if (!map.getSource(id)) {
+      map.addSource(id, {type: "raster", tiles: ["ogc://" + s.id + "/{z}/{x}/{y}"], tileSize: 256, maxzoom: 19, attribution: s.name});
+      map.addLayer({id, type: "raster", source: id});
+    }
+    map.setLayoutProperty(id, "visibility", s.on ? "visible" : "none");
+    map.setPaintProperty(id, "raster-opacity", s.opacity);
+  });
+  window.svcLayerIds = services.map((s) => "svc-" + s.id);
+}
+function svcRender() {
+  const box = document.getElementById("svc-list");
+  box.textContent = "";
+  services.forEach((s) => {
+    const row = document.createElement("div");
+    row.className = "svc";
+    const on = document.createElement("input");
+    on.type = "checkbox"; on.checked = s.on;
+    const name = document.createElement("span");
+    name.textContent = s.name; name.title = s.name;
+    const del = document.createElement("button");
+    del.type = "button"; del.textContent = "×"; del.title = "usuń";
+    const op = document.createElement("input");
+    op.type = "range"; op.min = "0"; op.max = "1"; op.step = "0.05"; op.value = String(s.opacity);
+    on.addEventListener("change", () => { s.on = on.checked; svcApi().ogc_set(s.id, s.on, s.opacity); svcSync(); });
+    op.addEventListener("input", () => { s.opacity = +op.value; svcApi().ogc_set(s.id, s.on, s.opacity); svcSync(); });
+    del.addEventListener("click", async () => { await svcApi().ogc_remove(s.id); services = services.filter((x) => x.id !== s.id); svcRender(); svcSync(); });
+    row.append(on, name, del, op);
+    box.append(row);
+  });
+}
+async function svcLoad() {
+  if (svcLoaded || !svcApi() || !map || !window.mapReady) return;
+  svcLoaded = true;
+  maplibregl.addProtocol("ogc", svcTile);
+  services = await svcApi().ogc_list();
+  svcRender();
+  svcSync();
+}
+window.svcLoad = svcLoad;
+const svcEl = (id) => document.getElementById(id);
+let svcCap = null;
+function svcOpen(on) { svcEl("svc-dlg").hidden = !on; if (on) svcEl("svc-name").focus(); }
+svcEl("svc-add").addEventListener("click", () => svcOpen(true));
+svcEl("svc-cancel").addEventListener("click", () => svcOpen(false));
+svcEl("svc-form").addEventListener("submit", async (ev) => {
+  ev.preventDefault();
+  const url = svcEl("svc-url").value.trim(), msg = svcEl("svc-msg"), list = svcEl("svc-layers");
+  svcEl("svc-ok").disabled = true;
+  list.hidden = true; list.textContent = "";
+  msg.textContent = "Łączę…";
+  const r = await svcApi().ogc_connect(url);
+  if (r.status !== "ok") { msg.textContent = r.message; return; }
+  svcCap = {url, title: r.title};
+  msg.textContent = (r.kind === "wmts" ? "WMTS" : "WMS") + (r.title ? ": " + r.title : "") + ", warstw: " + r.layers.length;
+  if (!svcEl("svc-name").value.trim()) svcEl("svc-name").value = r.title || "";
+  r.layers.forEach((l) => {
+    const lab = document.createElement("label");
+    lab.className = l.ok ? "" : "bad";
+    const radio = document.createElement("input");
+    radio.type = "radio"; radio.name = "svc-layer"; radio.value = l.name; radio.disabled = !l.ok;
+    radio.addEventListener("change", () => { svcEl("svc-ok").disabled = false; });
+    const text = document.createElement("span");
+    text.textContent = l.title;
+    const small = document.createElement("small");
+    small.textContent = l.note;
+    lab.append(radio, text, small);
+    list.append(lab);
+  });
+  list.hidden = false;
+});
+svcEl("svc-ok").addEventListener("click", async () => {
+  const pick = document.querySelector("#svc-layers input:checked");
+  if (!pick || !svcCap) return;
+  const r = await svcApi().ogc_add(svcEl("svc-name").value, svcCap.url, pick.value);
+  if (r.status !== "ok") { svcEl("svc-msg").textContent = r.message; return; }
+  services.push(r.service);
+  svcRender(); svcSync(); svcOpen(false);
+});
 document.getElementById("models").addEventListener("change", (ev) => { modelsOn = ev.target.checked; document.getElementById("credit").hidden = !modelsOn; dirty = true; });
 document.getElementById("carcolor").addEventListener("click", () => setCarColor(!carByClass));
 document.getElementById("osmroads").addEventListener("change", (ev) => setOsmRoads(ev.target.checked));
@@ -906,9 +1038,10 @@ async function bootMap() {
     window.mapSize = map.getContainer().clientWidth + "x" + map.getContainer().clientHeight;
     window.mapReady = true;
     dirty = true;
+    svcLoad();
   });
 }
-window.addEventListener("pywebviewready", () => { window.apiReady = true; dirty = true; });
+window.addEventListener("pywebviewready", () => { window.apiReady = true; dirty = true; svcLoad(); });
 loadBoot().then(() => { applyBoot(); return bootMap(); }).catch((err) => { window.drawError = String(err && err.stack || err); });
 requestAnimationFrame(loop);
 </script>

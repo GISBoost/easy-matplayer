@@ -402,6 +402,10 @@ Wydajność silnika klienta pod node (Kutno 100%, szczyt 6–9, 2834 aut, bez ł
 
 Przycisk „otwórz run…” (`#openrun` w `shell.html`): `Api.pick_run` pokazuje systemowy wybór folderu, `Api.open_path(path)` otwiera run w nowym `Player` i dopiero po sukcesie (indeks, łamane, `write_site`) zapisuje stan i podmienia model w `Api`. Strona potem robi `location.reload()`. Błędy (brak katalogu, brak eventów/sieci, wyjątek budowy) wracają jako `{status: "error", message}` i bieżący run zostaje. `Api` trzyma katalog strony (`_site`); okno z konsoli używa stałego `output/viz_player_site/`.
 
+## Podkłady WMS / WMTS
+
+`viz_player/ogc.py`: `capabilities(url)` (WMS 1.1.1/1.3.0 i WMTS 1.0.0, typ po korzeniu XML), `make_spec(cap, warstwa)` (samodzielny opis do kafelków, wybór układu: 3857 → stopnie → rzutowany), `tile(spec, z, x, y)`. Kafelki idą przez `Api.ogc_tile` jako base64; w `shell.html` protokół MapLibre `ogc://<id>/{z}/{x}/{y}` (`maplibregl.addProtocol`) i źródła `raster` o id `svc-<id>`. Lista usług w `output/viz_player_services.json` (poza gitem). Układ rzutowany: obraz w układzie usługi jest przepróbowany (najbliższy sąsiad) na siatkę kafelka 256 px; oś bbox z `pyproj.CRS.axis_info`.
+
 ## Podkład
 
 Bez `config/viz_basemap.local.toml` mapa jest tłem `#121418`, drogi i auta na kanwie, na pasku zdanie „Podkład wyłączony.” Klucz dokłada Michał później. Do tego czasu kafelków nie ma, i tak ma być.

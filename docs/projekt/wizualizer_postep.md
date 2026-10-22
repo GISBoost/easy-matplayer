@@ -28,8 +28,9 @@ Cel: 30 FPS na Kutnie 100%. Łódź tylko 10%. Test tylko na GPU właściciela (
 - [x] P2. Kolor dróg wg `type` (checkbox, legenda).
 - [x] P3. Kolor auta: prędkość / klasa (przełącznik, legenda).
 - [x] P4. Znacznik grot + półkole (`IconLayer`), skalowany z zoomem w granicach 0,25–3.
-- [ ] P5. Własny raster, WMS, otwieranie runu przez wybór folderu. Zrobione: P5a otwieranie runu (niżej). Czeka: P5b WMS, P5c własny raster.
+- [ ] P5. Własny raster, WMS, otwieranie runu przez wybór folderu. Zrobione: P5a otwieranie runu, P5b WMS / WMTS (niżej). Czeka: P5c własny raster.
 - [x] P5a. Przycisk „otwórz run…” (wybór folderu, błąd zostawia bieżący run, sukces przeładowuje stronę).
+- [x] P5b. Podkłady WMS / WMTS jak w QGIS: „dodaj WMS / WMTS…”, nazwa + adres, lista warstw z GetCapabilities, układ dopasowany automatycznie.
 
 Wcześniej zrobione (fundamenty, D24): origin z sieci, `person_id` i klasyfikator, bezstanowa klatka, podział kodu, testy pytest. Patrz PROGRESS 2026-10-22.
 
@@ -123,3 +124,11 @@ Wcześniej zrobione (fundamenty, D24): origin z sieci, `person_id` i klasyfikato
 - Przycisk „otwórz run…” nad polem id. `Api.pick_run` woła `create_file_dialog(FOLDER)` (start w `output/`), anulowanie nic nie zmienia. `Api.open_path` otwiera run w świeżym `Player`: brak katalogu albo `output_events.xml.zst` / `output_network.xml.zst` daje zdanie pod przyciskiem i bieżący run zostaje; sukces buduje indeks, łamane, eksport i budynki, zapisuje `output/viz_player_state.json` i strona się przeładowuje. Na czas otwierania panel pisze „Run się otwiera…” (nowy indeks 100% to ok. 80 s).
 - Okno uruchamiane z konsoli ładuje teraz stronę ze stałego katalogu `output/viz_player_site/`, bo przeładowanie wymaga tego samego adresu, a run się zmienia. Smoke i `--check` dalej piszą do `<run>/viz/site`.
 - Dowód: smoke w prawdziwym oknie: zły katalog daje błąd i `boot.run` bez zmiany, potem przełączenie na `g5r6_25pct_s4711` (nowa strona, mapa i rysunek wstają), powrót do R7b; 53 testy. **Nie sprawdzone automatem:** sam systemowy dialog wyboru folderu (klika go człowiek).
+
+### P5b: podkłady WMS / WMTS (2026-10-22)
+
+- Użytkownik: panel „Podkłady WMS / WMTS” → „dodaj WMS / WMTS…” → nazwa i adres → „połącz” (GetCapabilities, typ rozpoznany sam) → lista warstw (z adnotacją o układzie, warstwy nie do narysowania szare z powodem) → „dodaj warstwę”. Każda dodana usługa ma checkbox, suwak przezroczystości i ×. Lista jest globalna (`output/viz_player_services.json`), przeżywa zmianę runu i restart; podkłady leżą pod autami i drogami.
+- Kod: `viz_player/ogc.py` (stdlib + pyproj + Pillow, bez nowych zależności), `Api.ogc_*` w `window.py`, dialog i protokół MapLibre `ogc://<id>/{z}/{x}/{y}` w `shell.html`. **Kafelki pobiera Python**, nie przeglądarka (CORS), i oddaje je przez most; do usługi wysyłany jest tylko adres wpisany przez użytkownika, bez kluczy.
+- Układ współrzędnych dopasowuje się sam, w kolejności: EPSG:3857 i aliasy (900913, 102100…) wprost z `BBOX` kafelka; stopnie (CRS:84 / EPSG:4326, z poprawną kolejnością osi dla 1.3.0); każdy inny układ rzutowany (np. EPSG:2180) przez pyproj: pobierany jest obraz w tym układzie i przepróbowany na siatkę kafelka. Kolejność osi bbox dla WMS 1.3.0 z definicji układu (EPSG:2180 ma północ pierwszą). WMTS: zestaw kafelków w EPSG:3857, 256 px, poziomy dopasowane po mianowniku skali (identyfikatory macierzy dowolne), tryb KVP i REST.
+- Dowód: 9 testów `test_ogc.py` (opis WMS i WMTS, dziedziczenie CRS, wybór układu, bbox, oś, odrzucenie nie-obrazu, przepróbowanie 2180) i smoke w prawdziwym oknie z lokalną atrapą WMS: dialog, połączenie, wybór warstwy, 28 kafelków z poprawnym `CRS`/`LAYERS`/`BBOX`, ukrycie warstwy, przetrwanie przeładowania strony (zmiana runu), usunięcie. Prawdziwe publiczne usługi GUGiK (ortofotomapa WMS i WMTS, dane publiczne, bez klucza): kafelek 3857 vs ten sam kafelek przeliczony z 2180 korelacja 0,96 (średnia różnica 3,9/255), z 4326 korelacja 0,99; zrzut z okna: ortofoto leży zgodnie z siecią drogową (rondo w Kutnie na swoim miejscu).
+- Uwagi: publiczne usługi bywają chwilowo niedostępne (zrywane połączenie, losowe 404), więc `_fetch` próbuje 3 razy. Kafelek, który mimo to zawiedzie, zostaje pusty (MapLibre nie ponawia). Pasek na dole nadal pisze „Podkład wyłączony.” (to dawny podkład CARTO, osobna sprawa). Własny raster (P5c) czeka.
