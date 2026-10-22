@@ -175,6 +175,10 @@ Na R6, id `r6510903_5`, check z 2026-10-20 zapisał pięć bloków: dom `00:00:1
 
 Grot z półkolem (`IconLayer`, atlas w `makeMarker` w `shell.html`): podstawa 16 px, promień półkola 8 px, grot 32 px przed środkiem podstawy, ciężkie ×22/16. Rozmiar skaluje się z zoomem (`MARKER`: `2^(0,5·(zoom−15))`, granice 0,25–3), żeby po przybliżeniu nie był malutki, a w widoku gminy nie zlewał aut w plamę.
 
+## Modele 3D pojazdów
+
+Checkbox „modele 3D pojazdów”: `SimpleMeshLayer` z bryłami z kodu (`MESH` w `shell.html`, osobówka i ciężarówka, metry, przód w +x). Ikony chowają się od zoomu `MODEL_ICON_ZOOM` (16). Dane idą jako obiekty z akcesorami, bo binarne `getOrientation` jest w tej wersji deck.gl ignorowane. Kolor modelu jak ikony (prędkość albo klasa).
+
 ## Kolor auta
 
 Kolor to prędkość, ta sama rampa co w `blender/g6_load.py`. Skala kanwy kończy się na 14 m/s.

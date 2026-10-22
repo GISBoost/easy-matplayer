@@ -89,6 +89,7 @@ body.panel-off #panel { display: none; }
   <div id="chips"></div>
   <div id="opts">
     <label><input type="checkbox" id="osmroads"> kolor dróg OSM</label>
+    <label><input type="checkbox" id="models"> modele 3D pojazdów</label>
     <button id="carcolor" type="button" class="chip">kolor auta: prędkość</button>
   </div>
   <div id="detail" class="muted">Kliknij auto albo drogę.</div>
@@ -134,25 +135,55 @@ const ROAD = {
 };
 // Kolor dróg OSM (przełącznik w panelu): klasa drogi, łącznica bierze kolor klasy głównej.
 const ROAD_OSM = [
-  ["autostrada", "#e892a2", ["motorway", "motorway_link"]],
-  ["droga główna", "#fcd6a4", ["primary", "primary_link"]],
-  ["droga drugorzędna", "#f7fabf", ["secondary", "secondary_link"]],
-  ["droga trzeciorzędna", "#ffffff", ["tertiary", "tertiary_link"]],
-  ["ulica osiedlowa", "#c5d0dc", ["residential"]],
-  ["droga bez klasy", "#9aa3b2", ["unclassified"]],
-  ["strefa zamieszkania", "#ededed", ["living_street"]],
-  ["zawrotka graniczna", "#2a3038", ["boundary_turnaround"]],
+  ["autostrada", "#e892a2", ["motorway", "motorway_link"], 4],
+  ["droga główna", "#fcd6a4", ["primary", "primary_link"], 3],
+  ["droga drugorzędna", "#f7fabf", ["secondary", "secondary_link"], 2.5],
+  ["droga trzeciorzędna", "#ffffff", ["tertiary", "tertiary_link"], 2],
+  ["ulica osiedlowa", "#c5d0dc", ["residential"], 1.5],
+  ["droga bez klasy", "#9aa3b2", ["unclassified"], 1.5],
+  ["strefa zamieszkania", "#ededed", ["living_street"], 1.25],
+  ["zawrotka graniczna", "#2a3038", ["boundary_turnaround"], 0.75],
 ];
-const ROAD_OSM_OTHER = ["inna", "#4e5663"];
+const ROAD_OSM_OTHER = ["inna", "#4e5663", [], 1];
 // Kolor auta w trybie „klasa”: kim jest pojazd (inna tabela niż drogi). „?” to klasa „inne”.
-const CLASS_COLOR = {r: "#5aa2ff", c: "#3dbe7a", o: "#e0c15a", t: "#a89880", h: "#e15a4a", "?": "#e7e9ee"};
+const CLASS_COLOR = {resident: "#5aa2ff", commuter: "#3dbe7a", outbound: "#e0c15a", tlo: "#a89880", ciezkie: "#e15a4a", "?": "#e7e9ee"};
 let carByClass = false, classRgb = null;
-// Znacznik auta: grot (kierunek jazdy) + półkole z tyłu, punkt pojazdu w środku podstawy. Rozmiary w pikselach
+// Znacznik auta: grot (kierunek jazdy, długość tip × podstawa) + półkole z tyłu, punkt pojazdu w środku podstawy. Rozmiary w pikselach
 // przy zoomie z0 (mnożnik 1); mnożnik rośnie z zoomem o 2^(exp·Δzoom), w granicach min–max. Do strojenia po obejrzeniu.
-const MARKER = {base: 16, heavy: 22, z0: 15, exp: 0.5, min: 0.25, max: 3};
+const MARKER = {base: 16, heavy: 22, tip: 1.7, z0: 15, exp: 0.5, min: 0.25, max: 3};
 function markerScale(zoom) {
   return Math.min(MARKER.max, Math.max(MARKER.min, Math.pow(2, MARKER.exp * (zoom - MARKER.z0))));
 }
+// Modele 3D aut (checkbox): bryły z kodu, w metrach, oś +x = kierunek jazdy. Ikony chowają się od zoomu MODEL_ICON_ZOOM w górę.
+const MODEL_ICON_ZOOM = 16;
+function box(parts) {
+  const pos = [], nor = [], idx = [];
+  parts.forEach(([x0, x1, y0, y1, z0, z1]) => {
+    const faces = [
+      [[1, 0, 0], [[x1, y0, z0], [x1, y1, z0], [x1, y1, z1], [x1, y0, z1]]],
+      [[-1, 0, 0], [[x0, y1, z0], [x0, y0, z0], [x0, y0, z1], [x0, y1, z1]]],
+      [[0, 1, 0], [[x1, y1, z0], [x0, y1, z0], [x0, y1, z1], [x1, y1, z1]]],
+      [[0, -1, 0], [[x0, y0, z0], [x1, y0, z0], [x1, y0, z1], [x0, y0, z1]]],
+      [[0, 0, 1], [[x0, y0, z1], [x1, y0, z1], [x1, y1, z1], [x0, y1, z1]]],
+    ];
+    faces.forEach(([n, v]) => {
+      const base = pos.length / 3;
+      v.forEach((p) => { pos.push(...p); nor.push(...n); });
+      idx.push(base, base + 1, base + 2, base, base + 2, base + 3);
+    });
+  });
+  const n = pos.length / 3;
+  return {
+    attributes: {positions: {value: new Float32Array(pos), size: 3}, normals: {value: new Float32Array(nor), size: 3},
+      texCoords: {value: new Float32Array(2 * n), size: 2}},
+    indices: {value: new Uint16Array(idx), size: 1},
+  };
+}
+const MESH = {
+  car: box([[-2.25, 2.25, -0.9, 0.9, 0.25, 0.95], [-1.3, 0.8, -0.8, 0.8, 0.95, 1.5]]),
+  heavy: box([[-5, 2.4, -1.25, 1.25, 0.5, 3.2], [2.6, 5, -1.2, 1.2, 0.5, 2.7]]),
+};
+let modelsOn = false;
 let osmRoads = false;
 let t = 0, tMin = 0, tMax = 1;
 let playing = false, mult = 1, scrub = false, dirty = false;
@@ -198,10 +229,7 @@ const RAMP = (() => {
 })();
 function hexRgb(hex) { return [1, 3, 5].map((i) => parseInt(hex.slice(i, i + 2), 16)); }
 function roadColor(name) { return ROAD[name] || "#4e5663"; }
-function roadColorOsm(name) {
-  const row = ROAD_OSM.find((r) => r[2].indexOf(name) >= 0);
-  return (row || ROAD_OSM_OTHER)[1];
-}
+function roadRowOsm(name) { return ROAD_OSM.find((r) => r[2].indexOf(name) >= 0) || ROAD_OSM_OTHER; }
 function roadLegend() {
   const box = document.getElementById("lg-road");
   box.replaceChildren();
@@ -439,7 +467,7 @@ function buildRoads() {
       path = [[ll[4 * i], ll[4 * i + 1]], [ll[4 * i + 2], ll[4 * i + 3]]];
     }
     const name = boot.types[boot.linkType[i]] || "";
-    out.push({path, color: hexRgb(roadColor(name)), cosm: hexRgb(roadColorOsm(name)), width: roadWidth(name)});
+    out.push({path, color: hexRgb(roadColor(name)), cosm: hexRgb(roadRowOsm(name)[1]), wosm: roadRowOsm(name)[3], width: roadWidth(name)});
   }
   return out;
 }
@@ -494,7 +522,7 @@ function setThreeD(on) {
 }
 
 function allocBuffers(max) {
-  return {pos: new Float64Array(2 * max), col: new Uint8Array(4 * max), size: new Float32Array(max), ang: new Float32Array(max)};
+    return {pos: new Float64Array(2 * max), col: new Uint8Array(4 * max), size: new Float32Array(max), ang: new Float32Array(max)};
 }
 // Rysuje klatkę z engine.frame. Zwraca false, gdy porcja czasu jeszcze się nie wczytała.
 function render() {
@@ -535,14 +563,14 @@ function render() {
       }));
     }
     layers.push(new deck.PathLayer({
-      id: "roads", data: roads, getPath: (d) => d.path, getColor: (d) => (osmRoads ? d.cosm : d.color), getWidth: (d) => d.width,
-      updateTriggers: {getColor: osmRoads},
+      id: "roads", data: roads, getPath: (d) => d.path, getColor: (d) => (osmRoads ? d.cosm : d.color), getWidth: (d) => (osmRoads ? d.wosm : d.width),
+      updateTriggers: {getColor: osmRoads, getWidth: osmRoads},
       widthUnits: "pixels", capRounded: true, jointRounded: true,
     }));
     if (selected && selected.link != null && selected.link < roads.length) {
       layers.push(new deck.PathLayer({
-        id: "link-sel", data: [roads[selected.link]], getPath: (d) => d.path, getColor: [126, 182, 255], getWidth: 3,
-        widthUnits: "pixels", capRounded: true, jointRounded: true,
+        id: "link-sel", data: [roads[selected.link]], getPath: (d) => d.path, getColor: [126, 182, 255], getWidth: (d) => (osmRoads ? d.wosm : d.width) + 2,
+        updateTriggers: {getWidth: osmRoads}, widthUnits: "pixels", capRounded: true, jointRounded: true,
       }));
     }
     if (track != null) {
@@ -554,14 +582,31 @@ function render() {
         }));
       }
     }
+    const showIcons = !modelsOn || map.getZoom() < MODEL_ICON_ZOOM;
+    if (modelsOn) {
+      // modele idą jako obiekty z akcesorami (mało pojazdów w kadrze przy zoomie, od którego je widać)
+      const rows = {car: [], heavy: []};
+      for (let i = 0; i < fr.n; i++) {
+        rows[engine.classHeavy[fr.cls[i]] ? "heavy" : "car"].push({
+          p: [fr.lon[i], fr.lat[i], 0], c: [buf.col[4 * i], buf.col[4 * i + 1], buf.col[4 * i + 2], 255], o: [0, buf.ang[i], 0],
+        });
+      }
+      ["car", "heavy"].forEach((key) => {
+        layers.push(new deck.SimpleMeshLayer({
+          id: key + "-models", data: rows[key], mesh: MESH[key], sizeScale: 1,
+          getPosition: (d) => d.p, getColor: (d) => d.c, getOrientation: (d) => d.o,
+          material: {ambient: 0.5, diffuse: 0.7, shininess: 20, specularColor: [60, 60, 60]},
+        }));
+      });
+    }
     const mdata = {length: fr.n, attributes: {
       getPosition: {value: buf.pos, size: 2}, getAngle: {value: buf.ang, size: 1}, getSize: {value: buf.size, size: 1},
     }};
     const marker = (id, icon, extra) => new deck.IconLayer(Object.assign({
       id, data: mdata, iconAtlas: markerAtlas, iconMapping: markerMapping, getIcon: icon, sizeUnits: "pixels", billboard: false,
     }, extra));
-    layers.push(marker("car-outline", "out", {getColor: [18, 20, 24, 255]}));
-    layers.push(marker("cars", "fill", {data: {length: fr.n, attributes: {
+    if (showIcons) layers.push(marker("car-outline", "out", {getColor: [18, 20, 24, 255]}));
+    if (showIcons) layers.push(marker("cars", "fill", {data: {length: fr.n, attributes: {
       getPosition: {value: buf.pos, size: 2}, getAngle: {value: buf.ang, size: 1}, getSize: {value: buf.size, size: 1},
       getColor: {value: buf.col, size: 4},
     }}}));
@@ -659,6 +704,7 @@ function setPlaying(on) {
   b.classList.toggle("on", playing);
 }
 document.getElementById("three").addEventListener("click", () => setThreeD(!threeD));
+document.getElementById("models").addEventListener("change", (ev) => { modelsOn = ev.target.checked; dirty = true; });
 document.getElementById("carcolor").addEventListener("click", () => setCarColor(!carByClass));
 document.getElementById("osmroads").addEventListener("change", (ev) => setOsmRoads(ev.target.checked));
 document.getElementById("play").addEventListener("click", () => setPlaying(!playing));
@@ -738,7 +784,7 @@ function makeMarker() {
   const shape = (ix) => {
     g.beginPath();
     g.translate(ix * W + 12 * S, H / 2);
-    g.moveTo(2 * MARKER.base * S, 0);
+    g.moveTo(MARKER.tip * MARKER.base * S, 0);
     g.lineTo(0, -half * S);
     g.arc(0, 0, half * S, -Math.PI / 2, Math.PI / 2, true);
     g.closePath();

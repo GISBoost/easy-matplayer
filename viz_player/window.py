@@ -182,9 +182,11 @@ def smoke(run):
                 js("t = t + 1; change();")
                 car_ok = _wait_js(
                     window,
-                    "(function(){var c=buf.col, k=engine.classKeys[engine.out.cls[0]], h=CLASS_COLOR[k]||CLASS_COLOR['?'];"
-                    "var r=hexRgb(h);return c[0]===r[0]&&c[1]===r[1]&&c[2]===r[2];})()", 15,
+                    "(function(){var c=buf.col, k=engine.classKeys[engine.out.cls[0]], h=CLASS_COLOR[k];"
+                    "if(!h)return false;var r=hexRgb(h);return c[0]===r[0]&&c[1]===r[1]&&c[2]===r[2];})()", 15,
                 )
+            if car_ok is True:
+                car_ok = js("boot.classes.every(function(c){return !!CLASS_COLOR[c.key];})")
             js("document.getElementById('carcolor').click()")
             if car_ok is not True or js("carByClass === false && !document.getElementById('lg-speed').hidden") is not True:
                 result["error"] = f"kolor auta {car_ok} {js('window.drawError')}"
@@ -214,6 +216,21 @@ def smoke(run):
                     return
             out, _code = grab.window_png(shot)
             result["grab"] = out.strip()
+            js(
+                "window.hold = false; window._r0 = window.renders; document.getElementById('models').click();"
+                "(function(){var fr = engine.out, i = -1; for (var k = 0; k < fr.n; k++) { if (!engine.classHeavy[fr.cls[k]] && Math.abs(Math.sin(fr.heading[k])) > 0.7) { i = k; break; } }"
+                "if (i >= 0) map.jumpTo({center: [fr.lon[i], fr.lat[i]], zoom: 18.5}); window._zi = i; })()"
+            )
+            if js("window._zi") < 0 or not _wait_js(window, "window.renders > window._r0 && !window.drawError", 15):
+                result["error"] = f"modele 3D zi={js('window._zi')} r={js('window.renders')} r0={js('window._r0')} hold={js('window.hold')} err={js('window.drawError')}"
+                return
+            time.sleep(0.6)
+            grab.window_png(shot.with_name("smoke_zoom.png"))
+            js("window._r0 = window.renders; document.getElementById('models').click(); dirty = true;")
+            _wait_js(window, "window.renders > window._r0", 15)
+            time.sleep(0.6)
+            grab.window_png(shot.with_name("smoke_icon.png"))
+            js("window.hold = true;")
             ident = pick_ident(player.index)
             js("window.hold = false; t = " + str(t_win) + "; change();")
             js(f"document.getElementById('q').value = {json.dumps(ident)}; document.getElementById('find').requestSubmit();")
