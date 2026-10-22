@@ -111,6 +111,7 @@ body.panel-off #panel { display: none; }
 .maplibregl-ctrl-group { background: #1b1f27; box-shadow: none; }
 .maplibregl-ctrl-group button + button { border-top-color: #2a3140; }
 .maplibregl-ctrl-icon { filter: invert(1) brightness(.85); }
+#fit { background-repeat: no-repeat; background-position: center; background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='29' height='29' viewBox='0 0 29 29' fill='none' stroke='black' stroke-width='2'><path d='M8 12V8h4M17 8h4v4M21 17v4h-4M12 21H8v-4'/></svg>"); }
 .maplibregl-ctrl-attrib { background: rgba(18, 20, 24, .75) !important; color: #9aa3b2; }
 .maplibregl-ctrl-attrib a { color: #7eb6ff; }
 </style>
@@ -1203,6 +1204,24 @@ function makeMarker() {
   markerMapping = {fill: icon(0), out: icon(1), ring: icon(2)};
   return c.toDataURL();
 }
+// Przycisk „cały obszar sieci”: dla zgubionego użytkownika. Zachowuje obrót i pochylenie, zmienia tylko środek i zoom.
+function fitNetwork() {
+  const b = boot.bounds;
+  if (map && b) map.fitBounds([[b[0][1], b[0][0]], [b[1][1], b[1][0]]], {padding: 20, duration: 600});
+}
+class FitControl {
+  onAdd() {
+    this.el = document.createElement("div");
+    this.el.className = "maplibregl-ctrl maplibregl-ctrl-group";
+    const btn = document.createElement("button");
+    btn.type = "button"; btn.id = "fit"; btn.className = "maplibregl-ctrl-icon";
+    btn.title = "Pokaż cały obszar sieci"; btn.setAttribute("aria-label", btn.title);
+    btn.addEventListener("click", fitNetwork);
+    this.el.append(btn);
+    return this.el;
+  }
+  onRemove() { this.el.remove(); }
+}
 async function bootMap() {
   if (boot.error) {
     showPanel({kind: "empty", lines: [boot.error]});
@@ -1233,6 +1252,7 @@ async function bootMap() {
   });
   if (boot.basemap) map.addControl(new maplibregl.AttributionControl({compact: false}));
   map.addControl(new maplibregl.NavigationControl({visualizePitch: true}), "top-left");
+  map.addControl(new FitControl(), "top-left");
   overlay = new deck.MapboxOverlay({interleaved: false, layers: []});
   map.addControl(overlay);
   map.on("click", (ev) => {

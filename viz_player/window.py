@@ -615,6 +615,18 @@ def smoke(run):
             if js("selected === null && follow === false") is not True:
                 result["error"] = "escape nie czyści zaznaczenia"
                 return
+            # przycisk „cały obszar sieci”: z odległego, mocno przybliżonego widoku wraca do obwiedni sieci
+            js("map.jumpTo({center: [boot.bounds[0][1], boot.bounds[0][0]], zoom: 17.5, bearing: 0, pitch: 0}); 0")
+            time.sleep(0.5)
+            js("document.getElementById('fit').click()")
+            fit_ok = _wait_js(
+                window,
+                "(function(){var v=map.getBounds(),b=boot.bounds;return !map.isMoving() && v.getWest()<=b[0][1]+1e-6 && v.getSouth()<=b[0][0]+1e-6"
+                " && v.getEast()>=b[1][1]-1e-6 && v.getNorth()>=b[1][0]-1e-6 && map.getZoom()<14;})()", 10,
+            )
+            if not fit_ok:
+                result["error"] = f"cały obszar: widok {js('JSON.stringify([map.getBounds().toArray(), boot.bounds, map.getZoom()])')}"
+                return
             # podkład WMS jak w QGIS: dialog, połączenie, wybór warstwy, kafelki z usługi (lokalna atrapa)
             js("document.getElementById('svc-add').click()")
             js(f"document.getElementById('svc-url').value = {json.dumps(wms_url)}; document.getElementById('svc-form').requestSubmit();")
