@@ -96,6 +96,7 @@ body { display: grid; grid-template-columns: 1fr 320px; grid-template-rows: 1fr 
 #axis-bar .now { position: absolute; top: 0; bottom: 0; width: 2px; margin-left: -1px; background: #e7e9ee; pointer-events: none; z-index: 2; }
 #axis-ends { display: flex; justify-content: space-between; gap: 8px; margin-top: 4px; color: #9aa3b2; font-size: 11px; font-variant-numeric: tabular-nums; }
 .muted { color: #9aa3b2; }
+#runbar { width: 100%; height: 6px; accent-color: #4f9cf9; }
 #credit { margin: 14px 0 0; font-size: 12px; }
 #hint { margin-top: 18px; color: #9aa3b2; font-size: 12px; line-height: 1.4; }
 #bar { display: flex; align-items: center; gap: 8px; padding: 0 12px; background: #1b1f27; min-width: 0;
@@ -133,6 +134,7 @@ body.panel-off #panel { display: none; }
   <p class="run" id="run"></p>
   <button id="openrun" type="button" class="chip">otwórz run…</button>
   <p id="runmsg" class="muted" hidden></p>
+  <progress id="runbar" max="1" value="0" hidden></progress>
   <form id="find"><input id="q" type="text" placeholder="id pojazdu" autocomplete="off" spellcheck="false"></form>
   <div id="hits"></div>
   <div id="chips"></div>
@@ -831,9 +833,22 @@ document.getElementById("three").addEventListener("click", () => setThreeD(!thre
 async function openRunPath(path) {
   const api = window.pywebview && window.pywebview.api, msg = document.getElementById("runmsg");
   const say = (text) => { msg.textContent = text; msg.hidden = !text; };
+  const bar = document.getElementById("runbar");
   say("Run się otwiera…");
+  bar.value = 0; bar.removeAttribute("value"); bar.hidden = false;
+  // pasek: Python zgłasza etap i ułamek, strona pyta co 300 ms (otwarcie dużego runu trwa ok. 80 s)
+  const poll = setInterval(async () => {
+    try {
+      const p = await api.progress();
+      if (!p.busy) return;
+      if (p.frac === null) bar.removeAttribute("value"); else bar.value = p.frac;
+      say(p.label + (p.frac === null ? "…" : "  " + Math.round(100 * p.frac) + "%"));
+    } catch (err) { /* następne zapytanie */ }
+  }, 300);
   let r;
   try { r = await api.open_path(path); } catch (err) { r = {status: "error", message: String(err)}; }
+  clearInterval(poll);
+  bar.hidden = true;
   if (r.status === "ok") { location.reload(); return r; }
   say(r.message || "");
   return r;

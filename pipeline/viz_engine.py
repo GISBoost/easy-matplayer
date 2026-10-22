@@ -113,10 +113,10 @@ def _copy_npz(path):
         return {name: np.array(z[name]) for name in z.files}
 
 
-def load(run_dir):
-    """Buduje albo czyta viz/. Zwraca tablice w RAM, plik npz jest zamknięty."""
+def load(run_dir, progress=None):
+    """Buduje albo czyta viz/. Zwraca tablice w RAM, plik npz jest zamknięty. progress(etykieta, ułamek): postęp budowy indeksu."""
     run_dir = Path(run_dir)
-    if viz_index.run(run_dir) != 0:
+    if viz_index.run(run_dir, progress) != 0:
         raise EngineFailed(f"indeks nie powstał: {run_dir}")
     viz = run_dir / "viz"
     arrays = _copy_npz(viz / "index.npz")

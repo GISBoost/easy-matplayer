@@ -38,7 +38,7 @@ Wcześniej zrobione (fundamenty, D24): origin z sieci, `person_id` i klasyfikato
 ## Aplikacja z pulpitu i release (D27, plan: `wizualizer_aplikacja.md`)
 
 - [x] A1. Ścieżki: zasoby do odczytu osobno od danych do zapisu (`paths.py`, `%LOCALAPPDATA%\easy-matanimation`).
-- [ ] A2. Zachowanie po dwukliku. Zrobione: A2a nazwa, wersja, log do pliku, komunikaty błędów. Czeka: A2b wybór runu bez argumentu i pełny pasek postępu indeksu, A2c własny plik OSM.
+- [ ] A2. Zachowanie po dwukliku. Zrobione: A2a nazwa, wersja, log do pliku, komunikaty błędów; A2b wybór runu bez argumentu i pełny pasek postępu. Czeka: A2c własny plik OSM.
 - [ ] A3. Pierwsza paczka PyInstaller onedir, smoke zbudowanego exe z okrojonym PATH.
 - [ ] A4. Test na czystym komputerze / Windows Sandbox.
 - [ ] A5. Zip z małym runem demo.
@@ -179,3 +179,10 @@ Wcześniej zrobione (fundamenty, D24): origin z sieci, `person_id` i klasyfikato
 - `viz_player/startup.py`: `setup_logging` (bez konsoli albo w paczce `stdout` i `stderr` idą do `DATA/easy-matanimation.log`, rotacja po 2 MB; w repo z konsolą bez zmian), `show_error` (okno systemowe, zawsze też do dziennika), `crash` (ślad do dziennika, krótki komunikat; brak WebView2 dostaje link do instalatora Microsoftu). `main` opakowuje start w `crash`.
 - Dowód: 84 testy (6 nowych w `test_startup.py`); `pythonw -m viz_player --version` uruchomiony przez `Start-Process` (prawdziwie bez konsoli) zapisał nagłówek i wersję do dziennika w `EASY_MATANIMATION_DATA`; smoke w oknie sprawdza teraz `document.title` i wersję w panelu (`smoke OK`). Zrzut okna przy tym uruchomieniu złapał przeglądarkę zasłaniającą ekran, więc dowodem jest odczyt z DOM, nie obraz.
 - Nie sprawdzone: komunikat o braku WebView2 na maszynie bez tego składnika (test jednostkowy tylko z atrapą wyjątku; prawdziwa próba w A4).
+
+### A2b: start bez runu i pełny pasek postępu (2026-10-22)
+
+- **Start bez argumentu i bez zapamiętanego runu** (dwuklik): okno wyboru folderu (`tkinter`, bez nowych zależności), anulowanie kończy po cichu. Zapamiętany run, którego folder zniknął albo który nie ma eventów lub sieci, nie kończy programu: komunikat błędu i ponowny wybór folderu. Run podany w wierszu poleceń z błędem kończy się komunikatem i kodem 1.
+- **Pełny pasek postępu.** `viz_index.run(run, progress)` zgłasza etap i ułamek: pliki (0–1%), czytanie zdarzeń (1–64%, ułamek z pozycji w skompresowanym pliku), zapis indeksu (64–66%), sprawdzanie indeksu (66–97%, drugi odczyt), opis (97–100%); wagi z czasów prawdziwego runu 100% (50 s, 28 s). `Player.open` i `Player.write_site` dokładają łamane drogi, eksport i budynki; skan OSM (dziesiątki sekund, bez ułamka) pokazuje pasek bez wartości. Okno startowe (`startup.with_progress`) pokazuje się dopiero po 0,6 s, więc otwarcie z cache nie miga. Zamknięcie okna w trakcie kończy aplikację (niedokończony indeks nie ma `meta.json`, więc następnym razem powstaje od nowa). W panelu „otwórz run…” `Api.progress()` jest odpytywane co 300 ms, a `<progress id="runbar">` pokazuje etap i procent.
+- Dowód: 93 testy (nowe: etapy i pozycja w pliku w `test_index`, `Api.open_path` z odpytywaniem postępu w wątku, `with_progress` z prawdziwym oknem Tk, błąd z wątku, `scaled`, trzy scenariusze `serve` bez runu / z błędnym runem); prawdziwa budowa od zera runu 100% (97 210 pojazdów, indeks 80,3 s, całość z łamanymi i budynkami 127 s, bez błędu) z oknem postępu: zrzuty „Czytam zdarzenia ruchu 11%”, „… 33%”, „Sprawdzam indeks 47%”.
+- Nie sprawdzone: sam systemowy dialog wyboru folderu (otwiera się, ale nie klikam w nim automatycznie), pasek w panelu okna na dużym runie (w smoke i teście Api sprawdzone tylko logicznie).

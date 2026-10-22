@@ -233,3 +233,29 @@ def test_generic_check_passes(run_dir):
 
 def test_curve_note_reaches_boot(player):
     assert player.boot()["curveNote"] == player.curve_note and player.curve_note.startswith("łamane")
+
+
+def test_api_open_path_reports_progress(tmp_path):
+    import threading
+    import time
+
+    from viz_player.window import Api
+
+    rows = []
+    for k in range(20000):
+        rows += fx.trip(f"r{k}", 1000 + (k % 50))
+    run = fx.write_run(tmp_path / "big", rows)
+    api = Api(pl.Player(), site=tmp_path / "site", services=tmp_path / "svc.json", rasters_dir=tmp_path / "r")
+    assert api.progress()["busy"] is False
+    out = {}
+    thread = threading.Thread(target=lambda: out.update(api.open_path(str(run))))
+    thread.start()
+    seen = []
+    while thread.is_alive():
+        seen.append(api.progress())
+        time.sleep(0.005)
+    thread.join()
+    assert out["status"] == "ok" and api.progress()["busy"] is False
+    busy = [p for p in seen if p["busy"]]
+    assert busy and all(0.0 <= p["frac"] <= 1.0 for p in busy if p["frac"] is not None)
+    assert len({p["label"] for p in busy}) >= 2, "kilka etapów z etykietami"

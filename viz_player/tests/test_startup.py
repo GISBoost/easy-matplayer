@@ -48,3 +48,86 @@ def test_show_error_silent_without_dialog(monkeypatch, capsys):
 
 def test_app_name():
     assert APP_NAME == "easy-matanimation"
+
+
+def test_with_progress_returns_value_without_window():
+    calls = []
+    out = startup.with_progress("t", lambda progress: (progress("etap", 0.5), calls.append(1), 42)[2], delay=5)
+    assert out == 42 and calls == [1]
+
+
+def test_with_progress_passes_exception_up():
+    import pytest
+
+    def boom(progress):
+        raise ValueError("zepsute")
+
+    with pytest.raises(ValueError, match="zepsute"):
+        startup.with_progress("t", boom, delay=5)
+
+
+def test_with_progress_opens_window_for_slow_work():
+    import time
+
+    seen = []
+
+    def slow(progress):
+        for i in range(6):
+            progress(f"krok {i}", i / 5)
+            time.sleep(0.15)
+        progress("bez czasu", None)
+        time.sleep(0.2)
+        return "ok"
+
+    original = startup._progress_window
+    startup._progress_window = lambda title, state, thread: (seen.append(title), original(title, state, thread))[1]
+    try:
+        assert startup.with_progress("Otwieram run x", slow, delay=0.1) == "ok"
+    finally:
+        startup._progress_window = original
+    assert seen == ["Otwieram run x"], "okno pojawia się, gdy praca trwa dłużej niż opóźnienie, i samo się zamyka"
+
+
+def test_scaled_maps_stage_into_range():
+    from viz_player.player import scaled
+
+    got = []
+    cb = scaled(lambda label, frac: got.append((label, frac)), 0.2, 0.6)
+    cb("a", 0.0), cb("b", 0.5), cb("c", 1.0), cb("d", None)
+    assert [round(f, 6) if f is not None else None for _, f in got] == [0.2, 0.4, 0.6, None]
+    assert scaled(None, 0, 1) is None
+
+
+def test_serve_without_run_asks_for_folder_and_cancel_ends_quietly(tmp_path, monkeypatch):
+    from viz_player import window
+
+    asked = []
+    monkeypatch.setattr(startup, "pick_run", lambda initial: asked.append(initial))
+    monkeypatch.setattr(startup, "show_error", lambda *a: asked.append(a))
+    monkeypatch.setattr(window, "DATA", tmp_path)
+    assert window.serve(None) == 0 and len(asked) == 1
+    assert window.serve(str(tmp_path / "zniknął")) == 0, "zapamiętany run, którego już nie ma, otwiera wybór folderu"
+
+
+def test_serve_with_bad_explicit_run_reports_and_fails(tmp_path, monkeypatch):
+    from viz_player import window
+
+    shown = []
+    monkeypatch.setattr(startup, "show_error", lambda title, text: shown.append(text))
+    monkeypatch.setattr(window, "DATA", tmp_path)
+    assert window.serve(str(tmp_path / "nie-ma"), explicit=True) == 1 and "nie-ma" in shown[0]
+    empty = tmp_path / "pusty"
+    empty.mkdir()
+    assert window.serve(str(empty), explicit=True) == 1 and "Brak" in shown[1]
+
+
+def test_serve_error_in_remembered_run_falls_back_to_picker(tmp_path, monkeypatch):
+    from viz_player import window
+
+    empty = tmp_path / "pusty"
+    empty.mkdir()
+    picks, shown = [], []
+    monkeypatch.setattr(startup, "pick_run", lambda initial: picks.append(1))
+    monkeypatch.setattr(startup, "show_error", lambda title, text: shown.append(text))
+    monkeypatch.setattr(window, "DATA", tmp_path)
+    assert window.serve(str(empty)) == 0 and shown and picks == [1]

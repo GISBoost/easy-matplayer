@@ -142,3 +142,21 @@ def test_plans_change_invalidates(tmp_path):
     meta, idx = _load(run)
     idx.close()
     assert meta["class_counts"] == {"student": 3}
+
+
+def test_progress_reports_phases_and_file_position(tmp_path):
+    rows = []
+    for k in range(20000):
+        rows += fx.trip(f"r{k}", 1000 + (k % 50))
+    run = fx.write_run(tmp_path / "p", rows)
+    seen = []
+    assert viz_index.run(run, lambda label, frac: seen.append((label, frac))) == 0
+    fractions = [f for _, f in seen]
+    assert fractions == sorted(fractions) and fractions[-1] == 1.0
+    labels = list(dict.fromkeys(label for label, _ in seen))
+    assert labels[:3] == ["Sprawdzam pliki runu", "Czytam zdarzenia ruchu", "Zapisuję indeks"] and "Sprawdzam indeks" in labels
+    mid = [f for label, f in seen if label == "Czytam zdarzenia ruchu" and 0.01 < f < 0.64]
+    assert mid, "w trakcie czytania są wartości pośrednie z pozycji w pliku"
+    again = []
+    assert viz_index.run(run, lambda label, frac: again.append(frac)) == 0
+    assert again[-1] == 1.0 and len(again) <= 3, "ponowne otwarcie (reuse) kończy od razu"

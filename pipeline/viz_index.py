@@ -56,6 +56,34 @@ class CheckFailed(Exception):
     pass
 
 
+class Progress:
+    """Postęp dla okna aplikacji: cb(etykieta, ułamek 0..1). Etap ma swój przedział całości, ułamek w etapie z pozycji w pliku."""
+
+    def __init__(self):
+        self.cb, self.label, self.lo, self.hi = None, "", 0.0, 0.0
+
+    def start(self, cb):
+        self.cb, self.label, self.lo, self.hi = cb, "", 0.0, 0.0
+
+    def phase(self, label, lo, hi):
+        self.label, self.lo, self.hi = label, lo, hi
+        self._emit(lo)
+
+    def at(self, frac):
+        self._emit(self.lo + (self.hi - self.lo) * min(max(frac, 0.0), 1.0))
+
+    def stop(self):
+        self._emit(1.0)
+        self.cb = None
+
+    def _emit(self, value):
+        if self.cb is not None:
+            self.cb(self.label, value)
+
+
+PROG = Progress()
+
+
 def log_to(path, message):
     print(message)
     with path.open("a", encoding="utf-8") as fh:
@@ -147,7 +175,9 @@ def read_network(path, origin):
 
 
 def event_lines(path, started, log_path):
-    stream = zstandard.ZstdDecompressor().stream_reader(path.open("rb"))
+    raw = path.open("rb")
+    size = max(path.stat().st_size, 1)
+    stream = zstandard.ZstdDecompressor().stream_reader(raw)
     lines = io.TextIOWrapper(stream, encoding="utf-8", newline="")
     n = 0
     warned = False
@@ -160,6 +190,8 @@ def event_lines(path, started, log_path):
         if typ not in MOVEMENT and typ != "actstart" and typ != "actend":
             continue
         n += 1
+        if n % 100_000 == 0:
+            PROG.at(raw.tell() / size)
         if n % 500_000 == 0:
             elapsed = time.perf_counter() - started
             log_to(log_path, f"parse lines={n} sec={elapsed:.1f}")
@@ -594,7 +626,16 @@ def reuse_meta(viz, ev_sha, net_sha, script_sha, plans_sha, origin):
     return meta if same else None
 
 
-def run(run_dir):
+def run(run_dir, progress=None):
+    """Buduje albo czyta viz/. progress(etykieta, ułamek 0..1) dla okna aplikacji (indeks 100% to ok. 80 s)."""
+    PROG.start(progress)
+    try:
+        return _run(run_dir)
+    finally:
+        PROG.stop()
+
+
+def _run(run_dir):
     run_dir = Path(run_dir)
     events, network = run_dir / EVENTS_NAME, run_dir / NETWORK_NAME
     if not events.exists() or not network.exists():
@@ -605,6 +646,7 @@ def run(run_dir):
     log_path = viz / "index.log"
     t0 = time.perf_counter()
     log_to(log_path, f"--- {time.strftime('%Y-%m-%dT%H:%M:%S')} {run_dir.name} ---")
+    PROG.phase("Sprawdzam pliki runu", 0.0, 0.01)
     hash_t = time.perf_counter()
     ev_sha, net_sha = sha256_file(events), sha256_file(network)
     script_sha = sha256_file(Path(__file__)) + sha256_file(Path(viz_classes.__file__))
@@ -623,11 +665,15 @@ def run(run_dir):
         return 0
     index_path, meta_path = viz / "index.npz", viz / "meta.json"
     try:
+        PROG.phase("Czytam zdarzenia ruchu", 0.01, 0.64)
         built = build(run_dir, log_path, origin)
+        PROG.phase("Zapisuję indeks", 0.64, 0.66)
         by_person = viz_classes.read_person_classes(run_dir)
         arrays, info = pack(built, run_dir.name, by_person)
         save_index(index_path, arrays)
+        PROG.phase("Sprawdzam indeks", 0.66, 0.97)
         stats, class_counts, size = validate(run_dir, index_path, log_path, origin, info["classes"], by_person)
+        PROG.phase("Zapisuję opis runu", 0.97, 1.0)
         write_meta(meta_path, run_dir, ev_sha, net_sha, script_sha, plans_sha, origin, arrays, info, stats, class_counts, size,
                    time.perf_counter() - t0)
         log_to(

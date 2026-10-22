@@ -20,7 +20,7 @@ import numpy as np
 from viz_player import check, grab, ogc, rasters
 from viz_player import APP_NAME, __version__, startup
 from viz_player.paths import DATA, RUNS
-from viz_player.player import Player, clock, note, pick_ident, save_state, saved_run
+from viz_player.player import Player, scaled, clock, note, pick_ident, save_state, saved_run
 
 SERVICES = DATA / "viz_player_services.json"
 RASTERS = DATA / "viz_player_rasters"
@@ -40,6 +40,7 @@ class Api:
         self._caps = {}
         self._rasters_dir = Path(rasters_dir) if rasters_dir else RASTERS
         self._staged = {}  # obrazy z plikiem świata czekające na kod EPSG
+        self._progress = {"busy": False, "label": "", "frac": 0.0}  # postęp otwierania runu dla paska w panelu
         self._services = self._load_services()
         self._site = site or player.run_dir / "viz" / "site"  # katalog, z którego okno ładuje stronę
         self._window = None
@@ -223,17 +224,31 @@ class Api:
             return {"status": "cancel"}
         return {"status": "path", "path": str(sel[0] if isinstance(sel, (list, tuple)) else sel)}
 
+    def progress(self):
+        """Postęp trwającego otwierania runu: {busy, label, frac} (frac None: czas nieokreślony)."""
+        return dict(self._progress)
+
+    def _report(self, label, frac):
+        self._progress = {"busy": True, "label": label, "frac": frac}
+
     def open_path(self, path):
         """Otwiera run w nowym Playerze. Błąd zostawia bieżący run; sukces zapisuje stan i strona ma się przeładować."""
+        self._report("Start", 0.0)
+        try:
+            return self._open_path(path)
+        finally:
+            self._progress = {"busy": False, "label": "", "frac": 1.0}
+
+    def _open_path(self, path):
         fresh = Player()
         try:
-            fresh.open(path, remember=False)
+            fresh.open(path, remember=False, progress=scaled(self._report, 0.0, 0.85))
         except Exception as exc:
             return {"status": "error", "message": f"Nie udało się otworzyć: {exc}"}
         if fresh.error:
             return {"status": "error", "message": fresh.error}
         try:
-            fresh.write_site(self._site)
+            fresh.write_site(self._site, progress=scaled(self._report, 0.85, 1.0))
         except Exception as exc:
             return {"status": "error", "message": f"Nie udało się przygotować strony: {exc}"}
         save_state(fresh.run_dir)
@@ -712,14 +727,39 @@ def smoke(run):
     return 0
 
 
-def serve(run):
-    player = Player()
-    player.open(run)
+def prepare(run, site):
+    """Otwiera run i zapisuje stronę okna. Pasek postępu pokazuje się, gdy to trwa dłużej niż chwilę (indeks 100%: ok. 80 s)."""
+    def work(progress):
+        player = Player()
+        player.open(run, progress=scaled(progress, 0.0, 0.85))
+        index_html = None if player.error else player.write_site(site, progress=scaled(progress, 0.85, 1.0))
+        return player, index_html
+
+    return startup.with_progress(f"Otwieram run {Path(run).name}", work)
+
+
+def serve(run, explicit=False):
+    """explicit: run podany w wierszu poleceń (błąd kończy program); inaczej brak runu albo błąd otwiera wybór folderu."""
     import webview
     site = DATA / "viz_player_site"  # stały katalog strony: „otwórz run” podmienia jego zawartość i przeładowuje stronę
+    while True:
+        if not run or not Path(run).is_dir():
+            if explicit:
+                startup.show_error("Nie da się otworzyć runu", f"Brak katalogu {run}.")
+                return 1
+            run = startup.pick_run(RUNS if RUNS.is_dir() else Path.home())
+            if not run:
+                return 0
+        player, index_html = prepare(run, site)
+        if not player.error:
+            break
+        startup.show_error("Nie da się otworzyć runu", player.error)
+        if explicit:
+            return 1
+        run = None
     api = Api(player, site)
     window = webview.create_window(
-        APP_NAME, url=str(player.write_site(site)), js_api=api,
+        APP_NAME, url=str(index_html), js_api=api,
         width=1440, height=900, background_color="#121418", text_select=True,
     )
     api.attach(window)
@@ -751,12 +791,8 @@ def main(argv):
     if argv[:1] == ["--version"]:
         print(f"{APP_NAME} {__version__}")
         return 0
-    run = argv[0] if argv else saved_run()
-    if not run:
-        print("podaj katalog runu, np. output/g5r7b_25pct_s4711")
-        return 2
     try:
-        return serve(run)
+        return serve(argv[0] if argv else saved_run(), explicit=bool(argv))
     except Exception:
         startup.crash()
         return 1

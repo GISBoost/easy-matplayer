@@ -30,6 +30,13 @@ CARTO = "https://{s}.basemaps.cartocdn.com/rastertiles/dark_nolabels/{z}/{x}/{y}
 ATTR = "© OpenStreetMap contributors © CARTO"
 
 
+def scaled(progress, lo, hi):
+    """Postęp etapu (ułamek 0..1) przeliczony na przedział [lo, hi] całości; None zostaje None."""
+    if progress is None:
+        return None
+    return lambda label, frac: progress(label, None if frac is None else lo + (hi - lo) * frac)
+
+
 def clock(t):
     t = max(0, int(math.floor(float(t))))
     hour, rem = divmod(t, 3600)
@@ -232,7 +239,7 @@ class Player:
         self.fwd = Transformer.from_crs("EPSG:2180", "EPSG:4326", always_xy=True)
         self.inv = Transformer.from_crs("EPSG:4326", "EPSG:2180", always_xy=True)
 
-    def open(self, run, remember=True):
+    def open(self, run, remember=True, progress=None):
         self.run_dir = Path(run).resolve()
         self.run_name = self.run_dir.name
         self.error = None
@@ -250,7 +257,9 @@ class Player:
             self.error = "Brak " + " i ".join(missing) + f" w {self.run_name}."
             return
         try:
-            self.index = viz_engine.load(self.run_dir)
+            self.index = viz_engine.load(self.run_dir, scaled(progress, 0.0, 0.8))
+            if progress:
+                progress("Łamane drogi (OSM)", None)  # skan PBF trwa dziesiątki sekund i nie ma ułamka: pasek bez wartości
             self._read_links()
             self.origin = tuple(float(v) for v in self.index.meta["origin"])
         except viz_engine.EngineFailed as exc:
@@ -587,12 +596,23 @@ class Player:
             arrays.update({"curve_off": self.curve.off, "curve_lon": np.asarray(lon), "curve_lat": np.asarray(lat)})
         return arrays
 
-    def write_site(self, dest=None):
+    def write_site(self, dest=None, progress=None):
+        """progress(etykieta, ułamek 0..1) dla tego etapu; wywołujący przelicza go na swój przedział (scaled)."""
         dest = dest or self.run_dir / "viz" / "site"
+
+        def report(label, frac):
+            if progress:
+                progress(label, frac)
+
+        report("Eksport danych dla okna", 0.0)
         self.export_key = viz_export.build(self.run_dir, out=Path(dest) / "data")["source_key"]
+        report("Budynki 3D (OSM)", None)
         box, origin = viz_buildings.network_box(self.run_dir)
         self.buildings = viz_buildings.build(Path(dest) / "data", box, origin)
-        return site.write_site(dest, self.boot(), self.boot_arrays())
+        report("Zapisuję stronę okna", 0.9)
+        path = site.write_site(dest, self.boot(), self.boot_arrays())
+        report("Gotowe", 1.0)
+        return path
 
 
 def pick_ident(index):
