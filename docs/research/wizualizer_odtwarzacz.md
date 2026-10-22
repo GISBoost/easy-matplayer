@@ -10,7 +10,7 @@ Nazwa robocza okna to **easy-matviz**. Pakiet Pythona nazywa się `viz_player`. 
 
 Odtwarzacz czyta gotowy run MATSim i pokazuje go na tym komputerze: mapa, czas, auta, droga, jeden pojazd, jedna droga. Nic nie liczy w MATSim. Nic nie zapisuje do sieci, eventów, planów ani do `scenarios/`. Java i `pipeline/g6_bake.py` zostają bez zmian.
 
-Run, na którym liczby poniżej są zmierzone: `output/g5r6_25pct_s4711`. To próbka 25% bazy R6. Inny katalog z `output_events.xml.zst` i `output_network.xml.zst` też się otwiera. Testy `--check` i `--smoke` są napisane pod ten jeden run.
+Run, na którym liczby poniżej są zmierzone: `output/g5r6_25pct_s4711` (pomiary R6 są historyczne; od 2026-10-22 runem referencyjnym jest R7b, `output/g5r7b_25pct_s4711`, liczby w sekcji „Zmiany architektury” i w PROGRESS). To próbka 25% bazy R6. Inny katalog z `output_events.xml.zst` i `output_network.xml.zst` też się otwiera. Testy `--check` i `--smoke` są napisane pod ten jeden run.
 
 Maszyna, na której okno powstało: Windows, 16 GB RAM, Python 3.12 przez `uv`. Do odtwarzania Java nie jest potrzebna. Do samego MATSim dalej jest Temurin 25.
 
@@ -26,34 +26,48 @@ Maszyna, na której okno powstało: Windows, 16 GB RAM, Python 3.12 przez `uv`. 
 - Nie zapisuje klucza CARTO. Bez pliku lokalnego podkład jest wyłączony.
 - Akceptacja automatyczna (self-test, check, smoke) przeszła. Obejście obrazu przez człowieka zostaje otwarte. Zrzut smoke nie jest tą akceptacją.
 
+## Zmiany architektury (fundamenty, 2026-10-22)
+
+Refaktor po audycie kodu (`docs/research/wizualizer_audyt_kodu.md`), bez zmiany zachowania dla runu samochodowego. Liczby referencyjne R7b (przejazdy, linki, szczyt, okno 6–9) są przed i po takie same (PROGRESS 2026-10-22).
+
+- **Origin z sieci.** Środek bbox węzłów `output_network.xml.zst` zaokrąglony do 1000 m, w `meta.json` (`origin`) i w kluczu cache indeksu oraz łamanych. Inny origin przebudowuje indeks. `viz_index` nie importuje już nic z `g6_bake.py` (Blender ma własny origin).
+- **Biblioteka nie zna runu.** Stałe R6, osoba `r6510903_5`, link `1807611370009f` i współrzędne Kutna są tylko w `viz_player/tests/accept_r7b.py`.
+- **Strona po lokalnym HTTP.** `site.py` zapisuje katalog `output/<run>/viz/site/`, pywebview serwuje go (`http_server=True`), JS pobiera `boot.json` i tablice `.bin`. Nie ma `html=`, limitu rozmiaru strony ani dosyłania łamanych przez `evaluate_js`.
+- **`person_id` i klasyfikator.** Track niesie osobę z eventu `vehicle enters traffic` (`track_person_i`). `ids` to osoby, `track_id` zostaje id pojazdu. Klasę daje `pipeline/viz_classes.py`: atrybut `kind`, potem `subpopulation` z `output_plans.xml.zst`; bez planów albo dla osoby spoza planów pierwsza litera id, potem `?`. Nazwy znanych kluczy są w `viz_classes.KNOWN`, nieznany klucz dostaje własną nazwę. `FORMAT` indeksu to 3, plany wchodzą do klucza cache (`plans_sha256`).
+- **Bezstanowa klatka.** `Player.frame(t, classes, selected, follow)`, `pick(t, classes, ...)`, `lookup(query)` nic nie zapamiętują po `open()`. Czas, klasy, zaznaczenie i śledzenie trzyma JS i wysyła w każdym wywołaniu. Odpowiedź spóźniona względem stanu klienta (`rev`) jest odrzucana.
+- **Podział kodu.** `player.py` (model), `window.py` (okno, `Api`, smoke, `main`), `check.py` (akceptacja dowolnego runu), `grab.py` (zrzut okna), `site.py` (katalog strony), `tests/` (pytest, jedna fixtura mini-runu).
+- **Zależności.** `pywebview` i `pytest` w grupie `viz` (`uv run --group viz ...`). `osmium` zostaje w głównych zależnościach, bo używają go skrypty pipeline'u (`border_zones.py`, `osm_features.py`, `dk60_corridor.py`, `turn_violations.py`).
+- **Limity jako ostrzeżenia.** 300 s parsowania, 200 MB pliku i 1 GiB RAM nie przerywają budowy (linia `UWAGA`).
+- **Okno.** Etykieta linku to „średnia na odcinku”, pasek pokazuje „łamane: X z Y”.
+
+Otwarte: wskaźnik postępu budowy indeksu w oknie (okno otwiera się po indeksie), `START`/okno 6–9 wpisane w indeks, spięcie `g6_bake.py` z indeksem, tryby PT/rower/pieszo (indeks zna tylko cztery eventy ruchu po sieci).
+
 ## Uruchomienie
 
-Z katalogu projektu (`C:\Users\Michal\Desktop\MATSim`). `python` nie jest na PATH. Polecenie to `uv run python`.
+Z katalogu projektu. `python` nie jest na PATH, polecenie to `uv run`. Okno, testy i akceptacja potrzebują grupy zależności `viz` (pywebview, pytest). Sam pipeline jej nie potrzebuje.
 
 ```
-uv run python -m viz_player output/g5r6_25pct_s4711
+uv run --group viz python -m viz_player output/g5r7b_25pct_s4711
 ```
 
-Okno wstaje wstrzymane. Na R6 zegar pokazuje `06:00:00`, bo 6:00 leży między początkiem i końcem runu. Powtórne wywołanie bez ścieżki otwiera ostatni run z `output/viz_player_state.json`.
+Okno wstaje wstrzymane. Zegar pokazuje `06:00:00`, gdy ta godzina leży między początkiem i końcem runu. Powtórne wywołanie bez ścieżki otwiera ostatni run z `output/viz_player_state.json`.
 
 W konsoli, zanim pojawi się okno, mogą minąć dwie rzeczy, jedna po drugiej:
 
-1. Budowa indeksu, jeśli `output/<run>/viz/index.npz` jest nieświeży. Na R6 pierwszy przebieg XML trwał 22,4 s (`build_sec` w `meta.json`). Drugi start przy tych samych eventach, sieci i tym samym `viz_index.py` loguje `reuse` i XML pomija.
-2. Łamane OSM. Pierwszy raz na R6: linia `łamane: czytam OSM…`, skan 7,2 s, potem `łamane: 4705 z 10383, skan 7.2 s`. Kolejny start: `łamane: 4705 z 10383, cache`.
+1. Budowa indeksu, jeśli `output/<run>/viz/index.npz` jest nieświeży. Na R7b przebieg XML trwa ok. 20 s (`build_sec` w `meta.json`). Drugi start przy tych samych eventach, sieci, planach, originie i tym samym kodzie (`viz_index.py`, `viz_classes.py`) loguje `reuse` i XML pomija.
+2. Łamane OSM. Pierwszy raz: linia `łamane: czytam OSM…`, skan ok. 7 s, potem `łamane: 4705 z 10383, skan …`. Kolejny start: `łamane: 4705 z 10383, cache`.
 
-Po starcie okna Python dosyła punkty łamanych kawałkami. Dopóki to trwa, mapa może być sama, bez aut. Na R6 to krótka chwila (50 196 punktów, kawałki po 2000). Potem pojawiają się drogi i auta. Zegar `06:00:00` bywa widoczny już w szablonie, zanim przyjdzie pierwsza klatka. Dowód klatki to liczba aut na pasku i kropki na mapie.
-
-Log okna dopisuje się do `output/<run>/viz/player.log`.
+Potem Python zapisuje katalog strony `output/<run>/viz/site/` (`index.html`, `vendor/`, `boot.json`, tablice `.bin`), a pywebview serwuje go po lokalnym HTTP. Strona sama pobiera dane. Dowód klatki to liczba aut na pasku i kropki na mapie. Log okna dopisuje się do `output/<run>/viz/player.log`.
 
 ### Gdy okno jest puste
 
-- W logu jest `FAIL okno nie wstało`: strona nie zgłosiła `mapReady` i `apiReady` w 20 s. Punkty łamanych nie poszły, a pętla klatek czeka na nie, więc auta nie przyjdą.
-- W logu jest `łamane: …; cięciwy`: okno działa, drogi są prostymi między węzłami. Powód jest w tym samym zdaniu (`brak PBF`, `brak origid`, `sieć nieczytelna`, `inna kolejność linków`, albo treść wyjątku).
+- W logu jest `FAIL okno nie wstało`: strona nie zgłosiła `mapReady` i `apiReady` w 20 s.
+- W logu jest `łamane: …; cięciwy`: okno działa, drogi są prostymi między węzłami. Powód jest w tym samym zdaniu (`brak PBF`, `brak origid`, `sieć nieczytelna`, `inna kolejność linków`, albo treść wyjątku). Ten sam tekst pokazuje pasek okna.
 - Po krzyżyku kolejne okno bywało puste, bo mostek pywebview dostawał `api` wcześniej niż funkcję `frame`, a flaga `busy` zostawała na zawsze. Od lekcji 28 `pull` woła `frame` dopiero, gdy funkcja jest, i zdejmuje `busy` po wyjątku. Profil WebView2 zostaje w `output/viz_player_webview` (`private_mode=False`).
 
 ## Okno
 
-Rozmiar startowy 1440×900, tło `#121418`. Stos: pywebview 6.2.1 (`uv.lock`, wymaganie `pywebview>=6.2.1`), silnik `edgechromium` (WebView2), Leaflet 1.9.4 w `viz_player/vendor/` razem z `leaflet.LICENSE`. Leaflet jest wklejony w stronę. Strona nie ściąga go z sieci. `PySide6` nie jest zależnością.
+Rozmiar startowy 1440×900, tło `#121418`. Stos: pywebview 6.2.1 (`uv.lock`, wymaganie `pywebview>=6.2.1`), silnik `edgechromium` (WebView2), Leaflet 1.9.4 w `viz_player/vendor/` razem z `leaflet.LICENSE`. Leaflet leży w katalogu strony (`vendor/`). Strona nie ściąga go z sieci. `PySide6` nie jest zależnością.
 
 Układ to siatka: mapa, panel 320 px po prawej, pasek 52 px na dole przez obie kolumny (`grid-column: 1 / -1`). Dzięki temu przycisk panelu zostaje na pasku, gdy panel znika.
 
@@ -151,18 +165,17 @@ Legenda w rogu mapy: `0 / 20 / 50 km/h`. Liczba w panelu jest osobno: prędkoś�
 
 ## Klasy
 
-Pierwsza litera id pojazdu. Legenda jest w `meta.json`, te same nazwy co w `pipeline/viz_index.py`.
+Klasa osoby (pipeline/viz_classes.py), w tej kolejności: atrybut `kind`, atrybut `subpopulation` z `output_plans.xml.zst`; bez planów albo dla osoby spoza planów pierwsza litera id (`r c o t h` → klucze poniżej); inaczej `?` („inne”). Legenda klas (`classes`: klucz, nazwa, czy większa kropka) jest w `meta.json`. Kolejność chipów: znane klucze, potem reszta alfabetycznie, `?` na końcu. Chip jest tylko dla klas, które mają przejazdy.
 
-| litera | kod | nazwa | przejazdów na R6 |
-|---|---:|---|---:|
-| `r` | 0 | mieszkaniec | 4 336 |
-| `c` | 1 | przyjeżdżający | 2 410 |
-| `o` | 2 | wyjeżdżający | 732 |
-| `t` | 3 | tło lekkie | 16 439 |
-| `h` | 4 | ciężkie | 5 743 |
-| inna | 5 | inne | 0 |
+| klucz | litera (fallback) | nazwa | przejazdów na R7b |
+|---|---|---|---:|
+| `resident` | `r` | mieszkaniec | 4 336 |
+| `commuter` | `c` | przyjeżdżający | 2 410 |
+| `outbound` | `o` | wyjeżdżający | 732 |
+| `tlo` | `t` | tło lekkie | 11 984 |
+| `ciezkie` | `h` | ciężkie (większa kropka) | 4 842 |
 
-Suma 29 660, tyle co `n_tracks`. Wyłączenie `t` na R6 zostawia 447 aut o 07:56:31 i 420 aut w szczycie 16:09:30. To dwa różne czasy. Oba wyniki są w logach.
+Suma 24 304, tyle co `n_tracks`. Klucz spoza tabeli (np. inna wartość `kind` w innym mieście) pokazuje się pod własną nazwą bez zmiany kodu. Etap 3 (tryb, wiek, inne atrybuty osób) ma tu swoje miejsce, ale nie jest zaimplementowany.
 
 ## Drogi na mapie
 
@@ -225,17 +238,11 @@ Brak PBF, nieczytelna sieć, inna kolejność linków niż w indeksie, albo wyj�
 
 ### Dlaczego punkty nie siedzą w HTML
 
-`NavigateToString` odrzucił stronę o wielkości 1,7 MB (`Wartość jest spoza oczekiwanego zakresu`, lekcja 29). Sam szablon z cięciwami ma 659 KB. Check wymaga strony poniżej 1,2 MB.
-
-`boot` niesie cięciwy (lon, lat, lon, lat, kod typu) i puste tablice łamanych. Flaga `curveWait` jest włączona, gdy jest choć jedna łamana. Po `mapReady` i `apiReady` Python dopisuje `curveOff`, `curveLon`, `curveLat` kawałkami po 2000 i sprawdza długość. Potem zeruje licznik namalowanych łamanych, czyści klucz warstwy dróg i puszcza rysunek. Pętla klatek stoi, dopóki `curvesReady` jest fałszem.
-
-`bendI` / `bendN` w `boot` to haczyk testu dla `1807611370009f`. Nie ma ich na panelu.
+Strona nie jest stringiem. `NavigateToString` odrzucał duże HTML (lekcja 29), więc dawniej łamane szły po starcie przez `evaluate_js`. Teraz `site.write_site` zapisuje katalog, a pywebview serwuje go po lokalnym HTTP (`http_server=True`). `boot.json` to małe metadane (run, czas, klasy, podkład, zasięg, liczba linków, `curveNote`). Tablice są plikami little-endian: `link_ll.bin` (float64: lon1, lat1, lon2, lat2), `link_type.bin` (uint8), `curve_off.bin` (int32), `curve_lon.bin`, `curve_lat.bin` (float64). JS pobiera je przez `fetch`, a mapa rusza po ich wczytaniu. Nie ma limitu wielkości strony.
 
 ## Współrzędne
 
-Origin, wspólny z `g6_bake.py`: wschód 524 805 m, północ 485 023 m, EPSG:2180. W plikach odtwarzacza x i y są już po odjęciu originu. Na mapę wracają przez `pyproj`, oś zawsze x = wschód, y = północ, potem EPSG:4326.
-
-Punkt originu wychodzi jako 52,2307° N, 19,3633° E. Check i self-test okna wymagają zgodności do 0,002°. Na R6 obwiednia linków obejmuje 52,23° N i 19,36° E.
+Origin to środek bbox węzłów sieci runu (EPSG:2180, wschód, północ), zaokrąglony do 1000 m, zapisany w `meta.json`. W plikach odtwarzacza x i y są już po odjęciu originu. Na mapę wracają przez `pyproj`, oś zawsze x = wschód, y = północ, potem EPSG:4326. Dla R7b origin to 528 000 / 488 000. Zmiana originu (inna sieć, inna reguła) przebudowuje indeks i cache łamanych.
 
 Kolejność w JSON Leaflet to szerokość, długość. W transformacji pyproj najpierw jest długość.
 
@@ -247,7 +254,12 @@ Kod, w gicie:
 |---|---|
 | `pipeline/viz_index.py` | jeden przebieg eventów i sieci, zapis indeksu |
 | `pipeline/viz_engine.py` | klatka, klik, szukanie, czynności; bez rysowania i bez XML |
-| `viz_player/player.py` | okno, panel, oś, przesunięcie kropki, testy |
+| `pipeline/viz_classes.py` | klasa osoby z atrybutów planów, fallback na literę id |
+| `viz_player/player.py` | model: indeks, panel, oś, przesunięcie kropki, bezstanowa klatka |
+| `viz_player/window.py` | okno pywebview, `Api`, smoke, `main` |
+| `viz_player/check.py` | akceptacja dowolnego runu bez okna |
+| `viz_player/site.py`, `grab.py` | katalog strony; zrzut okna |
+| `viz_player/tests/` | pytest, fixtura mini-runu, `accept_r7b.py` |
 | `viz_player/curves.py` | łamane OSM i ich cache |
 | `viz_player/shell.html` | układ, rysunek, klawisze |
 | `viz_player/vendor/` | Leaflet 1.9.4 |
@@ -260,9 +272,11 @@ Wynik runu, poza gitem, pod `output/<run>/viz/`:
 | `index.npz`, `meta.json`, `index.log` | indekser; w trakcie zapisu bywa `index.writing.npz` |
 | `engine.log` | `viz_engine.py` przy `--check` silnika |
 | `curves.npz` | odtwarzacz; w trakcie `curves-partial.npz` |
+| `site/` | odtwarzacz: strona serwowana oknu (generowana przy każdym otwarciu) |
+| `smoke.png` | zrzut ze smoke |
 | `player.log` | odtwarzacz, dopisywany |
 
-Poza katalogiem runu, też poza gitem: `output/viz_player_state.json` (`{"run": "output/g5r6_25pct_s4711"}`) i katalog profilu `output/viz_player_webview`.
+Poza katalogiem runu, też poza gitem: `output/viz_player_state.json` (`{"run": "output/g5r7b_25pct_s4711"}`) i katalog profilu `output/viz_player_webview`.
 
 Ścieżka w stanie jest względna wobec katalogu projektu, gdy run w nim leży. Run spoza projektu zostaje ścieżką absolutną.
 
@@ -270,17 +284,18 @@ Klucz podkładu, gdy będzie: `config/viz_basemap.local.toml`, pole `key`. Plik 
 
 ## Indeks
 
-Format `1` w `meta.json`. Budżet pliku: poniżej 200 MB. Budżet tablic w RAM, sprawdzany przez silnik: poniżej 1 GB. R6 na dysku: plik `index.npz` 12 051 495 B, budowa 22,418 s. Tablice w RAM przy checku silnika: 89 497 631 B. Dwa pomiary klatki szczytu: 0,008 s i 0,007 s.
+Format `3` w `meta.json` (1: R6, 2: origin z bbox, 3: `person_id` i klasy z planów). Stary indeks jest przebudowywany, nie czytany po cichu. Orientacyjny budżet pliku 200 MB i tablic w RAM 1 GiB: przekroczenie to ostrzeżenie w logu, nie błąd. R7b: `index.npz` 9 486 977 B, budowa ok. 20 s, tablice w RAM 79 544 507 B, klatka szczytu 0,006 s.
 
-Indeks powstaje przy pierwszym otwarciu silnika albo okna. `viz_engine.load` woła `viz_index.run`. Plik jest świeży, gdy `checked` jest prawdziwe, format to 1, a sha256 eventów, sieci i skryptu `viz_index.py` zgadzają się z `meta.json`. Zmiana indeksera przebudowuje indeks. Zmiana odtwarzacza nie.
+Indeks powstaje przy pierwszym otwarciu silnika albo okna. `viz_engine.load` woła `viz_index.run`. Plik jest świeży, gdy `checked` jest prawdziwe, format zgadza się z `FORMAT`, a sha256 eventów, sieci, planów (`plans_sha256`), skryptów (`viz_index.py` i `viz_classes.py`) oraz `origin` zgadzają się z `meta.json`. Zmiana indeksera, klasyfikatora, planów albo originu przebudowuje indeks. Zmiana odtwarzacza nie.
 
 Wejście:
 
 - `output_events.xml.zst`,
 - `output_network.xml.zst`,
-- `output_config.xml` tylko po `sampleSize` (pierwsze `name="sampleSize"`).
+- `output_config.xml` tylko po `sampleSize` (pierwsze `name="sampleSize"`),
+- `output_plans.xml.zst` (opcjonalnie) tylko po atrybutach osób `kind` i `subpopulation`.
 
-Eventy ruchu: `vehicle enters traffic`, `entered link`, `left link`, `vehicle leaves traffic`. Semantyka jest kopią `g6_bake.py`, z indeksem linku na węźle.
+Eventy ruchu: `vehicle enters traffic`, `entered link`, `left link`, `vehicle leaves traffic`. Semantyka jest kopią `g6_bake.py` (jest to druga, niezależna implementacja: spięcie z bake'em odłożone), z indeksem linku na węźle. `vehicle enters traffic` niesie też `person` (brak = id pojazdu).
 
 - `vehicle enters traffic`: punkt na cięciwie wg `relativePosition`. Brak atrybutu = 1. Długość do prędkości = 0.
 - `entered link`: węzeł `from`, długość 0.
@@ -322,7 +337,7 @@ R6, z `meta.json` tego runu:
 | wjazdy w 6:00–9:00 | 6 641 |
 | czynności w legendzie | `home`, `work`, `tlo_start`, `tlo_end` |
 
-Te stałe (przejazdy, wjazdy 6–9, oba szczyty, linki, węzły, obecność pięciu liter) są wpisane w `viz_index.py` jako akceptacja katalogu o nazwie `g5r6_25pct_s4711`. Inny katalog przechodzi test geometrii bez tych liczb.
+Akceptacja konkretnego runu (liczby przejazdów, wjazdów 6–9, szczytów, linków i węzłów) nie jest w kodzie biblioteki. Jest w `viz_player/tests/accept_r7b.py`. Indeks przechodzi na dowolnym runie test geometrii i zgodność liczb z osobnym odczytem eventów (przejazdy, wjazdy 6–9, klasy).
 
 Test geometrii indeksera: seed 1, trzy przejazdy dłuższe niż 8 węzłów, osobny odczyt eventów, 20 chwil, pozycja nie dalej niż 0,5 m od cięciwy linku z eventów. To test pozycji na cięciwie. Łamana okna go nie dotyczy i nie powinna go ruszać.
 
@@ -338,11 +353,11 @@ Klik auta i klik cięciwy są w silniku. Klik po łamanej jest w `viz_player/cur
 
 ## Co okno wysyła do strony
 
-Jedna klatka to JSON z `Api.frame`: czas, zegar, liczba aut, tablice `lon`, `lat`, `v` (m/s), `hd` (radiany), `heavy` (1 dla `h`), indeks zaznaczonej kropki, ślad (`path`: pary szerokość–długość), indeks zaznaczonego linku, punkt śledzenia `pan`, panel.
+Jedna klatka to JSON z `Api.frame(t, classes, selected, follow)`: czas, zegar, liczba aut, tablice `lon`, `lat`, `v` (m/s), `hd` (radiany), `heavy` (1 dla `h`), indeks zaznaczonej kropki, ślad (`path`: pary szerokość–długość), indeks zaznaczonego linku, punkt śledzenia `pan`, panel.
 
 Długości i szerokości są obcięte do 6 miejsc, prędkość do 3, kąt do 4. `NaN` w tym JSON jest błędem (`allow_nan=False`).
 
-Mostek pywebview, metody `Api`: `frame`, `pick`, `classes`, `lookup`, `select`, `follow`, `clear`.
+Mostek pywebview, metody `Api`: `frame(t, classes, selected, follow)`, `pick(t, classes, lat, lon, lat2, lon2)`, `lookup(query)`. Wszystkie bezstanowe: `classes` to klucze klas, `selected` to `{"id"}` (osoba) albo `{"link"}`. Stan widoku trzyma JS.
 
 ## Podkład
 
@@ -350,25 +365,22 @@ Bez `config/viz_basemap.local.toml` mapa jest tłem `#121418`, drogi i auta na k
 
 ## Testy
 
-Nie ma pytest. Każdy kawałek ma self-test na assertach. Syntetyczne eventy muszą mieć jeden event na linię. Na Windows `np.load` trzeba zamknąć, zanim kasuje się `index.npz`.
+pytest w grupie `viz`. Syntetyczne eventy mają jeden event na linię. Na Windows `np.load` trzeba zamknąć, zanim kasuje się `index.npz`.
 
 ```
-uv run python pipeline/viz_index.py --self-test
-uv run python pipeline/viz_engine.py --self-test
-uv run python -m viz_player --self-test
-uv run python pipeline/viz_index.py output/g5r6_25pct_s4711
-uv run python pipeline/viz_engine.py output/g5r6_25pct_s4711
-uv run python -m viz_player --check output/g5r6_25pct_s4711
-uv run python -m viz_player --smoke output/g5r6_25pct_s4711
+uv run --group viz pytest viz_player/tests
+uv run python pipeline/viz_index.py output/g5r7b_25pct_s4711
+uv run python pipeline/viz_engine.py output/g5r7b_25pct_s4711
+uv run --group viz python -m viz_player --check output/g5r7b_25pct_s4711
+uv run --group viz python -m viz_player.tests.accept_r7b
+uv run --group viz python -m viz_player --smoke output/g5r7b_25pct_s4711
 ```
 
-Self-test okna buduje mini-run w katalogu tymczasowym (sieć bez `origid`, więc log `łamane: brak origid; cięciwy`), sprawdza zegar, próbkę `0,25`, rampę, oś, filtr `t`, klik auta i drogi, prefiks id oraz to, że szablon nie zawiera `tile.openstreetmap.org`, `iterparse`, `etree`, `zstandard`, `PySide` ani `g6_bake`. Te słowa wolno mieć w `curves.py`, bo self-test ogląda `player.py` tylko do funkcji `_forbid`, plus `shell.html` i `__main__.py`.
+`viz_player/tests/` ma jedną fixturę mini-runu (`fixture.py`: sieć 6 linków, eventy, plany z atrybutami) i testy indeksu (origin, reuse, unieważnienie przez origin, format i plany, `person_id`, klasy z planów), silnika (pozycja, prędkość, filtr klas, klik, czynności), łamanych (w tym cache zależny od originu) i okna (oś, panel, klik, śledzenie, katalog strony, bezstanowość na 8 wątkach). Testy nie sprawdzają tekstu HTML ani JS.
 
-`--check` jest pod R6. Wymaga próbki `0,25`, strony poniżej 1,2 MB, szczytu zgodnego z `meta.json`, klatki 849 o `07:56:31`, mniejszej klatki bez `t`, osi `r6510903_5` i łamanej `1807611370009f`. Ostatni zielony wpis w `player.log`: `lamane=4705 bend=11`, osie `52.2307N 19.3633E`. Inny run na tym poleceniu padnie, choć okno da się nim otworzyć.
+`--check` działa na dowolnym runie: liczby klatki okna (szczyt, okno 6–9, filtr największej klasy, panel linku, oś pierwszego id z przejazdem i czynnościami) muszą zgadzać się z `meta.json`. `accept_r7b.py` to akceptacja runu referencyjnego R7b (liczby sprzed refaktoru, lookup `r6510903_5`, łamana `1807611370009f`). Ten run i ten link są tylko tam.
 
-`--smoke` otwiera prawdziwe okno WebView2, czeka aż namalowane łamane przekroczą 100 (liczy linki z co najmniej trzema punktami, także poza kadrem), rysuje klatkę 07:56, klika ukrycie panelu, chip `t` i start, robi zrzut i sprawdza oś `r6510903_5`. Zrzut nadpisuje `docs/research/wizualizer_okno.png`. To pauza 07:56, nie stan tuż po otwarciu (otwarcie jest o 06:00). Ostatni zielony smoke: `n=849`, bez `t` 447, mapa `1106x811`. Smoke runu bez łamanych nie przejdzie progu 100.
-
-Check silnika na tym samym runie, osobny log `engine.log`: pełna klatka szczytu 961, bez `t` 420, lookup `r6510903_5` (2 przejazdy), czynności `c1002062_103` zawierają `home` i nie zawierają `car interaction`.
+`--smoke` otwiera prawdziwe okno WebView2 (strona z lokalnego HTTP), sprawdza liczbę łamanych w oknie, rysuje klatkę z okna 6–9, klika ukrycie panelu, chip największej klasy i start, robi zrzut (`output/<run>/viz/smoke.png`, nie w gicie), szuka id przez pole wyszukiwania, sprawdza oś i czyści zaznaczenie klawiszem Esc. Pierwsze uruchomienie okna bywa odrzucone (`Main window failed to start`), drugie przechodzi.
 
 Kod wyjścia 0: test przeszedł. 1: test albo brak plików runu. 2: uruchomienie bez ścieżki i bez zapisanego stanu.
 
