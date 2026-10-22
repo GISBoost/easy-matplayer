@@ -8,6 +8,7 @@ Testy: uv run --group viz pytest viz_player/tests
 import base64
 import json
 import mimetypes
+import shutil
 import sys
 import threading
 import time
@@ -16,10 +17,11 @@ from pathlib import Path
 
 import numpy as np
 
-from viz_player import check, grab, ogc
+from viz_player import check, grab, ogc, rasters
 from viz_player.player import ROOT, Player, clock, note, pick_ident, save_state, saved_run
 
 SERVICES = ROOT / "output" / "viz_player_services.json"
+RASTERS = ROOT / "output" / "viz_player_rasters"
 
 # MapLibre 6 to moduły ES; przeglądarka odrzuca je bez typu JavaScript, a rejestr Windows bywa pusty
 mimetypes.add_type("text/javascript", ".mjs")
@@ -28,12 +30,14 @@ mimetypes.add_type("text/javascript", ".mjs")
 class Api:
     """Mostek JS: klatkę liczy klient (engine.js), Python opisuje zaznaczenie. Bez własnego stanu."""
 
-    def __init__(self, player, site=None, services=None):
+    def __init__(self, player, site=None, services=None, rasters_dir=None):
         # pola z _ : pywebview wystawia do JS tylko publiczne atrybuty
         self._player = player
         self._services_file = Path(services) if services else SERVICES
         self._lock = threading.Lock()
         self._caps = {}
+        self._rasters_dir = Path(rasters_dir) if rasters_dir else RASTERS
+        self._staged = {}  # obrazy z plikiem świata czekające na kod EPSG
         self._services = self._load_services()
         self._site = site or player.run_dir / "viz" / "site"  # katalog, z którego okno ładuje stronę
         self._window = None
@@ -90,9 +94,97 @@ class Api:
 
     def ogc_remove(self, ident):
         with self._lock:
+            gone = [s for s in self._services if s["id"] == ident]
+            gone += [self._staged.pop(ident)["entry"]] if ident in self._staged else []
             self._services = [s for s in self._services if s["id"] != ident]
             self._save_services()
+        for entry in gone:
+            if entry.get("type") == "image":
+                (self._rasters_dir / entry["file"]).unlink(missing_ok=True)
         return True
+
+    # ---- własny obraz jako podkład (P5c): z georeferencją z pliku albo ułożony ręcznie ----
+    def raster_pick(self):
+        import webview
+        sel = self._window.create_file_dialog(
+            webview.FileDialog.OPEN, directory=str(ROOT),
+            file_types=("Obrazy (*.png;*.jpg;*.jpeg;*.tif;*.tiff;*.webp)", "Wszystkie pliki (*.*)"),
+        )
+        if not sel:
+            return {"status": "cancel"}
+        return {"status": "path", "path": str(sel[0] if isinstance(sel, (list, tuple)) else sel)}
+
+    def raster_import(self, path, view):
+        """Zapisuje obraz i ustala narożniki. Statusy: ok (georeferencja z pliku), manual (do ułożenia ręcznie), needs_crs, error."""
+        ident = uuid.uuid4().hex[:8]
+        try:
+            georef = rasters.read_georef(path)
+            name, size, src = rasters.store_image(path, self._rasters_dir, ident)
+            base = {"id": ident, "type": "image", "name": Path(path).stem, "file": name, "size": list(size), "on": True, "opacity": 1.0}
+            if georef is None:
+                entry = dict(base, corners=rasters.manual_corners(view, size), georef="ręczne")
+                return self._add_image(entry, "manual")
+            if georef["crs"] is None:
+                self._staged[ident] = {"entry": base, "affine": georef["affine"], "src": src, "source": georef["source"]}
+                return {"status": "needs_crs", "id": ident, "name": base["name"], "source": georef["source"],
+                        "guess": rasters.guess_crs(georef["affine"], src)}
+            entry = dict(base, corners=rasters.corners_from_affine(georef["affine"], src, georef["crs"]),
+                         georef=f"{georef['source']}, EPSG:{georef['crs']}")
+            return self._add_image(entry, "ok")
+        except rasters.RasterError as exc:
+            return {"status": "error", "message": str(exc)}
+
+    def _add_image(self, entry, status):
+        with self._lock:
+            self._services.append(entry)
+            self._save_services()
+        return {"status": status, "service": entry}
+
+    @staticmethod
+    def _epsg(value):
+        code = ogc.epsg(str(value)) or (str(value).strip() if str(value).strip().isdigit() else None)
+        if not code:
+            raise rasters.RasterError("Podaj kod układu, np. 2180 albo EPSG:4326.")
+        return int(code)
+
+    def raster_set_crs(self, ident, crs):
+        stage = self._staged.get(ident)
+        if stage is None:
+            return {"status": "error", "message": "Ten obraz już nie czeka na układ."}
+        try:
+            entry = dict(stage["entry"], corners=rasters.corners_from_affine(stage["affine"], stage["src"], self._epsg(crs)),
+                         georef=f"{stage['source']}, EPSG:{self._epsg(crs)}")
+        except rasters.RasterError as exc:
+            return {"status": "error", "message": str(exc)}
+        self._staged.pop(ident)
+        return self._add_image(entry, "ok")
+
+    def _update_image(self, ident, corners, how):
+        with self._lock:
+            for s in self._services:
+                if s["id"] == ident and s.get("type") == "image":
+                    s["corners"], s["georef"] = corners, how
+                    self._save_services()
+                    return {"status": "ok", "service": s}
+        return {"status": "error", "message": "Nie ma takiego obrazu."}
+
+    def raster_set_corners(self, ident, corners):
+        return self._update_image(ident, [[float(a), float(b)] for a, b in corners], "ręczne")
+
+    def raster_set_bbox(self, ident, west, south, east, north, crs):
+        try:
+            code = self._epsg(crs)
+            corners = rasters.corners_from_bbox(float(west), float(south), float(east), float(north), code)
+        except (rasters.RasterError, ValueError) as exc:
+            return {"status": "error", "message": str(exc) if isinstance(exc, rasters.RasterError) else "Zakres musi składać się z czterech liczb."}
+        return self._update_image(ident, corners, f"zakres EPSG:{code}")
+
+    def raster_data(self, ident):
+        entry = next((s for s in self._services if s["id"] == ident and s.get("type") == "image"), None)
+        if entry is None:
+            return {"error": "nieznany obraz"}
+        mime, body = rasters.read_stored(self._rasters_dir, entry["file"])
+        return {"mime": mime, "b64": base64.b64encode(body).decode("ascii")}
 
     def ogc_set(self, ident, on, opacity):
         with self._lock:
@@ -205,6 +297,98 @@ def _fake_wms():
     return f"http://127.0.0.1:{server.server_port}/wms", requests, server.shutdown
 
 
+def _smoke_images(window, js, work, services_file):
+    """Własny obraz (P5c): bez georeferencji (ręczne ułożenie, przeciąganie, zakres) i z plikiem świata bez układu. Zwraca zdanie błędu albo None."""
+    from PIL import Image
+
+    work.mkdir(parents=True, exist_ok=True)
+    Image.new("RGB", (200, 100), (240, 200, 40)).save(work / "plan.png")
+    Image.new("RGB", (60, 40), (40, 120, 240)).save(work / "ortho.png")
+    (work / "ortho.wld").write_text("10\n0\n0\n-10\n500005\n599995\n")
+    plan = json.dumps(str(work / "plan.png").replace("\\", "/"))
+    ortho = json.dumps(str(work / "ortho.png").replace("\\", "/"))
+
+    def call(expr):
+        js("window._r = undefined; (" + expr + ").then(function(r){window._r = r;}, function(e){window._r = {status: 'exc', message: String(e && e.stack || e)};});")
+        if not _wait_js(window, "window._r !== undefined", 20):
+            return None
+        return js("window._r")
+
+    # bez georeferencji: wstaje jako „manual”, od razu w trybie ręcznego układania z pięcioma uchwytami
+    r = call(f"window.addImagePath({plan})")
+    if not r or r.get("status") != "manual":
+        return f"obraz bez georeferencji: {r} {js('window.drawError')}"
+    ident = r["service"]["id"]
+    if js("document.querySelectorAll('#hnd i').length") != 5 or js("document.getElementById('edit-hint').hidden"):
+        return "obraz bez georeferencji: brak uchwytów edycji"
+    if not _wait_js(window, f"map.getSource('svc-{ident}') && map.isSourceLoaded('svc-{ident}')", 20):
+        return "obraz bez georeferencji: źródło nie załadowane " + str(js("window.drawError"))
+    geom = (
+        "(function(){var c=services.find(function(s){return s.id==='" + ident + "';}).corners.map(function(p){var q=map.project(p);return [q.x,q.y];});"
+        "return {c:c};})()"
+    )
+    before = js(geom)["c"]
+
+    def drag(handle, dx, dy):
+        js(
+            "(function(){var h=document.querySelector('#hnd i[data-k=\"" + handle + "\"]').getBoundingClientRect();"
+            "var x=h.left+h.width/2,y=h.top+h.height/2;"
+            "document.querySelector('#hnd i[data-k=\"" + handle + "\"]').dispatchEvent(new PointerEvent('pointerdown',{clientX:x,clientY:y,pointerId:7,bubbles:true,cancelable:true}));"
+            f"window.dispatchEvent(new PointerEvent('pointermove',{{clientX:x+({dx}),clientY:y+({dy}),pointerId:7}}));"
+            "window.dispatchEvent(new PointerEvent('pointerup',{pointerId:7}));})()"
+        )
+        time.sleep(0.5)
+
+    drag("mid", 120, 40)
+    after = js(geom)["c"]
+    mid_b = [(before[0][i] + before[2][i]) / 2 for i in (0, 1)]
+    mid_a = [(after[0][i] + after[2][i]) / 2 for i in (0, 1)]
+    if abs(mid_a[0] - mid_b[0] - 120) > 3 or abs(mid_a[1] - mid_b[1] - 40) > 3:
+        return f"przesunięcie środkiem: {mid_b} -> {mid_a}"
+    import math
+
+    def dist(a, b):
+        return math.hypot(a[0] - b[0], a[1] - b[1])
+
+    w0, h0 = dist(after[0], after[1]), dist(after[0], after[3])
+    drag("2", 80, 60)
+    scaled = js(geom)["c"]
+    w1, h1 = dist(scaled[0], scaled[1]), dist(scaled[0], scaled[3])
+    if not (w1 > w0 * 1.05 and abs(w1 / h1 - w0 / h0) < 0.02 * (w0 / h0)) or dist(scaled[0], after[0]) > 3:
+        return f"skalowanie rogiem: szer {w0:.1f}->{w1:.1f}, wys {h0:.1f}->{h1:.1f}, kotwica {dist(scaled[0], after[0]):.1f}"
+    saved = call("svcApi().ogc_list()")
+    mine = next((x for x in saved if x["id"] == ident), None)
+    if not mine or abs(mine["corners"][0][0] - js("services.find(function(s){return s.id==='" + ident + "';}).corners[0][0]")) > 1e-9:
+        return "obraz bez georeferencji: ułożenie nie zapisane"
+    js("document.getElementById('edit-done').click()")
+    if js("document.querySelectorAll('#hnd').length") != 0:
+        return "obraz: gotowe nie chowa uchwytów"
+
+    # zakres wpisany ręcznie
+    js(f"window.editImage('{ident}'); document.getElementById('edit-bbox').click();")
+    js("document.getElementById('img-epsg').value='4326'; document.getElementById('img-w').value='19,30'; document.getElementById('img-e').value='19.40';"
+       "document.getElementById('img-s').value='52.20'; document.getElementById('img-n').value='52.26'; document.getElementById('img-form').requestSubmit();")
+    if not _wait_js(window, "document.getElementById('img-dlg').hidden && document.querySelectorAll('#hnd').length === 0", 10):
+        return "zakres: " + str(js("document.getElementById('img-msg').textContent"))
+    c = js("services.find(function(s){return s.id==='" + ident + "';}).corners")
+    if abs(c[0][0] - 19.30) > 1e-6 or abs(c[0][1] - 52.26) > 1e-6 or abs(c[2][0] - 19.40) > 1e-6 or abs(c[2][1] - 52.20) > 1e-6:
+        return f"zakres: narożniki {c}"
+
+    # plik świata bez układu: pyta o EPSG z podpowiedzią 2180
+    r = call(f"window.addImagePath({ortho})")
+    if not r or r.get("status") != "needs_crs" or r.get("guess") != 2180:
+        return f"plik świata: {r}"
+    if js("document.getElementById('img-dlg').hidden") or js("document.getElementById('img-epsg').value") != "2180":
+        return "plik świata: brak okna z podpowiedzią układu"
+    js("document.getElementById('img-form').requestSubmit();")
+    if not _wait_js(window, "document.getElementById('img-dlg').hidden && window.svcLayerIds.length === 3", 10):
+        return "plik świata: po podaniu układu brak warstwy " + str(js("document.getElementById('img-msg').textContent"))
+    placed = js("services[services.length-1].corners")
+    if not (18 < placed[0][0] < 21 and 51 < placed[0][1] < 54 and placed[0][1] > placed[3][1]):
+        return f"plik świata: narożniki {placed}"
+    return None
+
+
 def smoke(run):
     """Automat okna: prawdziwy WebView2, strona z lokalnego HTTP, klik w chip, szukanie id, Esc."""
     player = Player()
@@ -215,7 +399,9 @@ def smoke(run):
     import webview
     services_file = player.run_dir / "viz" / "smoke_services.json"
     services_file.unlink(missing_ok=True)
-    api = Api(player, services=services_file)
+    shutil.rmtree(player.run_dir / "viz" / "smoke_rasters", ignore_errors=True)
+    shutil.rmtree(player.run_dir / "viz" / "smoke_img", ignore_errors=True)
+    api = Api(player, services=services_file, rasters_dir=player.run_dir / "viz" / "smoke_rasters")
     wms_url, wms_requests, wms_stop = _fake_wms()
     window = webview.create_window(
         "easy-matviz smoke", url=str(player.write_site()), js_api=api,
@@ -453,6 +639,10 @@ def smoke(run):
                 return
             js("document.querySelector('#svc-list .svc input[type=checkbox]').click()")
             result["wms_tiles"] = len(wms_requests)
+            err = _smoke_images(window, js, player.run_dir / "viz" / "smoke_img", services_file)
+            if err:
+                result["error"] = err
+                return
             # „otwórz run”: zły katalog zostawia bieżący run i pisze zdanie, drugi run podmienia stronę, powrót przywraca
             home = player.run_name
             js("window._or = undefined; window.openRunPath('C:/nie/ma/takiego/runu').then(function(r){window._or = r;});")
@@ -468,13 +658,16 @@ def smoke(run):
                         result["error"] = f"otwórz run {want}: {js('boot.run')} {js('window.drawError')} msg={js('document.getElementById(\"runmsg\").textContent')}"
                         return
                 result["switched"] = other.name
-            if js("window.svcLayerIds && window.svcLayerIds.length") != 1:
+            if js("window.svcLayerIds && window.svcLayerIds.length") != 3:
                 result["error"] = f"wms: po przeładowaniu strony usługa zniknęła {js('window.svcLayerIds')}"
                 return
-            js("document.querySelector('#svc-list .svc button').click()")
+            for _ in range(3):
+                js("document.querySelector('#svc-list .svc button[title=\"usuń\"]').click()")
+                time.sleep(0.4)
             if not _wait_js(window, "window.svcLayerIds.length === 0", 10) \
-                    or json.loads(services_file.read_text(encoding="utf-8")) != []:
-                result["error"] = "wms: usunięcie nie czyści listy"
+                    or json.loads(services_file.read_text(encoding="utf-8")) != [] \
+                    or any((player.run_dir / "viz" / "smoke_rasters").glob("*")):
+                result["error"] = "wms: usunięcie nie czyści listy albo plików obrazów"
                 return
             result.update(ok=True, n=len(ref), thin=thin_n, clock=clock(t_win), size=size, key=thin_key)
         except Exception:

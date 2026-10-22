@@ -149,3 +149,13 @@ def test_projected_tile_is_resampled(monkeypatch):
     assert mime == "image/png" and out.shape == (256, 256, 4) and out[..., 3].min() == 255
     assert out[:, -1, 0].mean() > out[:, 0, 0].mean() + 100
     assert seen[0][0] > seen[0][1] + 1e5  # WMS 1.3.0 + EPSG:2180: najpierw północ, potem wschód
+
+
+def test_xyz_template_is_recognised_and_formatted(monkeypatch):
+    cap = ogc.capabilities("https://t.example/{z}/{x}/{y}.png")
+    spec = ogc.make_spec(cap, "xyz")
+    assert cap["kind"] == "xyz" and spec == {"kind": "xyz", "template": "https://t.example/{z}/{x}/{y}.png"}
+    assert ogc.xyz_tile_url("https://{s}.t/{z}/{x}/{-y}.png", 3, 5, 2) == "https://a.t/3/5/5.png"
+    seen = []
+    monkeypatch.setattr(ogc, "_fetch", lambda url, timeout=0: (seen.append(url), (b"x", "image/png"))[1])
+    assert ogc.tile(spec, 4, 8, 6)[0] == "image/png" and seen == ["https://t.example/4/8/6.png"]

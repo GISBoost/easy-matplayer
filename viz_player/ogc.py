@@ -91,6 +91,9 @@ def capabilities(url):
     url = url.strip()
     if not url:
         raise OgcError("Wpisz adres usługi.")
+    if "{z}" in url and "{x}" in url:
+        return {"kind": "xyz", "url": url, "title": "", "template": url,
+                "layers": [{"name": "xyz", "title": "Kafelki XYZ", "path": "Kafelki XYZ", "crs": ["EPSG:3857"]}]}
     order = ["WMTS", "WMS"] if "wmts" in url.lower() else ["WMS", "WMTS"]
     last = None
     for service in order:
@@ -209,6 +212,8 @@ def make_spec(cap, layer_name):
     layer = next((l for l in cap["layers"] if l["name"] == layer_name), None)
     if layer is None:
         raise OgcError(f"Usługa nie ma warstwy {layer_name}.")
+    if cap["kind"] == "xyz":
+        return {"kind": "xyz", "template": cap["template"]}
     if cap["kind"] == "wms":
         codes = {epsg(c) for c in layer["crs"]}
         if "CRS:84" in layer["crs"]:
@@ -350,8 +355,17 @@ def _tile_proj(spec, z, x, y):
     return "image/png", buf.getvalue()
 
 
+def xyz_tile_url(template, z, x, y):
+    """Szablon {z}/{x}/{y}; {-y} to schemat TMS (y od dołu), {s} to pierwszy z serwerów a, b, c."""
+    url = template.replace("{s}", "a").replace("{-y}", str(2 ** z - 1 - y))
+    return url.replace("{z}", str(z)).replace("{x}", str(x)).replace("{y}", str(y))
+
+
 def tile(spec, z, x, y):
     """(mime, bajty) kafelka z/x/y w siatce Web Mercator (schemat XYZ)."""
+    if spec["kind"] == "xyz":
+        body, ctype = _fetch(xyz_tile_url(spec["template"], z, x, y))
+        return _check_image(body, ctype)
     if spec["kind"] == "wms":
         if spec["mode"] == "proj":
             return _tile_proj(spec, z, x, y)

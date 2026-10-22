@@ -406,6 +406,10 @@ Przycisk „otwórz run…” (`#openrun` w `shell.html`): `Api.pick_run` pokazu
 
 `viz_player/ogc.py`: `capabilities(url)` (WMS 1.1.1/1.3.0 i WMTS 1.0.0, typ po korzeniu XML), `make_spec(cap, warstwa)` (samodzielny opis do kafelków, wybór układu: 3857 → stopnie → rzutowany), `tile(spec, z, x, y)`. Kafelki idą przez `Api.ogc_tile` jako base64; w `shell.html` protokół MapLibre `ogc://<id>/{z}/{x}/{y}` (`maplibregl.addProtocol`) i źródła `raster` o id `svc-<id>`. Lista usług w `output/viz_player_services.json` (poza gitem). Układ rzutowany: obraz w układzie usługi jest przepróbowany (najbliższy sąsiad) na siatkę kafelka 256 px; oś bbox z `pyproj.CRS.axis_info`.
 
+## Własny raster
+
+`viz_player/rasters.py`: `read_georef` (GeoTIFF przez tagi Pillowa, plik świata z przesunięciem o pół piksela, `.prj`), `guess_crs`, `corners_from_affine` / `corners_from_bbox` (przez pyproj), `manual_corners` (obraz na środku widoku), `store_image` (kopia do `output/viz_player_rasters/`, max 4096 px). Wspólna postać to cztery narożniki lon/lat `[lewy-górny, prawy-górny, prawy-dolny, lewy-dolny]`, którą przyjmuje źródło `image` MapLibre. Edycja ręczna w `shell.html` (`editStart`, `dragMove`): uchwyty DOM nad mapą, przeciąganie liczone w metrach Web Mercator (konforemne, więc prostokąt zostaje prostokątem). `Api.raster_*` w `window.py`.
+
 ## Podkład
 
 Bez `config/viz_basemap.local.toml` mapa jest tłem `#121418`, drogi i auta na kanwie, na pasku zdanie „Podkład wyłączony.” Klucz dokłada Michał później. Do tego czasu kafelków nie ma, i tak ma być.

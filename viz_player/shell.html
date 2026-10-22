@@ -45,8 +45,30 @@ body { display: grid; grid-template-columns: 1fr 320px; grid-template-rows: 1fr 
 #svc-list .svc { display: grid; grid-template-columns: auto 1fr auto; gap: 6px 8px; align-items: center; color: #e7e9ee; }
 #svc-list .svc span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 #svc-list .svc input[type=range] { grid-column: 2; accent-color: #7eb6ff; width: 100%; }
+#svc-list .svc > button:nth-child(5) { grid-column: 3; font-size: 12px; }
 #svc-list .svc button { background: transparent; color: #9aa3b2; border: 0; cursor: pointer; font: inherit; }
 #svc .chip { align-self: flex-start; }
+#svc .btns { display: flex; flex-wrap: wrap; gap: 6px; }
+#img-dlg { position: fixed; inset: 0; background: rgba(0,0,0,.55); display: flex; align-items: center; justify-content: center; z-index: 10; }
+#img-dlg[hidden], #edit-hint[hidden], #img-bbox[hidden] { display: none; }
+#img-form { background: #1b1f27; border: 1px solid #2a3140; border-radius: 10px; padding: 18px; width: min(460px, 92vw);
+  display: flex; flex-direction: column; gap: 10px; }
+#img-form h2 { margin: 0; font-size: 15px; }
+#img-form p { margin: 0; line-height: 1.4; }
+#img-form label { display: flex; flex-direction: column; gap: 4px; color: #9aa3b2; font-size: 12px; }
+#img-form input { background: #121418; color: #e7e9ee; border: 1px solid #2a3140; border-radius: 6px; padding: 8px; font: inherit; }
+#img-form .grid4 { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+#img-form .row { display: flex; gap: 10px; align-items: center; }
+#img-form .row.end { justify-content: flex-end; }
+#img-form button, #edit-hint button { background: #121418; color: #e7e9ee; border: 1px solid #2a3140; border-radius: 6px; padding: 6px 12px; font: inherit; cursor: pointer; }
+#edit-hint { position: fixed; left: 16px; top: 12px; right: 420px; z-index: 5; background: #1b1f27; border: 1px solid #7eb6ff; border-radius: 8px;
+  padding: 8px 12px; display: flex; gap: 10px; align-items: center; font-size: 12px; line-height: 1.35; }
+#edit-hint span { flex: 1; color: #e7e9ee; }
+#hnd { position: absolute; inset: 0; pointer-events: none; z-index: 4; overflow: hidden; }
+#hnd i { position: absolute; left: 0; top: 0; width: 16px; height: 16px; margin: -8px 0 0 -8px; box-sizing: border-box; pointer-events: auto;
+  background: #7eb6ff; border: 2px solid #121418; cursor: nwse-resize; touch-action: none; }
+#hnd i.mid { border-radius: 50%; cursor: move; width: 20px; height: 20px; margin: -10px 0 0 -10px; }
+#hnd .outline { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; }
 #svc-dlg { position: fixed; inset: 0; background: rgba(0,0,0,.55); display: flex; align-items: center; justify-content: center; z-index: 10; }
 #svc-dlg[hidden] { display: none; }
 #svc-form { background: #1b1f27; border: 1px solid #2a3140; border-radius: 10px; padding: 18px; width: min(560px, 92vw);
@@ -118,9 +140,12 @@ body.panel-off #panel { display: none; }
     <button id="carcolor" type="button" class="chip">kolor auta: prędkość</button>
   </div>
   <div id="svc">
-    <div class="muted">Podkłady WMS / WMTS</div>
+    <div class="muted">Podkłady: WMS, WMTS, XYZ, obrazy</div>
     <div id="svc-list"></div>
-    <button id="svc-add" type="button" class="chip">dodaj WMS / WMTS…</button>
+    <div class="btns">
+      <button id="svc-add" type="button" class="chip">dodaj WMS / WMTS / XYZ…</button>
+      <button id="img-add" type="button" class="chip">dodaj obraz…</button>
+    </div>
   </div>
   <div id="detail" class="muted">Kliknij auto albo drogę.</div>
   <div id="axis" hidden>
@@ -147,6 +172,26 @@ body.panel-off #panel { display: none; }
   <span id="curves"></span>
   <button id="three" type="button">3D</button>
   <button id="hide" type="button">ukryj</button>
+</div>
+<div id="img-dlg" hidden>
+  <form id="img-form">
+    <h2 id="img-title"></h2>
+    <p id="img-text" class="muted"></p>
+    <label>Układ współrzędnych (kod EPSG)<input id="img-epsg" type="text" autocomplete="off" value="4326"></label>
+    <div id="img-bbox" class="grid4" hidden>
+      <label>W (x min)<input id="img-w" type="text" autocomplete="off"></label>
+      <label>E (x max)<input id="img-e" type="text" autocomplete="off"></label>
+      <label>S (y min)<input id="img-s" type="text" autocomplete="off"></label>
+      <label>N (y max)<input id="img-n" type="text" autocomplete="off"></label>
+    </div>
+    <div class="row"><span id="img-msg" class="muted"></span></div>
+    <div class="row end"><button id="img-apply" type="submit">zastosuj</button><button id="img-close" type="button">zamknij</button></div>
+  </form>
+</div>
+<div id="edit-hint" hidden>
+  <span>Obraz bez georeferencji: przeciągnij środek, żeby przesunąć, róg, żeby skalować i obracać. Suwak przezroczystości w panelu pomaga trafić w drogi.</span>
+  <button id="edit-bbox" type="button">wpisz zakres…</button>
+  <button id="edit-done" type="button">gotowe</button>
 </div>
 <div id="svc-dlg" hidden>
   <form id="svc-form">
@@ -814,6 +859,7 @@ function svcSync() {
   });
   services.forEach((s) => {
     const id = "svc-" + s.id;
+    if (s.type === "image") { imageSync(s, id); return; }
     if (!map.getSource(id)) {
       map.addSource(id, {type: "raster", tiles: ["ogc://" + s.id + "/{z}/{x}/{y}"], tileSize: 256, maxzoom: 19, attribution: s.name});
       map.addLayer({id, type: "raster", source: id});
@@ -823,6 +869,104 @@ function svcSync() {
   });
   window.svcLayerIds = services.map((s) => "svc-" + s.id);
 }
+// Własny obraz: źródło `image` MapLibre z czterema narożnikami lon/lat (lewy-górny, prawy-górny, prawy-dolny, lewy-dolny)
+const imgUrl = {};
+function imageSync(s, id) {
+  if (!imgUrl[s.id]) {
+    if (imgUrl[s.id] === null) return;
+    imgUrl[s.id] = null;
+    svcApi().raster_data(s.id).then(async (r) => {
+      if (r.error) { imgUrl[s.id] = undefined; return; }
+      imgUrl[s.id] = URL.createObjectURL(await (await fetch("data:" + r.mime + ";base64," + r.b64)).blob());
+      svcSync();
+    });
+    return;
+  }
+  if (!map.getSource(id)) {
+    map.addSource(id, {type: "image", url: imgUrl[s.id], coordinates: s.corners});
+    map.addLayer({id, type: "raster", source: id, paint: {"raster-fade-duration": 0}});
+  } else {
+    map.getSource(id).setCoordinates(s.corners);
+  }
+  map.setLayoutProperty(id, "visibility", s.on ? "visible" : "none");
+  map.setPaintProperty(id, "raster-opacity", s.opacity);
+}
+const MERC = 20037508.342789244;
+const toMerc = (p) => [p[0] * MERC / 180, Math.log(Math.tan((90 + p[1]) * Math.PI / 360)) * MERC / Math.PI];
+const fromMerc = (m) => [m[0] / MERC * 180, (2 * Math.atan(Math.exp(m[1] / MERC * Math.PI)) - Math.PI / 2) * 180 / Math.PI];
+function viewNow() {
+  const c = toMerc([map.getCenter().lng, map.getCenter().lat]);
+  return {cx: c[0], cy: c[1], w: map.getContainer().clientWidth * 2 * MERC / (512 * Math.pow(2, map.getZoom()))};
+}
+// Ręczne ułożenie: środek przesuwa, róg skaluje i obraca (podobieństwo wokół przeciwległego rogu, więc proporcje zostają)
+let editing = null;
+function editStart(s) {
+  editStop(false);
+  const box = document.createElement("div");
+  box.id = "hnd";
+  const handles = [0, 1, 2, 3, "mid"].map((k) => {
+    const h = document.createElement("i");
+    h.dataset.k = String(k);
+    if (k === "mid") h.className = "mid";
+    h.addEventListener("pointerdown", (ev) => dragStart(ev, k));
+    box.append(h);
+    return h;
+  });
+  map.getContainer().append(box);
+  editing = {s, box, handles, drag: null};
+  svcEl("edit-hint").hidden = false;
+  map.on("move", placeHandles);
+  placeHandles();
+}
+function placeHandles() {
+  if (!editing) return;
+  const px = editing.s.corners.map((c) => map.project(c));
+  const pos = [...px, {x: (px[0].x + px[2].x) / 2, y: (px[0].y + px[2].y) / 2}];
+  editing.handles.forEach((h, i) => { h.style.transform = "translate(" + pos[i].x + "px," + pos[i].y + "px)"; });
+}
+function mouseMerc(ev) {
+  const r = map.getContainer().getBoundingClientRect(), ll = map.unproject([ev.clientX - r.left, ev.clientY - r.top]);
+  return toMerc([ll.lng, ll.lat]);
+}
+function dragStart(ev, k) {
+  ev.preventDefault();
+  ev.stopPropagation();
+  try { ev.target.setPointerCapture(ev.pointerId); } catch (e) { /* syntetyczne zdarzenia w teście */ }
+  editing.drag = {k, start: editing.s.corners.map(toMerc), from: mouseMerc(ev)};
+  window.addEventListener("pointermove", dragMove);
+  window.addEventListener("pointerup", dragEnd, {once: true});
+}
+function dragMove(ev) {
+  const d = editing && editing.drag;
+  if (!d) return;
+  const m = mouseMerc(ev), dx = m[0] - d.from[0], dy = m[1] - d.from[1];
+  let next;
+  if (d.k === "mid") {
+    next = d.start.map((p) => [p[0] + dx, p[1] + dy]);
+  } else {
+    const opp = d.start[(d.k + 2) % 4], p0 = d.start[d.k];
+    const vx = p0[0] - opp[0], vy = p0[1] - opp[1], wx = p0[0] + dx - opp[0], wy = p0[1] + dy - opp[1];
+    const n2 = vx * vx + vy * vy || 1, rx = (wx * vx + wy * vy) / n2, ry = (wy * vx - wx * vy) / n2;
+    next = d.start.map((p) => [opp[0] + (p[0] - opp[0]) * rx - (p[1] - opp[1]) * ry, opp[1] + (p[0] - opp[0]) * ry + (p[1] - opp[1]) * rx]);
+  }
+  editing.s.corners = next.map(fromMerc);
+  svcSync();
+  placeHandles();
+}
+async function dragEnd() {
+  window.removeEventListener("pointermove", dragMove);
+  if (!editing) return;
+  editing.drag = null;
+  await svcApi().raster_set_corners(editing.s.id, editing.s.corners);
+}
+function editStop() {
+  if (!editing) return;
+  map.off("move", placeHandles);
+  editing.box.remove();
+  editing = null;
+  svcEl("edit-hint").hidden = true;
+}
+window.editImage = (id) => editStart(services.find((s) => s.id === id));
 function svcRender() {
   const box = document.getElementById("svc-list");
   box.textContent = "";
@@ -839,8 +983,14 @@ function svcRender() {
     op.type = "range"; op.min = "0"; op.max = "1"; op.step = "0.05"; op.value = String(s.opacity);
     on.addEventListener("change", () => { s.on = on.checked; svcApi().ogc_set(s.id, s.on, s.opacity); svcSync(); });
     op.addEventListener("input", () => { s.opacity = +op.value; svcApi().ogc_set(s.id, s.on, s.opacity); svcSync(); });
-    del.addEventListener("click", async () => { await svcApi().ogc_remove(s.id); services = services.filter((x) => x.id !== s.id); svcRender(); svcSync(); });
+    del.addEventListener("click", async () => { if (editing && editing.s === s) editStop(); await svcApi().ogc_remove(s.id); services = services.filter((x) => x.id !== s.id); svcRender(); svcSync(); });
     row.append(on, name, del, op);
+    if (s.type === "image") {
+      const set = document.createElement("button");
+      set.type = "button"; set.textContent = "ustaw"; set.title = s.georef || "";
+      set.addEventListener("click", () => (editing && editing.s === s ? editStop() : editStart(s)));
+      row.append(set);
+    }
     box.append(row);
   });
 }
@@ -883,6 +1033,66 @@ svcEl("svc-form").addEventListener("submit", async (ev) => {
     list.append(lab);
   });
   list.hidden = false;
+});
+let imgPending = null;
+function imgDialog(mode, title, text, guess) {
+  svcEl("img-title").textContent = title;
+  svcEl("img-text").textContent = text;
+  svcEl("img-msg").textContent = "";
+  svcEl("img-epsg").value = guess || "4326";
+  svcEl("img-bbox").hidden = mode !== "bbox";
+  svcEl("img-dlg").hidden = false;
+  svcEl("img-epsg").focus();
+}
+async function addImagePath(path) {
+  const r = await svcApi().raster_import(path, viewNow());
+  if (r.status === "error") { svcEl("runmsg").textContent = r.message; svcEl("runmsg").hidden = false; return r; }
+  if (r.status === "needs_crs") {
+
+    imgDialog("crs", "Plik świata bez układu", "Obraz ma georeferencję (" + r.source + "), ale nie wiadomo, w jakim układzie jest zapisana. Podpowiedź z liczb: EPSG:" + r.guess + ".", String(r.guess));
+    imgPending = {id: r.id, mode: "crs"};
+    return r;
+  }
+  services.push(r.service);
+  svcRender(); svcSync();
+  if (r.status === "manual") editStart(r.service);
+  return r;
+}
+window.addImagePath = addImagePath;
+svcEl("img-add").addEventListener("click", async () => {
+  const r = await svcApi().raster_pick();
+  if (r.status === "path") addImagePath(r.path);
+});
+svcEl("img-close").addEventListener("click", () => {
+  if (imgPending && imgPending.mode === "crs") svcApi().ogc_remove(imgPending.id);
+  imgPending = null;
+  svcEl("img-dlg").hidden = true;
+});
+svcEl("edit-bbox").addEventListener("click", () => {
+  imgPending = {id: editing.s.id, mode: "bbox"};
+  svcEl("img-title").textContent = "Wpisz zakres obrazu";
+  svcEl("img-text").textContent = "Współrzędne krawędzi obrazu w wybranym układzie (dla stopni: długość jako W i E, szerokość jako S i N).";
+  svcEl("img-msg").textContent = "";
+  svcEl("img-bbox").hidden = false;
+  svcEl("img-dlg").hidden = false;
+});
+svcEl("edit-done").addEventListener("click", () => editStop());
+svcEl("img-form").addEventListener("submit", async (ev) => {
+  ev.preventDefault();
+  if (!imgPending) return;
+  const epsg = svcEl("img-epsg").value;
+  let r;
+  if (imgPending.mode === "crs") {
+    r = await svcApi().raster_set_crs(imgPending.id, epsg);
+    if (r.status === "ok") { services.push(r.service); }
+  } else {
+    r = await svcApi().raster_set_bbox(imgPending.id, ...["img-w", "img-s", "img-e", "img-n"].map((i) => svcEl(i).value.replace(",", ".")), epsg);
+    if (r.status === "ok") { const i = services.findIndex((x) => x.id === r.service.id); services[i] = r.service; editStop(); }
+  }
+  if (r.status !== "ok") { svcEl("img-msg").textContent = r.message; return; }
+  imgPending = null;
+  svcEl("img-dlg").hidden = true;
+  svcRender(); svcSync();
 });
 svcEl("svc-ok").addEventListener("click", async () => {
   const pick = document.querySelector("#svc-layers input:checked");
