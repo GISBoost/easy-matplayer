@@ -48,6 +48,7 @@ body { display: grid; grid-template-columns: 1fr 320px; grid-template-rows: 1fr 
 #bar button { background: #121418; color: #e7e9ee; border: 1px solid #2a3140; border-radius: 6px; padding: 4px 10px; }
 #bar button.on, #play.on { border-color: #7eb6ff; color: #7eb6ff; }
 #slider { flex: 1; min-width: 80px; accent-color: #7eb6ff; }
+#mval { min-width: 40px; text-align: center; font-variant-numeric: tabular-nums; }
 #clock { font-variant-numeric: tabular-nums; min-width: 72px; }
 #count, #sample, #base, #curves { color: #9aa3b2; white-space: nowrap; }
 body.panel-off { grid-template-columns: 1fr 0; }
@@ -81,6 +82,9 @@ body.panel-off #panel { display: none; }
 </aside>
 <div id="bar">
   <button id="play" type="button">start</button>
+  <button id="mdn" type="button" title="mnożnik −1">◀</button>
+  <span id="mval">1×</span>
+  <button id="mup" type="button" title="mnożnik +1">▶</button>
   <button type="button" data-m="1" class="on">1×</button>
   <button type="button" data-m="10">10×</button>
   <button type="button" data-m="60">60×</button>
@@ -565,12 +569,15 @@ function setPlaying(on) {
 }
 document.getElementById("three").addEventListener("click", () => setThreeD(!threeD));
 document.getElementById("play").addEventListener("click", () => setPlaying(!playing));
-document.querySelectorAll("#bar button[data-m]").forEach((b) => {
-  b.addEventListener("click", () => {
-    mult = Number(b.dataset.m);
-    document.querySelectorAll("#bar button[data-m]").forEach((x) => x.classList.toggle("on", x === b));
-  });
-});
+// Mnożnik = sekundy symulacji na sekundę rzeczywistą, całkowity, 1..300 (tyle ma najszybszy preset).
+function setMult(v) {
+  mult = Math.min(300, Math.max(1, Math.round(v)));
+  document.getElementById("mval").textContent = mult + "×";
+  document.querySelectorAll("#bar button[data-m]").forEach((x) => x.classList.toggle("on", Number(x.dataset.m) === mult));
+}
+document.querySelectorAll("#bar button[data-m]").forEach((b) => b.addEventListener("click", () => setMult(Number(b.dataset.m))));
+document.getElementById("mdn").addEventListener("click", () => setMult(mult - 1));
+document.getElementById("mup").addEventListener("click", () => setMult(mult + 1));
 slider.addEventListener("pointerdown", () => { scrub = true; });
 window.addEventListener("pointerup", () => { scrub = false; });
 slider.addEventListener("input", () => {

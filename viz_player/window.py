@@ -154,6 +154,16 @@ def smoke(run):
             if not _wait_js(window, f"window.drawnN === {len(ref)}", 15):
                 result["error"] = f"po chipie {js('window.drawnN')} aut, Python {len(ref)}"
                 return
+            mult_seq = js(
+                "(function(){var g=function(){return document.getElementById('mval').textContent;};var o=[g()];"
+                "document.getElementById('mdn').click();o.push(g());document.getElementById('mup').click();o.push(g());"
+                "document.querySelector('#bar button[data-m=\"10\"]').click();document.getElementById('mdn').click();o.push(g());"
+                "o.push(document.querySelectorAll('#bar button[data-m].on').length);"
+                "document.querySelector('#bar button[data-m=\"1\"]').click();return o;})()"
+            )
+            if mult_seq != ["1×", "1×", "2×", "9×", 0]:
+                result["error"] = f"mnożnik {mult_seq}"
+                return
             js("document.getElementById('play').click()")
             label = js("document.getElementById('play').textContent")
             js("document.getElementById('play').click()")

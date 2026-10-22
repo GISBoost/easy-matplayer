@@ -24,7 +24,7 @@ Cel: 30 FPS na Kutnie 100%. Łódź tylko 10%. Test tylko na GPU właściciela (
 - [x] 6. Budynki z preprocessingu (wysokość: tag > levels × 3 m > H0 wg klasy, ±15% z hasha, `h_source`).
 - [ ] 7. Nowe tryby, PT, atrybuty osób.
 - [ ] 8. (decyzja o wygaszeniu `g6_bake.py` zapisana w D26 2026-10-22; reszta:) test na iGPU (odłożony), przeglądarka opcjonalnie.
-- [ ] P1. Poprawki okna (plan `wizualizer_plan.md`, zlecenie 2026-10-22): mnożnik ze strzałkami co 1.
+- [x] P1. Poprawki okna (plan `wizualizer_plan.md`, zlecenie 2026-10-22): mnożnik ze strzałkami co 1.
 - [ ] P2. Kolor dróg wg `type` (checkbox, legenda).
 - [ ] P3. Kolor auta: prędkość / klasa (przełącznik, legenda).
 - [ ] P4. Znacznik grot + półkole (`IconLayer`), skalowany z zoomem w granicach 0,25–3.
@@ -70,3 +70,8 @@ Wcześniej zrobione (fundamenty, D24): origin z sieci, `person_id` i klasyfikato
 
 - Stutter przy „3D”: warstwa budynków jest tworzona od pierwszej klatki jako ukryta (`visible: threeD`), więc triangulacja 83 tys. wielokątów nie blokuje kliknięcia. Zgłoszone przez właściciela po teście na R7b; nowych funkcji (kształt pojazdu itd.) jeszcze nie ruszamy.
 - Budynki nie pojawiały się w worktree bez `data/raw`: PBF jest szukany też w głównym repo.
+
+### P1: mnożnik ze strzałkami (2026-10-22)
+
+- `shell.html`: ◀ / bieżący mnożnik / ▶ między pauzą a presetami, skok 1, zakres 1–300, strzałka na granicy nic nie zmienia. Preset świeci tylko, gdy jest równy mnożnikowi (po `10×` → `9×` nie świeci żaden). Klawisze ←/→ dalej ±60 s.
+- Dowód: smoke w prawdziwym oknie sprawdza sekwencję `1×, ◀ → 1×, ▶ → 2×, 10× i ◀ → 9×`, zero podświetlonych presetów; 52 testy; smoke OK n=728, budynki 83 617.

@@ -100,7 +100,7 @@ Nakładka deck.gl działa w trybie `interleaved: false` (osobna kanwa nad mapą)
 | element | działanie |
 |---|---|
 | `start` / `pauza` | Spacja albo przycisk. Na końcu zakresu odtwarzanie samo staje. |
-| `1×` `10×` `60×` `300×` | Sekundy symulacji na sekundę rzeczywistą. Domyślnie 1×. Skok czasu w jednej klatce animacji jest obcięty do 0,1 s rzeczywistej, więc zawieszenie rysowania nie przewija doby naraz. |
+| `1×` `10×` `60×` `300×` | Sekundy symulacji na sekundę rzeczywistą. Domyślnie 1×. Strzałki ◀ ▶ obok zmieniają mnożnik o 1 (zakres 1–300), preset świeci tylko, gdy jest równy mnożnikowi. Skok czasu w jednej klatce animacji jest obcięty do 0,1 s rzeczywistej, więc zawieszenie rysowania nie przewija doby naraz. |
 | suwak | Jedna sekunda na krok. W trakcie ciągnięcia zegar nie leci do przodu sam. |
 | zegar | `GG:MM:SS` od północy, bez zawijania po 24. R6 kończy się o `32:23:09` (116 589 s). |
 | licznik | Auta w tej klatce, po filtrze klas. Forma `1 auto` / `2 auta` / `5 aut`. |
