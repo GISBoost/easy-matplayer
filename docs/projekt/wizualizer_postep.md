@@ -35,6 +35,16 @@ Cel: 30 FPS na Kutnie 100%. Łódź tylko 10%. Test tylko na GPU właściciela (
 
 Wcześniej zrobione (fundamenty, D24): origin z sieci, `person_id` i klasyfikator, bezstanowa klatka, podział kodu, testy pytest. Patrz PROGRESS 2026-10-22.
 
+## Aplikacja z pulpitu i release (D27, plan: `wizualizer_aplikacja.md`)
+
+- [ ] A1. Ścieżki: zasoby do odczytu osobno od danych do zapisu (`paths.py`, `%LOCALAPPDATA%\easy-matviz`).
+- [ ] A2. Zachowanie po dwukliku: wybór runu bez argumentu, log do pliku, błędy w oknie, postęp budowy indeksu, wersja.
+- [ ] A3. Pierwsza paczka PyInstaller onedir, smoke zbudowanego exe z okrojonym PATH.
+- [ ] A4. Test na czystym komputerze / Windows Sandbox.
+- [ ] A5. Zip z małym runem demo.
+- [ ] A6. Licencje, README użytkownika, workflow release (bez pusha), próba w czystym klonie.
+- [ ] A7. Przeniesienie do nowego repo (po sygnale właściciela).
+
 ## Dziennik kroków
 
 (uzupełniany przy każdym kroku: co, liczby, dowód)
