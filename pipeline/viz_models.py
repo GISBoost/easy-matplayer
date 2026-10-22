@@ -14,7 +14,7 @@ from matplotlib.image import imread
 
 DIR = Path(__file__).resolve().parents[1] / "viz_player" / "vendor" / "quaternius"
 LENGTH_M = 4.5
-FRONT_SIGN = -1  # przód modelu jest w −z OBJ (reflektory przy z = −2,0); jeśli auta jadą tyłem, zmienić na +1
+FRONT_SIGN = 1  # przód modelu jest w +z OBJ (sprawdzone w oknie: przy −1 auta jechały tyłem); po zmianie uruchomić ten skrypt
 ROLES = {(94, 160, 242): 0, (90, 235, 235): 1, (117, 112, 143): 2, (243, 230, 65): 3, (255, 255, 255): 4}
 
 
