@@ -204,6 +204,8 @@ def test_site_files(player, tmp_path):
     assert (site_dir / "link_type.bin").stat().st_size == 6
     assert (site_dir / "vendor" / "leaflet.js").is_file()
     assert not (site_dir / "curve_off.bin").exists(), "mini-run nie ma łamanych"
+    manifest = json.loads((site_dir / boot["data"]).read_text(encoding="utf-8"))
+    assert manifest["format"] == 1 and (site_dir / "data" / manifest["chunks"][0]["file"]).is_file()
     assert "tile.openstreetmap.org" not in index.read_text(encoding="utf-8")
 
 

@@ -42,6 +42,15 @@ Refaktor po audycie kodu (`docs/research/wizualizer_audyt_kodu.md`), bez zmiany 
 
 Otwarte: wskaźnik postępu budowy indeksu w oknie (okno otwiera się po indeksie), `START`/okno 6–9 wpisane w indeks, spięcie `g6_bake.py` z indeksem, tryby PT/rower/pieszo (indeks zna tylko cztery eventy ruchu po sieci).
 
+## Eksport v2 (D26, krok 3)
+
+`pipeline/viz_export.py` robi z `viz/index.npz` katalog `viz/site/data/` (dla okna) albo `viz/export/` (uruchomienie samodzielne): `manifest.json`, `persons.json`, `tracks.bin` i `chunk_NNN.bin` co 15 min (`CHUNK_SEC = 900`). To wewnętrzny cache z numerem wersji (`FORMAT`), nie publiczny kontrakt. Klucz źródła (`source_key` w manifeście) to sha256 eventów, sieci, skryptu indeksu, planów, `FORMAT` indeksu, origin, `FORMAT` eksportu, długości porcji i samego `viz_export.py`; niezgodny klucz przebudowuje eksport.
+
+- **Porcja jest samowystarczalna.** Dla każdego przejazdu dotykającego przedziału zawiera węzły z przedziału plus po jednym węźle po obu stronach, więc klient interpoluje w obrębie jednej porcji. Powtórzone są tylko węzły graniczne: Kutno 25% 3 399 518 → 3 460 575 węzłów (+1,8%), 100% 13 733 294 → 13 974 338.
+- **Pozycje** to przesunięcia lon/lat względem `origin_lonlat` w float32 (ok. 2 mm); klient dodaje origin w float64. Kolumny porcji: `track` (i32, globalny numer przejazdu), `knot_off` (i32, n+1), `knot_t`, `knot_dlon`, `knot_dlat`, `knot_len` (f32), `knot_link` (i32), każda dopełniona do 8 bajtów; liczby elementów są w manifeście (`n_tracks`, `n_knots`).
+- **`tracks.bin`**: `person_i` (i32, indeks do `persons.json`), `cls` (u8, indeks do `classes` w manifeście), `mode` (u8, indeks do `modes`), `t0`, `t1` (f32). Dziś `modes = ["car"]`: indeks zna tylko ruch aut po sieci.
+- **Rozmiary:** Kutno 25% 130 porcji, 69,7 MB, budowa 1,4 s; Kutno 100% 131 porcji, 281 MB (ok. 2,1 MB na porcję), budowa 4 s. Pierwszy test: `viz_player/tests/test_export.py` (pozycja z porcji = pozycja z silnika klatek, rozmiar nadmiaru, tabele, cache).
+
 ## Uruchomienie
 
 Z katalogu projektu. `python` nie jest na PATH, polecenie to `uv run`. Okno, testy i akceptacja potrzebują grupy zależności `viz` (pywebview, pytest). Sam pipeline jej nie potrzebuje.

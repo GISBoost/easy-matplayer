@@ -17,6 +17,7 @@ import numpy as np
 from pyproj import Transformer
 
 import viz_engine
+import viz_export
 
 from viz_player import curves, site
 
@@ -504,7 +505,7 @@ class Player:
         base = {
             "error": self.error, "run": self.run_name, "t": self.t_start,
             "tMin": 0, "tMax": 1, "sample": "brak", "basemap": self.basemap,
-            "bounds": None, "types": [], "classes": [], "nLinks": 0, "nCurve": 0, "curveNote": "",
+            "bounds": None, "types": [], "classes": [], "nLinks": 0, "nCurve": 0, "curveNote": "", "data": None,
         }
         if self.index is None:
             return base
@@ -523,6 +524,7 @@ class Player:
             "nLinks": int(len(lon1)),
             "nCurve": int(len(self.curve.xy)) if self.curve is not None and self.curve.n_bent else 0,
             "curveNote": self.curve_note,
+            "data": "data/manifest.json",
         })
         return base
 
@@ -544,6 +546,7 @@ class Player:
 
     def write_site(self, dest=None):
         dest = dest or self.run_dir / "viz" / "site"
+        viz_export.build(self.run_dir, out=Path(dest) / "data")
         return site.write_site(dest, self.boot(), self.boot_arrays())
 
 
