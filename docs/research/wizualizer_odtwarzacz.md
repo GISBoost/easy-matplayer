@@ -183,6 +183,10 @@ Kolor to prędkość, ta sama rampa co w `blender/g6_load.py`. Skala kanwy końc
 
 Legenda w rogu mapy: `0 / 20 / 50 km/h`. Liczba w panelu jest osobno: prędkość silnika w km/h, z sufitem 30 m/s (108 km/h). Kolor powyżej 50 km/h już się nie zmienia. Prędkość nie jest przeliczana po przesunięciu kropki na łamaną. Zostaje `długość / dt` z indeksu.
 
+## Kolor dróg OSM
+
+Checkbox „kolor dróg OSM” w panelu przełącza kolor kresek z szarej palety na kolor klasy drogi (`ROAD_OSM` w `shell.html`, tabela z `wizualizer_plan.md`). Atrybut `type` jest ten sam co w indeksie, PBF nie jest czytany. Legenda w lewym dolnym rogu ma wiersz dla każdego typu obecnego w runie.
+
 ## Klasy
 
 Klasa osoby (pipeline/viz_classes.py), w tej kolejności: atrybut `kind`, atrybut `subpopulation` z `output_plans.xml.zst`; bez planów albo dla osoby spoza planów pierwsza litera id (`r c o t h` → klucze poniżej); inaczej `?` („inne”). Legenda klas (`classes`: klucz, nazwa, czy większa kropka) jest w `meta.json`. Kolejność chipów: znane klucze, potem reszta alfabetycznie, `?` na końcu. Chip jest tylko dla klas, które mają przejazdy.

@@ -25,7 +25,7 @@ Cel: 30 FPS na Kutnie 100%. Łódź tylko 10%. Test tylko na GPU właściciela (
 - [ ] 7. Nowe tryby, PT, atrybuty osób.
 - [ ] 8. (decyzja o wygaszeniu `g6_bake.py` zapisana w D26 2026-10-22; reszta:) test na iGPU (odłożony), przeglądarka opcjonalnie.
 - [x] P1. Poprawki okna (plan `wizualizer_plan.md`, zlecenie 2026-10-22): mnożnik ze strzałkami co 1.
-- [ ] P2. Kolor dróg wg `type` (checkbox, legenda).
+- [x] P2. Kolor dróg wg `type` (checkbox, legenda).
 - [ ] P3. Kolor auta: prędkość / klasa (przełącznik, legenda).
 - [ ] P4. Znacznik grot + półkole (`IconLayer`), skalowany z zoomem w granicach 0,25–3.
 - [ ] P5. (później, na zlecenie) własny raster, WMS, otwieranie runu przez wybór folderu.
@@ -75,3 +75,8 @@ Wcześniej zrobione (fundamenty, D24): origin z sieci, `person_id` i klasyfikato
 
 - `shell.html`: ◀ / bieżący mnożnik / ▶ między pauzą a presetami, skok 1, zakres 1–300, strzałka na granicy nic nie zmienia. Preset świeci tylko, gdy jest równy mnożnikowi (po `10×` → `9×` nie świeci żaden). Klawisze ←/→ dalej ±60 s.
 - Dowód: smoke w prawdziwym oknie sprawdza sekwencję `1×, ◀ → 1×, ▶ → 2×, 10× i ◀ → 9×`, zero podświetlonych presetów; 52 testy; smoke OK n=728, budynki 83 617.
+
+### P2: kolor dróg wg `type` (2026-10-22)
+
+- Checkbox „kolor dróg OSM” w panelu (domyślnie wyłączony = dawna szara paleta). Tabela kolorów z planu, `*_link` bierze kolor klasy głównej, grubości bez zmian. Legenda (lewy dolny róg, pod rampą prędkości) pokazuje tylko typy z `types` otwartego runu, „inna” gdy jest typ spoza tabeli. Kolor to akcesor `PathLayer` z `updateTriggers`, dane się nie przebudowują.
+- Dowód: smoke przełącza checkbox: legenda widoczna, ≥3 wiersze, brak błędu rysowania, po wyłączeniu legenda znika; 52 testy; smoke OK 728 aut. Wygląd ocenia człowiek.

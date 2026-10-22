@@ -12,10 +12,17 @@ body { display: grid; grid-template-columns: 1fr 320px; grid-template-rows: 1fr 
 #map { position: absolute; inset: 0; background: #121418; }
 #nogl { position: absolute; inset: 0; z-index: 600; display: none; align-items: center; justify-content: center;
   padding: 24px; text-align: center; background: #121418; line-height: 1.5; }
-#legend { position: absolute; z-index: 500; left: 12px; bottom: 22px; display: flex; gap: 8px;
-  align-items: center; padding: 6px 8px; border-radius: 6px; background: rgba(18, 20, 24, .82);
+[hidden] { display: none !important; }
+#legend { position: absolute; z-index: 500; left: 12px; bottom: 22px; display: flex; flex-direction: column; gap: 6px;
+  align-items: flex-start; padding: 6px 8px; border-radius: 6px; background: rgba(18, 20, 24, .82);
   color: #e7e9ee; font-size: 12px; }
-#bleg { display: none; margin-left: 12px; max-width: 360px; line-height: 1.3; }
+#lg-speed { display: flex; gap: 8px; align-items: center; }
+.lg-list { display: grid; grid-template-columns: 1fr; gap: 3px; }
+.lg-list div { display: flex; align-items: center; gap: 6px; }
+.lg-list i { display: inline-block; width: 18px; height: 4px; border-radius: 2px; }
+#bleg { display: none; max-width: 360px; line-height: 1.3; }
+#opts { margin: 0 0 14px; display: flex; flex-direction: column; gap: 8px; }
+#opts label { color: #9aa3b2; cursor: pointer; }
 #legend .bar { width: 128px; height: 8px; border-radius: 4px;
   background: linear-gradient(90deg, rgb(255, 31, 13) 0%, rgb(255, 179, 26) 40%, rgb(26, 230, 255) 100%); }
 #panel { background: #1b1f27; overflow: auto; padding: 16px 16px 12px; min-height: 0;
@@ -65,7 +72,11 @@ body.panel-off #panel { display: none; }
 <div id="stage">
   <div id="map"></div>
   <div id="nogl"></div>
-  <div id="legend"><div class="bar"></div><span>0 / 20 / 50 km/h</span><span id="bleg"></span></div>
+  <div id="legend">
+    <div id="lg-speed"><div class="bar"></div><span>0 / 20 / 50 km/h</span></div>
+    <div id="lg-road" class="lg-list" hidden></div>
+    <span id="bleg"></span>
+  </div>
 </div>
 <aside id="panel">
   <h1>easy-matviz</h1>
@@ -73,6 +84,9 @@ body.panel-off #panel { display: none; }
   <form id="find"><input id="q" type="text" placeholder="id pojazdu" autocomplete="off" spellcheck="false"></form>
   <div id="hits"></div>
   <div id="chips"></div>
+  <div id="opts">
+    <label><input type="checkbox" id="osmroads"> kolor dróg OSM</label>
+  </div>
   <div id="detail" class="muted">Kliknij auto albo drogę.</div>
   <div id="axis" hidden>
     <div id="axis-bar"></div>
@@ -114,6 +128,19 @@ const ROAD = {
   tertiary: "#7d8694", tertiary_link: "#7d8694",
   boundary_turnaround: "#2a3038"
 };
+// Kolor dróg OSM (przełącznik w panelu): klasa drogi, łącznica bierze kolor klasy głównej.
+const ROAD_OSM = [
+  ["autostrada", "#e892a2", ["motorway", "motorway_link"]],
+  ["droga główna", "#fcd6a4", ["primary", "primary_link"]],
+  ["droga drugorzędna", "#f7fabf", ["secondary", "secondary_link"]],
+  ["droga trzeciorzędna", "#ffffff", ["tertiary", "tertiary_link"]],
+  ["ulica osiedlowa", "#c5d0dc", ["residential"]],
+  ["droga bez klasy", "#9aa3b2", ["unclassified"]],
+  ["strefa zamieszkania", "#ededed", ["living_street"]],
+  ["zawrotka graniczna", "#2a3038", ["boundary_turnaround"]],
+];
+const ROAD_OSM_OTHER = ["inna", "#4e5663"];
+let osmRoads = false;
 let t = 0, tMin = 0, tMax = 1;
 let playing = false, mult = 1, scrub = false, dirty = false;
 // Cały stan widoku jest tu i klatkę liczy tu engine.js. Python (describe) tylko opisuje zaznaczenie.
@@ -158,6 +185,31 @@ const RAMP = (() => {
 })();
 function hexRgb(hex) { return [1, 3, 5].map((i) => parseInt(hex.slice(i, i + 2), 16)); }
 function roadColor(name) { return ROAD[name] || "#4e5663"; }
+function roadColorOsm(name) {
+  const row = ROAD_OSM.find((r) => r[2].indexOf(name) >= 0);
+  return (row || ROAD_OSM_OTHER)[1];
+}
+function roadLegend() {
+  const box = document.getElementById("lg-road");
+  box.replaceChildren();
+  const types = boot.types || [];
+  const add = (label, color) => {
+    const d = document.createElement("div");
+    const i = document.createElement("i");
+    i.style.background = color;
+    d.append(i, label);
+    box.appendChild(d);
+  };
+  ROAD_OSM.forEach((r) => { if (types.some((x) => r[2].indexOf(x) >= 0)) add(r[0], r[1]); });
+  if (types.some((x) => !ROAD_OSM.some((r) => r[2].indexOf(x) >= 0))) add(ROAD_OSM_OTHER[0], ROAD_OSM_OTHER[1]);
+}
+function setOsmRoads(on) {
+  osmRoads = on;
+  document.getElementById("osmroads").checked = on;
+  document.getElementById("lg-road").hidden = !on;
+  if (on) roadLegend();
+  dirty = true;
+}
 function roadWidth(name) {
   if (name.indexOf("motorway") === 0) return 2;
   if (name.indexOf("primary") === 0) return 1.5;
@@ -357,7 +409,7 @@ function buildRoads() {
       path = [[ll[4 * i], ll[4 * i + 1]], [ll[4 * i + 2], ll[4 * i + 3]]];
     }
     const name = boot.types[boot.linkType[i]] || "";
-    out.push({path, color: hexRgb(roadColor(name)), width: roadWidth(name)});
+    out.push({path, color: hexRgb(roadColor(name)), cosm: hexRgb(roadColorOsm(name)), width: roadWidth(name)});
   }
   return out;
 }
@@ -445,7 +497,8 @@ function render() {
       }));
     }
     layers.push(new deck.PathLayer({
-      id: "roads", data: roads, getPath: (d) => d.path, getColor: (d) => d.color, getWidth: (d) => d.width,
+      id: "roads", data: roads, getPath: (d) => d.path, getColor: (d) => (osmRoads ? d.cosm : d.color), getWidth: (d) => d.width,
+      updateTriggers: {getColor: osmRoads},
       widthUnits: "pixels", capRounded: true, jointRounded: true,
     }));
     if (selected && selected.link != null && selected.link < roads.length) {
@@ -568,6 +621,7 @@ function setPlaying(on) {
   b.classList.toggle("on", playing);
 }
 document.getElementById("three").addEventListener("click", () => setThreeD(!threeD));
+document.getElementById("osmroads").addEventListener("change", (ev) => setOsmRoads(ev.target.checked));
 document.getElementById("play").addEventListener("click", () => setPlaying(!playing));
 // Mnożnik = sekundy symulacji na sekundę rzeczywistą, całkowity, 1..300 (tyle ma najszybszy preset).
 function setMult(v) {

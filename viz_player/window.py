@@ -164,6 +164,15 @@ def smoke(run):
             if mult_seq != ["1×", "1×", "2×", "9×", 0]:
                 result["error"] = f"mnożnik {mult_seq}"
                 return
+            js("document.getElementById('osmroads').click()")
+            road_ok = js(
+                "osmRoads === true && !document.getElementById('lg-road').hidden"
+                " && document.querySelectorAll('#lg-road div').length >= 3 && !window.drawError"
+            )
+            js("document.getElementById('osmroads').click()")
+            if road_ok is not True or js("osmRoads === false && document.getElementById('lg-road').hidden") is not True:
+                result["error"] = f"kolor dróg {road_ok} {js('window.drawError')}"
+                return
             js("document.getElementById('play').click()")
             label = js("document.getElementById('play').textContent")
             js("document.getElementById('play').click()")
