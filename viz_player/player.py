@@ -339,33 +339,61 @@ class Player:
         ]
 
     def panel(self, t, fr, ident, link):
+        """Panel dla klatki z silnika Pythona (wzorzec w testach). Okno woła describe()."""
         if self.index is None:
             return {"kind": "empty", "lines": [self.error or "Brak runu."], "axis": []}
         if ident is None and link is not None:
-            return self._link_panel(fr, link)
+            return self._link_panel(link, viz_engine.link_now(fr, link))
         if ident is None:
             return {"kind": "empty", "lines": [], "axis": []}
-        return self._id_panel(t, fr, ident)
+        veh = None
+        track = self.active_track(ident, t)
+        hit = np.where(fr.track == track)[0] if track is not None else []
+        if len(hit):
+            i = int(hit[0])
+            veh = {"link": int(fr.link[i]), "speed": float(fr.speed[i]), "cls": self.index.class_keys[int(fr.cls[i])]}
+        return self._id_panel(t, veh, ident)
 
-    def _id_panel(self, t, fr, ident):
+    def describe(self, t, selected=None, veh=None, now=None):
+        """Panel i kotwica śledzenia dla zaznaczenia. Woła je klient, gdy zmienia się zaznaczenie albo co ćwierć sekundy.
+
+        veh: {"link", "speed", "cls"} auta zaznaczonej osoby w klatce klienta albo None.
+        now: {"n", "speed_mean"} aut na zaznaczonym linku w klatce klienta.
+        """
+        selected = selected or {}
+        if self.index is None:
+            return {"panel": self.panel(0.0, None, None, None), "anchor": None}
+        t = self.clamp(t)
+        ident = selected.get("id")
+        if ident is not None and str(ident) not in self.index.id_of:
+            ident = None
+        link = selected.get("link")
+        if ident is None and link is not None and 0 <= int(link) < len(self.link_id):
+            return {"panel": self._link_panel(int(link), now or {"n": 0, "speed_mean": None}), "anchor": None}
+        if ident is None:
+            return {"panel": {"kind": "empty", "lines": [], "axis": []}, "anchor": None}
+        anchor = None
+        if veh is None:
+            cover = covering(viz_engine.activities(self.index, ident), t)
+            if cover is not None:
+                lon, lat = self.fwd.transform(self.origin[0] + float(cover["x"]), self.origin[1] + float(cover["y"]))
+                anchor = [round(float(lat), 6), round(float(lon), 6)]
+        return {"panel": self._id_panel(t, veh, ident), "anchor": anchor}
+
+    def _id_panel(self, t, veh, ident):
         rows = viz_engine.activities(self.index, ident)
         cover = covering(rows, t)
         axis = schedule(rows, self.index.meta["t_min"], self.index.meta["t_max"], self.trips_of(ident), t)
-        track = self.active_track(ident, t)
-        if track is not None:
-            hit = np.where(fr.track == track)[0]
-            if len(hit):
-                i = int(hit[0])
-                lid, typ, _leng, free = self.link_bits(int(fr.link[i]))
-                key = self.index.class_keys[int(fr.cls[i])]
-                return {
-                    "kind": "vehicle",
-                    "lines": [
-                        ident, self.class_name.get(key, key), kmh(fr.speed[i]),
-                        "link " + lid, typ, "freespeed " + free,
-                    ],
-                    "axis": axis,
-                }
+        if veh is not None:
+            lid, typ, _leng, free = self.link_bits(int(veh["link"]))
+            return {
+                "kind": "vehicle",
+                "lines": [
+                    ident, self.class_name.get(veh["cls"], veh["cls"]), kmh(veh["speed"]),
+                    "link " + lid, typ, "freespeed " + free,
+                ],
+                "axis": axis,
+            }
         if cover is not None:
             lid, _typ, _leng, _free = self.link_bits(int(cover["link"]))
             return {
@@ -375,9 +403,8 @@ class Player:
             }
         return {"kind": "idle", "lines": [ident, "nie jedzie"], "axis": axis}
 
-    def _link_panel(self, fr, link_i):
+    def _link_panel(self, link_i, now):
         lid, typ, leng, free = self.link_bits(link_i)
-        now = viz_engine.link_now(fr, link_i)
         line = "teraz " + auta(now["n"])
         if now["n"]:
             line += ", średnia na odcinku " + kmh(now["speed_mean"])

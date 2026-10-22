@@ -16,10 +16,11 @@ ARRAY_TYPES = {
 
 
 def write_site(dest, boot, arrays):
-    """Zapisuje index.html, vendor/, boot.json i <nazwa>.bin. Zwraca ścieżkę index.html."""
+    """Zapisuje index.html, engine.js, vendor/, boot.json i <nazwa>.bin (eksport v2 leży w data/). Zwraca ścieżkę index.html."""
     dest = Path(dest)
     dest.mkdir(parents=True, exist_ok=True)
     shutil.copy2(HERE / "shell.html", dest / "index.html")
+    shutil.copy2(HERE / "engine.js", dest / "engine.js")
     shutil.copytree(HERE / "vendor", dest / "vendor", dirs_exist_ok=True)
     (dest / "boot.json").write_text(
         json.dumps(boot, ensure_ascii=False, separators=(",", ":"), allow_nan=False), encoding="utf-8",

@@ -202,7 +202,7 @@ def test_site_files(player, tmp_path):
     assert boot["basemap"] is None or str(boot["basemap"]["url"]).startswith(pl.CARTO)
     assert (site_dir / "link_ll.bin").stat().st_size == 6 * 4 * 8
     assert (site_dir / "link_type.bin").stat().st_size == 6
-    assert (site_dir / "vendor" / "leaflet.js").is_file()
+    assert (site_dir / "vendor" / "leaflet.js").is_file() and (site_dir / "engine.js").is_file()
     assert not (site_dir / "curve_off.bin").exists(), "mini-run nie ma łamanych"
     manifest = json.loads((site_dir / boot["data"]).read_text(encoding="utf-8"))
     assert manifest["format"] == 1 and (site_dir / "data" / manifest["chunks"][0]["file"]).is_file()

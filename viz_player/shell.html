@@ -92,6 +92,7 @@ body.panel-off #panel { display: none; }
   <button id="hide" type="button">ukryj</button>
 </div>
 <script src="vendor/leaflet.js"></script>
+<script src="engine.js"></script>
 <script>
 let boot = {};
 const VMAX = 14;
@@ -103,11 +104,17 @@ const ROAD = {
   boundary_turnaround: "#2a3038"
 };
 let t = 0, tMin = 0, tMax = 1;
-let playing = false, mult = 1, scrub = false, busy = false, dirty = false;
-// Cały stan widoku jest tu; Python liczy klatkę z (t, classesOn, selected, follow) i nic nie pamięta.
-let classesOn = [], selected = null, follow = false, rev = 0;
-function change() { rev++; dirty = true; }
-let lastPayload = null, linkKey = "", linkCanvas = document.createElement("canvas");
+let playing = false, mult = 1, scrub = false, dirty = false;
+// Cały stan widoku jest tu i klatkę liczy tu engine.js. Python (describe) tylko opisuje zaznaczenie.
+let classesOn = [], selected = null, follow = false;
+let engine = null, mask = null, anchor = null;
+let panelForce = true, panelAt = 0, panelSeq = 0;
+let wantKey = "", lastPick = {n: 0, x: null, y: null, track: null}, lastSel = null;
+let linkKey = "", linkCanvas = document.createElement("canvas");
+function change() { dirty = true; panelForce = true; }
+function setMask() {
+  mask = Uint8Array.from(engine.classKeys, (k) => (classesOn.indexOf(k) >= 0 ? 1 : 0));
+}
 window.hold = false;
 window.drawnN = 0;
 window.drawError = "";
@@ -168,10 +175,12 @@ function applyBoot() {
     b.addEventListener("click", () => {
       b.classList.toggle("on");
       classesOn = [...chips.querySelectorAll(".chip.on")].map((x) => x.dataset.key);
+      if (engine) setMask();
       change();
     });
     chips.appendChild(b);
   });
+  if (engine) setMask();
 }
 
 // boot.json to małe metadane; tablice (linki, łamane) idą jako pliki binarne tego samego serwera.
@@ -190,6 +199,14 @@ async function loadBoot() {
     boot.curveLon = await get("curve_lon.bin", Float64Array);
     boot.curveLat = await get("curve_lat.bin", Float64Array);
   }
+  const curves = boot.nCurve ? {off: boot.curveOff, lon: boot.curveLon, lat: boot.curveLat} : null;
+  const getData = async (name, kind) => {
+    const res = await fetch(name);
+    if (!res.ok) throw new Error(name + " " + res.status);
+    return kind === "json" ? res.json() : res.arrayBuffer();
+  };
+  engine = await Engine.load(boot.data.replace("manifest.json", ""), getData, curves, boot.linkLL);
+  await engine.want(boot.t);
 }
 
 const STAY_NAME = {home: "dom", work: "praca", tlo_start: "tło", tlo_end: "tło"};
@@ -362,10 +379,41 @@ function paintLinks() {
     g.stroke();
   });
 }
-function draw(payload) {
+function sqDistToSegment(px, py, a, b) {
+  const dx = b.x - a.x, dy = b.y - a.y, den = dx * dx + dy * dy;
+  let u = den < 1e-12 ? 0 : ((px - a.x) * dx + (py - a.y) * dy) / den;
+  u = Math.min(1, Math.max(0, u));
+  const ex = a.x + u * dx - px, ey = a.y + u * dy - py;
+  return ex * ex + ey * ey;
+}
+function pickAt(p) {
+  const tol = 8;
+  let best = -1, bd = tol * tol;
+  for (let i = 0; i < lastPick.n; i++) {
+    const dx = lastPick.x[i] - p.x, dy = lastPick.y[i] - p.y, d = dx * dx + dy * dy;
+    if (d <= bd) { bd = d; best = i; }
+  }
+  if (best >= 0) return {id: engine.personId(lastPick.track[best])};
+  const size = map.getSize();
+  let link = -1;
+  bd = tol * tol;
+  for (let i = 0; i < boot.nLinks; i++) {
+    const pts = linkPoints(i);
+    if (offScreen(pts, size.x, size.y, tol)) continue;
+    for (let k = 1; k < pts.length; k++) {
+      const d = sqDistToSegment(p.x, p.y, pts[k - 1], pts[k]);
+      if (d <= bd) { bd = d; link = i; }
+    }
+  }
+  return link >= 0 ? {link} : null;
+}
+
+// Rysuje klatkę z engine.frame. Zwraca false, gdy porcja czasu jeszcze się nie wczytała.
+function render() {
   try {
-    if (!map) throw new Error("brak mapy");
-    lastPayload = payload;
+    if (!map || !engine || !mask) return false;
+    const fr = engine.frame(t, mask);
+    if (!fr) return false;
     const size = map.getSize();
     const dpr = window.devicePixelRatio || 1;
     const canvas = document.getElementById("draw");
@@ -377,43 +425,55 @@ function draw(payload) {
     g.setTransform(dpr, 0, 0, dpr, 0, 0);
     paintLinks();
     g.drawImage(linkCanvas, 0, 0, size.x, size.y);
-    if (payload.link != null && payload.link < boot.nLinks) {
-      const pts = linkPoints(payload.link);
+    if (selected && selected.link != null && selected.link < boot.nLinks) {
       g.strokeStyle = "#7eb6ff";
       g.lineWidth = 3;
       g.lineJoin = "round";
       g.beginPath();
-      strokePts(g, pts);
+      strokePts(g, linkPoints(selected.link));
       g.stroke();
     }
-    const path = payload.path || [];
-    if (path.length > 1) {
-      g.strokeStyle = "#7eb6ff";
-      g.lineWidth = 2;
-      g.beginPath();
-      for (let i = 0; i < path.length; i++) {
-        const p = map.latLngToContainerPoint([path[i][0], path[i][1]]);
-        if (i === 0) g.moveTo(p.x, p.y); else g.lineTo(p.x, p.y);
+    let track = null, sel = -1;
+    if (selected && selected.id) {
+      track = engine.activeTrack(engine.personIndex(selected.id), t);
+      if (track != null) for (let i = 0; i < fr.n; i++) if (fr.track[i] === track) { sel = i; break; }
+    }
+    if (track != null) {
+      const path = engine.trail(track, t);
+      if (path.length > 1) {
+        g.strokeStyle = "#7eb6ff";
+        g.lineWidth = 2;
+        g.beginPath();
+        for (let i = 0; i < path.length; i++) {
+          const p = map.latLngToContainerPoint([path[i][0], path[i][1]]);
+          if (i === 0) g.moveTo(p.x, p.y); else g.lineTo(p.x, p.y);
+        }
+        g.stroke();
       }
-      g.stroke();
     }
-    const lon = payload.lon, lat = payload.lat, v = payload.v, hd = payload.hd, heavy = payload.heavy;
-    for (let i = 0; i < lon.length; i++) {
-      const p = map.latLngToContainerPoint([lat[i], lon[i]]);
-      const radius = heavy[i] ? 3.5 : 2.5;
-      const color = ramp(v[i]);
+    if (lastPick.x === null || lastPick.x.length < fr.lon.length) {
+      lastPick.x = new Float32Array(fr.lon.length);
+      lastPick.y = new Float32Array(fr.lon.length);
+      lastPick.track = new Int32Array(fr.lon.length);
+    }
+    lastPick.n = fr.n;
+    for (let i = 0; i < fr.n; i++) {
+      const p = map.latLngToContainerPoint([fr.lat[i], fr.lon[i]]);
+      lastPick.x[i] = p.x; lastPick.y[i] = p.y; lastPick.track[i] = fr.track[i];
+      const radius = engine.classHeavy[fr.cls[i]] ? 3.5 : 2.5;
+      const color = ramp(fr.speed[i]);
       g.fillStyle = color;
       g.beginPath();
       g.arc(p.x, p.y, radius, 0, Math.PI * 2);
       g.fill();
-      const ang = -hd[i];
+      const ang = -fr.heading[i];
       g.strokeStyle = color;
       g.lineWidth = 1;
       g.beginPath();
       g.moveTo(p.x, p.y);
       g.lineTo(p.x + Math.cos(ang) * (radius + 4), p.y + Math.sin(ang) * (radius + 4));
       g.stroke();
-      if (i === payload.sel) {
+      if (i === sel) {
         g.strokeStyle = "#7eb6ff";
         g.lineWidth = 1.5;
         g.beginPath();
@@ -421,54 +481,70 @@ function draw(payload) {
         g.stroke();
       }
     }
-    if (payload.pan && !window.hold) map.panTo(payload.pan, {animate: false});
-    document.getElementById("clock").textContent = payload.clock;
-    document.getElementById("count").textContent = auta(payload.n);
-    slider.value = String(payload.t);
-    showPanel(payload.panel);
-    window.drawnN = payload.n;
+    lastSel = sel >= 0 ? {link: fr.link[sel], speed: fr.speed[sel], cls: engine.classKeys[fr.cls[sel]]} : null;
+    if (follow && !window.hold) {
+      if (sel >= 0) map.panTo([fr.lat[sel], fr.lon[sel]], {animate: false});
+      else if (anchor) map.panTo(anchor, {animate: false});
+    }
+    document.getElementById("clock").textContent = clock(t);
+    document.getElementById("count").textContent = auta(fr.n);
+    slider.value = String(t);
+    refreshPanel(fr);
+    window.drawnN = fr.n;
     window.drawError = "";
     window.mapSize = size.x + "x" + size.y;
+    return true;
   } catch (err) {
     window.drawError = String(err && err.stack || err);
+    return true;
   }
 }
 
-function py() {
-  return new Promise((resolve, reject) => {
-    if (window.pywebview && window.pywebview.api) resolve(window.pywebview.api);
-    else reject(new Error("api"));
-  });
-}
-function pull() {
+// Opis zaznaczenia (lista czynności, linki) zna tylko indeks w Pythonie, więc pytamy go rzadko.
+function refreshPanel(fr) {
   const api = window.pywebview && window.pywebview.api;
-  if (window.hold || busy || !map || !api || !api.frame) return;
-  busy = true;
-  const sent = t, sentRev = rev;
-  let pending;
-  try {
-    pending = api.frame(sent, classesOn, selected, follow);
-  } catch (err) {
-    busy = false;
-    window.drawError = String(err);
+  if (!selected) {
+    if (panelForce) { showPanel({kind: "empty"}); anchor = null; panelForce = false; }
     return;
   }
-  pending.then((payload) => {
-    busy = false;
-    if (window.hold) return;
-    if ((!playing && Math.abs(sent - t) > 1e-3) || sentRev !== rev) {
-      pull();
-      return;
-    }
-    const again = dirty && !playing;
-    dirty = false;
-    draw(payload);
-    if (again) pull();
-  }).catch((err) => {
-    busy = false;
-    window.drawError = String(err);
-  });
+  if (!api || !api.describe) return;
+  const now = performance.now();
+  if (!panelForce && now - panelAt < 250) return;
+  panelAt = now;
+  panelForce = false;
+  const seq = ++panelSeq;
+  const links = selected.link != null ? engine.linkNow(fr, selected.link) : null;
+  api.describe(t, selected, lastSel, links).then((r) => {
+    if (seq !== panelSeq) return;
+    showPanel(r.panel);
+    anchor = r.anchor;
+  }).catch((err) => { window.drawError = String(err); });
 }
+
+// Porcje czasu wokół t (i od początku przejazdu zaznaczonego auta, do śladu).
+function ensure() {
+  let since = null;
+  if (selected && selected.id) {
+    const id = engine.activeTrack(engine.personIndex(selected.id), t);
+    if (id != null) since = engine.tr.t0[id];
+  }
+  const key = engine.chunkIndex(t) + ":" + (since == null ? "" : engine.chunkIndex(since));
+  if (key === wantKey) return;
+  wantKey = key;
+  engine.want(t, since).then(() => { dirty = true; });
+}
+// Do testów okna: klatka klienta w czasie tt dla kluczy klas keys, posortowana po numerze przejazdu.
+window.clientFrame = async (tt, keys) => {
+  await engine.want(tt);
+  const on = Uint8Array.from(engine.classKeys, (k) => (keys.indexOf(k) >= 0 ? 1 : 0));
+  const fr = engine.frame(tt, on);
+  const order = Array.from({length: fr.n}, (_, i) => i).sort((a, b) => fr.track[a] - fr.track[b]);
+  return {
+    n: fr.n, track: order.map((i) => fr.track[i]), lon: order.map((i) => fr.lon[i]), lat: order.map((i) => fr.lat[i]),
+    speed: order.map((i) => fr.speed[i]), link: order.map((i) => fr.link[i]),
+  };
+};
+
 let lastNow = 0;
 function loop(now) {
   if (!window.hold && playing && !scrub) {
@@ -478,7 +554,10 @@ function loop(now) {
     dirty = true;
   }
   lastNow = now;
-  if (!window.hold && dirty) pull();
+  if (!window.hold && engine && map) {
+    ensure();
+    if ((playing || dirty) && render()) dirty = false;
+  }
   requestAnimationFrame(loop);
 }
 function setPlaying(on) {
@@ -515,11 +594,11 @@ document.getElementById("hide").addEventListener("click", () => {
   const b = document.getElementById("hide");
   b.textContent = off ? "panel" : "ukryj";
   b.classList.toggle("on", off);
-  if (map) setTimeout(() => { map.invalidateSize(); linkKey = ""; if (lastPayload) draw(lastPayload); }, 0);
+  if (map) setTimeout(() => { map.invalidateSize(); linkKey = ""; dirty = true; }, 0);
 });
 document.getElementById("find").addEventListener("submit", (ev) => {
   ev.preventDefault();
-  py().then((api) => api.lookup(document.getElementById("q").value)).then(onLookup);
+  if (engine) onLookup(engine.lookup(document.getElementById("q").value));
 });
 window.addEventListener("keydown", (ev) => {
   const typing = document.activeElement && document.activeElement.tagName === "INPUT";
@@ -551,17 +630,13 @@ function bootMap() {
     L.tileLayer(boot.basemap.url, {subdomains: "abcd", attribution: boot.basemap.attr, maxZoom: 20}).addTo(map);
   }
   map.on("click", (ev) => {
-    const p = ev.containerPoint;
-    const q = map.containerPointToLatLng(L.point(p.x + 8, p.y));
-    py().then((api) => api.pick(t, classesOn, ev.latlng.lat, ev.latlng.lng, q.lat, q.lng)).then((hit) => {
-      if (hit && hit.kind === "vehicle") selected = {id: hit.id};
-      else if (hit && hit.kind === "link") selected = {link: hit.link};
-      else return;
-      follow = false;
-      change();
-    });
+    const hit = pickAt(ev.containerPoint);
+    if (!hit) return;
+    selected = hit;
+    follow = false;
+    change();
   });
-  map.on("move zoom resize", () => { if (lastPayload && !window.hold) draw(lastPayload); });
+  map.on("move zoom resize", () => { dirty = true; });
   requestAnimationFrame(() => {
     map.invalidateSize();
     if (boot.bounds) map.fitBounds(boot.bounds, {padding: [20, 20], animate: false});

@@ -34,7 +34,7 @@ Refaktor po audycie kodu (`docs/research/wizualizer_audyt_kodu.md`), bez zmiany 
 - **Biblioteka nie zna runu.** Stałe R6, osoba `r6510903_5`, link `1807611370009f` i współrzędne Kutna są tylko w `viz_player/tests/accept_r7b.py`.
 - **Strona po lokalnym HTTP.** `site.py` zapisuje katalog `output/<run>/viz/site/`, pywebview serwuje go (`http_server=True`), JS pobiera `boot.json` i tablice `.bin`. Nie ma `html=`, limitu rozmiaru strony ani dosyłania łamanych przez `evaluate_js`.
 - **`person_id` i klasyfikator.** Track niesie osobę z eventu `vehicle enters traffic` (`track_person_i`). `ids` to osoby, `track_id` zostaje id pojazdu. Klasę daje `pipeline/viz_classes.py`: atrybut `kind`, potem `subpopulation` z `output_plans.xml.zst`; bez planów albo dla osoby spoza planów pierwsza litera id, potem `?`. Nazwy znanych kluczy są w `viz_classes.KNOWN`, nieznany klucz dostaje własną nazwę. `FORMAT` indeksu to 3, plany wchodzą do klucza cache (`plans_sha256`).
-- **Bezstanowa klatka.** `Player.frame(t, classes, selected, follow)`, `pick(t, classes, ...)`, `lookup(query)` nic nie zapamiętują po `open()`. Czas, klasy, zaznaczenie i śledzenie trzyma JS i wysyła w każdym wywołaniu. Odpowiedź spóźniona względem stanu klienta (`rev`) jest odrzucana.
+- **Bezstanowa klatka.** `Player.frame(t, classes, selected, follow)`, `pick(t, classes, ...)`, `lookup(query)` nic nie zapamiętują po `open()`. Czas, klasy, zaznaczenie i śledzenie trzyma JS. Od kroku 4 D26 okno nie woła już tych metod: klatkę liczy klient (sekcja „Klient liczy klatkę”).
 - **Podział kodu.** `player.py` (model), `window.py` (okno, `Api`, smoke, `main`), `check.py` (akceptacja dowolnego runu), `grab.py` (zrzut okna), `site.py` (katalog strony), `tests/` (pytest, jedna fixtura mini-runu).
 - **Zależności.** `pywebview` i `pytest` w grupie `viz` (`uv run --group viz ...`). `osmium` zostaje w głównych zależnościach, bo używają go skrypty pipeline'u (`border_zones.py`, `osm_features.py`, `dk60_corridor.py`, `turn_violations.py`).
 - **Limity jako ostrzeżenia.** 300 s parsowania, 200 MB pliku i 1 GiB RAM nie przerywają budowy (linia `UWAGA`).
@@ -360,13 +360,15 @@ Prędkość odcinka: jeśli `knot_len` końca > 0, to ta długość / `dt`, inac
 
 Klik auta i klik cięciwy są w silniku. Klik po łamanej jest w `viz_player/curves.py` i używa tej samej geometrii „najbliższy odcinek”.
 
-## Co okno wysyła do strony
+## Klient liczy klatkę (D26, krok 4)
 
-Jedna klatka to JSON z `Api.frame(t, classes, selected, follow)`: czas, zegar, liczba aut, tablice `lon`, `lat`, `v` (m/s), `hd` (radiany), `heavy` (1 dla `h`), indeks zaznaczonej kropki, ślad (`path`: pary szerokość–długość), indeks zaznaczonego linku, punkt śledzenia `pan`, panel.
+Klatkę liczy `viz_player/engine.js` w oknie, z eksportu v2 (`data/`): `Engine.load` czyta `manifest.json`, `persons.json`, `tracks.bin`, a porcje `chunk_NNN.bin` ładuje wokół bieżącego czasu (`want`: bieżąca i następna, po 6 porcji w obie strony zostają w pamięci). `frame(t, on)` zwraca bufory: `lon`, `lat`, `speed`, `heading`, `cls`, `track`, `link`, `n`. Reguły są te same co w `pipeline/viz_engine.py` (liniowo między węzłami, link wcześniejszego węzła w trakcie odcinka, prędkość z `knot_len`/`dt`, sufit 30 m/s, kierunek z pierwszego niezerowego odcinka wstecz); łamane OSM przenoszą pozycję z cięciwy na łamaną tym samym ułamkiem (`pointAt`, `span` dla śladu).
 
-Długości i szerokości są obcięte do 6 miejsc, prędkość do 3, kąt do 4. `NaN` w tym JSON jest błędem (`allow_nan=False`).
+Stan widoku (czas, klasy, zaznaczenie, śledzenie) jest tylko w `shell.html`. Przeglądarka sama robi: klatkę, ślad zaznaczonego auta (`trail`), szukanie id (`lookup`, prefiks, najwyżej 20), kliknięcie w auto (najbliższe w promieniu 8 px) albo drogę (najbliższy odcinek łamanej), prędkość średnią na linku (`linkNow`). Python pozostał tylko dla opisu zaznaczenia: `Api.describe(t, selected, veh, now)` zwraca panel (linie, oś czynności) i kotwicę śledzenia, gdy auto stoi. Wołane przy zmianie zaznaczenia i co 250 ms przy zaznaczeniu, odpowiedź spóźniona (`panelSeq`) odpada. `Player.frame`, `pick`, `lookup` zostały jako wzorzec dla testów i `--check`, okno ich nie woła.
 
-Mostek pywebview, metody `Api`: `frame(t, classes, selected, follow)`, `pick(t, classes, lat, lon, lat2, lon2)`, `lookup(query)`. Wszystkie bezstanowe: `classes` to klucze klas, `selected` to `{"id"}` (osoba) albo `{"link"}`. Stan widoku trzyma JS.
+Różnice względem wzorca z Pythona: pozycja z łamaną do ok. 1 m na długim linku (6 km; nieliniowość lon/lat względem EPSG:2180), mediana 5 mm, p90 16 cm na R7b; kierunek do 0,012 rad; prędkość i link bez różnic. Test: `viz_player/tests/test_client.py` (pod `node`, z i bez łamanej, ślad, `lookup`) i `--smoke` (prawdziwe okno: klatka klienta = klatka Pythona, klik w auto, chip, oś, Esc).
+
+Wydajność silnika klienta pod node (Kutno 100%, szczyt 6–9, 2834 aut, bez łamanych): mediana 0,21 ms, p95 0,39 ms na klatkę (wcześniej Python 13,8 ms plus most 3,3 ms). Kutno 25%: 717 aut, 0,035 ms.
 
 ## Podkład
 

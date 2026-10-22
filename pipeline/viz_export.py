@@ -26,9 +26,13 @@ MODES = ["car"]  # indeks zna tylko ruch aut po sieci (cztery eventy ruchu); PT,
 
 TRACK_COLUMNS = [("person_i", "<i4"), ("cls", "u1"), ("mode", "u1"), ("t0", "<f4"), ("t1", "<f4")]
 CHUNK_COLUMNS = [
-    ("track", "<i4"), ("knot_off", "<i4"), ("knot_t", "<f4"), ("knot_dlon", "<f4"),
+    ("track", "<i4"), ("g0", "<i4"), ("knot_off", "<i4"), ("knot_t", "<f4"), ("knot_dlon", "<f4"),
     ("knot_dlat", "<f4"), ("knot_len", "<f4"), ("knot_link", "<i4"),
 ]
+
+
+# liczba elementów kolumn porcji: n = przejazdy porcji, k = jej węzły
+CHUNK_COUNTS = ["n", "n", "n+1", "k", "k", "k", "k", "k"]
 
 
 class ExportFailed(Exception):
@@ -132,7 +136,7 @@ def build(run_dir, out=None, chunk_sec=CHUNK_SEC):
         last_k = np.minimum(np.searchsorted(knot_key, sel * KEY_STEP + c1, side="left"), hi)
         idx, off = _gather(first_k, np.maximum(last_k, first_k))
         data = {
-            "track": sel, "knot_off": off, "knot_t": a["knot_t"][idx], "knot_dlon": dlon[idx],
+            "track": sel, "g0": first_k, "knot_off": off, "knot_t": a["knot_t"][idx], "knot_dlon": dlon[idx],
             "knot_dlat": dlat[idx], "knot_len": a["knot_len"][idx], "knot_link": a["knot_link"][idx],
         }
         name = f"chunk_{c - first:03d}.bin"
@@ -161,6 +165,7 @@ def build(run_dir, out=None, chunk_sec=CHUNK_SEC):
         "tracks": {"file": "tracks.bin", "columns": TRACK_COLUMNS},
         "persons": "persons.json",
         "chunk_columns": CHUNK_COLUMNS,
+        "chunk_counts": CHUNK_COUNTS,
         "align": ALIGN,
         "chunks": chunks,
     }
@@ -170,8 +175,8 @@ def build(run_dir, out=None, chunk_sec=CHUNK_SEC):
 
 def column_counts(chunk):
     """Liczby elementów kolumn porcji w kolejności CHUNK_COLUMNS."""
-    n, k = chunk["n_tracks"], chunk["n_knots"]
-    return [n, n + 1, k, k, k, k, k]
+    value = {"n": chunk["n_tracks"], "n+1": chunk["n_tracks"] + 1, "k": chunk["n_knots"]}
+    return [value[spec] for spec in CHUNK_COUNTS]
 
 
 def main(argv):
