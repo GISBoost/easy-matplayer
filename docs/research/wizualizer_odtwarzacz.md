@@ -52,6 +52,16 @@ Otwarte: wskaźnik postępu budowy indeksu w oknie (okno otwiera się po indeksi
 - **`tracks.bin`**: `person_i` (i32, indeks do `persons.json`), `cls` (u8, indeks do `classes` w manifeście), `mode` (u8, indeks do `modes`), `t0`, `t1` (f32). Dziś `modes = ["car"]`: indeks zna tylko ruch aut po sieci.
 - **Rozmiary:** Kutno 25% 130 porcji, 69,7 MB, budowa 1,4 s; Kutno 100% 131 porcji, 281 MB (ok. 2,1 MB na porcję), budowa 4 s. Pierwszy test: `viz_player/tests/test_export.py` (pozycja z porcji = pozycja z silnika klatek, rozmiar nadmiaru, tabele, cache).
 
+## Budynki 3D (D26, krok 6)
+
+`pipeline/viz_buildings.py` czyta `data/raw/osm/lodzkie-*.osm.pbf` (osmium, jak `curves.py`), bierze zamknięte linie z tagiem `building` (bez `no`, `disused`, `construction`, `proposed`) z obwiedni sieci runu plus 300 m i zapisuje `buildings.json` oraz `buildings_{off,xy,h,src}.bin` obok eksportu v2 (`site/data/`). Skan prawdziwego PBF trwa ok. 36 s, wynik jest w cache (klucz: PBF, config, obwiednia, origin, kod).
+
+- **Wysokość** (`height_of`): tag `height` (dokładnie) > `building:levels` × `floor_height_m` > H0 klasy `building=*`; dla wysokości wyprowadzonej (piętra, klasa) dochodzi ±`spread` z hasha sha1 id budynku (deterministycznie). Flaga źródła `src`: 0 tag, 1 piętra, 2 założenie.
+- **Config** `config/viz_buildings.toml`: wszystko to ZAŁOŻENIA robocze do potwierdzenia przez właściciela: `variant` (`per_class` albo `single`), `floor_height_m = 3,0`, `spread = 0,15`, tabela `h0_m`, `default_m`. Zmiana configu przebudowuje budynki.
+- **Okno:** przycisk „3D” przechyla mapę (55°) i włącza budynki jako jedną statyczną warstwę `SolidPolygonLayer` (wyciągnięcie z `h`). Kolor zależy od źródła (jaśniej z tagu, ciemniej założenie). Pod paskiem legendy stoi opis z liczbami i adnotacją, że wysokości z pięter i klasy to założenia, oraz „© OpenStreetMap contributors”. Bez PBF przycisk tylko przechyla mapę. Budynki i auta są w tej samej kanwie deck.gl, więc głębokość się zgadza.
+- **Ograniczenia:** tylko zamknięte linie (bez relacji multipolygon, więc budynki z dziedzińcami i część dużych obiektów brakuje), tylko obrys zewnętrzny, bez dachów.
+- **Liczby R7b** (obwiednia sieci = powiat z buforem, nie samo miasto): 83 617 budynków, z tagu `height` 326, z pięter 52 480, założenie wg klasy 30 811, mediana 3,3 m, pliki 4,5 MB.
+
 ## Uruchomienie
 
 Z katalogu projektu. `python` nie jest na PATH, polecenie to `uv run`. Okno, testy i akceptacja potrzebują grupy zależności `viz` (pywebview, pytest). Sam pipeline jej nie potrzebuje.

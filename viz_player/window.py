@@ -160,6 +160,19 @@ def smoke(run):
             if label != "pauza":
                 result["error"] = f"start {label}"
                 return
+            if player.buildings is not None:
+                js("document.getElementById('three').click()")
+                if not _wait_js(window, "threeD === true && map.getPitch() > 50 && buildingData !== null", 15):
+                    result["error"] = f"3D: pitch {js('map.getPitch()')} budynki {js('buildingData && buildingData.length')} {js('window.drawError')}"
+                    return
+                if js("buildingData.length") != player.buildings["n"] or js("window.drawError"):
+                    result["error"] = f"budynki w oknie {js('buildingData.length')}, w eksporcie {player.buildings['n']} {js('window.drawError')}"
+                    return
+                result["buildings"] = player.buildings["n"]
+                js("document.getElementById('three').click()")
+                if not _wait_js(window, "threeD === false && map.getPitch() < 5", 15):
+                    result["error"] = "3D nie wyłącza się " + str(js("map.getPitch()"))
+                    return
             out, _code = grab.window_png(shot)
             result["grab"] = out.strip()
             ident = pick_ident(player.index)
@@ -204,7 +217,7 @@ def smoke(run):
     note(
         player.run_dir,
         f"smoke OK n={result['n']} bez_{result['key']}={result['thin']} zegar={result['clock']} "
-        f"mapa={result['size']} klient_vs_python_max={result['worst_m']:.2f} m {png}",
+        f"mapa={result['size']} klient_vs_python_max={result['worst_m']:.2f} m budynki3D={result.get('buildings', 'brak')} {png}",
     )
     return 0
 

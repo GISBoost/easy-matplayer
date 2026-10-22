@@ -1,0 +1,39 @@
+# Wysokości budynków w widoku 3D okna odtwarzacza (D26, krok 6, pipeline/viz_buildings.py).
+# Wszystko poniżej to ZAŁOŻENIA wizualne, wartości robocze do potwierdzenia przez właściciela. Nie są pomiarem.
+# Kolejność: tag `height` (dokładnie) > `building:levels` × floor_height_m > H0 klasy `building=*`.
+# Do wysokości wyprowadzonej (piętra, klasa) dochodzi ±spread z hasha id budynku (deterministycznie).
+
+variant = "per_class"   # "per_class": H0 wg klasy poniżej; "single": jedna stała single_m dla wszystkich
+floor_height_m = 3.0    # OSM wiki OSM-3D: 3 m na kondygnację
+spread = 0.15           # ±15%
+single_m = 7.0          # wariant "single"
+default_m = 7.0         # klasa spoza tabeli i `building=yes`
+
+[h0_m]
+house = 7.0
+detached = 7.0
+semidetached_house = 7.0
+terrace = 7.0
+bungalow = 5.0
+farm = 6.0
+residential = 12.0
+apartments = 15.0
+dormitory = 12.0
+commercial = 10.0
+retail = 8.0
+office = 15.0
+industrial = 8.0
+warehouse = 8.0
+manufacture = 8.0
+garage = 3.0
+garages = 3.0
+carport = 3.0
+shed = 3.0
+roof = 4.0
+barn = 6.0
+church = 12.0
+school = 10.0
+hospital = 15.0
+kindergarten = 6.0
+public = 10.0
+service = 5.0

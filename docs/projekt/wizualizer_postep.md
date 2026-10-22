@@ -21,7 +21,7 @@ Cel: 30 FPS na Kutnie 100%. Łódź tylko 10%. Test tylko na GPU właściciela (
 - [x] 3. Eksport v2: porcje czasowe, `person_id`, tryb, `manifest.json`, origin z bbox sieci. Szczegóły niżej.
 - [x] 4. Klient (JS) liczy klatkę, stan tylko po stronie klienta, Python poza pętlą klatek.
 - [x] 5. Leaflet → MapLibre 6 + deck.gl, kamera pitch/bearing, komunikat przy braku WebGL2.
-- [ ] 6. Budynki z preprocessingu (wysokość: tag > levels × 3 m > H0 wg klasy, ±15% z hasha, `h_source`).
+- [x] 6. Budynki z preprocessingu (wysokość: tag > levels × 3 m > H0 wg klasy, ±15% z hasha, `h_source`).
 - [ ] 7. Nowe tryby, PT, atrybuty osób.
 - [ ] 8. Wygaszenie `g6_bake.py`, test na iGPU (odłożony), przeglądarka opcjonalnie.
 
@@ -52,3 +52,11 @@ Wcześniej zrobione (fundamenty, D24): origin z sieci, `person_id` i klasyfikato
 - Dowód: `--smoke` w prawdziwym oknie na R7b OK (728 aut w oknie 6–9, 452 bez `tlo`, klatka klienta = klatka Pythona, klik w auto, chip, oś, Esc), pytest 47 passed, widok z pochyleniem 55° i obrotem 30° sprawdzony zrzutem w panelu przeglądarki (drogi i auta zgodne z kamerą).
 - Odstępstwa i otwarte: (1) `interleaved: true` nie działa z tą parą wersji (wyjątek w deck.gl), nakładka jest osobną kanwą; dla budynków 3D (krok 6) oznacza to brak sortowania w głębi z autami, do sprawdzenia przy kroku 6 (inna wersja MapLibre 5 albo deck.gl, albo budynki jako deck `SolidPolygonLayer` w tej samej kanwie). (2) Serwer pywebview daje `.mjs` jako `text/plain`; obejście w `window.py`. (3) Biblioteki dodają do repo ok. 3,2 MB.
 - Poprawka po drodze: adresy danych eksportu mają `?v=<klucz>` (stary cache WebView2 oddawał porcję sprzed zmiany układu).
+
+### Krok 6: budynki 3D (2026-10-22)
+
+- `pipeline/viz_buildings.py` + `config/viz_buildings.toml` (H0 wg klasy, piętra × 3 m, ±15% z hasha id, flaga źródła tag/piętra/założenie; wartości to ZAŁOŻENIA robocze do potwierdzenia). Statyczna warstwa `SolidPolygonLayer`, przycisk „3D” (pochylenie 55° + budynki), opis z liczbami i „© OpenStreetMap contributors”.
+- Liczby R7b (obwiednia sieci, czyli powiat z buforem): 83 617 budynków, z tagu 326, z pięter 52 480, założenie 30 811, mediana 3,3 m, 4,5 MB, skan PBF 36 s jednorazowo (potem cache). Budowa danych warstwy w JS 53 ms, koszt `render()` po stronie CPU z 3D mediana 0,4 ms.
+- Dowód: pytest 52 passed (w tym budynki z małego PBF utworzonego w teście: kolejność tag/piętra/klasa, hash, cache, obwiednia), `--smoke` w prawdziwym oknie: 83 617 budynków, pochylenie >50° po włączeniu i <5° po wyłączeniu, zrzut w panelu przeglądarki pokazuje bryły.
+- **Nie zmierzone:** FPS z włączonym 3D w prawdziwym oknie (próby pomiaru zawiesił błąd skryptu pomiarowego, nie aplikacja). Do zrobienia osobno.
+- Ograniczenia: tylko zamknięte linie (bez relacji multipolygon), obrys zewnętrzny, bez dachów.

@@ -17,6 +17,7 @@ import numpy as np
 from pyproj import Transformer
 
 import viz_engine
+import viz_buildings
 import viz_export
 
 from viz_player import curves, site
@@ -223,6 +224,7 @@ class Player:
         self.curve = None
         self.curve_note = ""
         self.export_key = ""
+        self.buildings = None
         self.origin = (0.0, 0.0)
         self.fwd = Transformer.from_crs("EPSG:2180", "EPSG:4326", always_xy=True)
         self.inv = Transformer.from_crs("EPSG:4326", "EPSG:2180", always_xy=True)
@@ -534,6 +536,7 @@ class Player:
             "error": self.error, "run": self.run_name, "t": self.t_start,
             "tMin": 0, "tMax": 1, "sample": "brak", "basemap": self.basemap,
             "bounds": None, "types": [], "classes": [], "nLinks": 0, "nCurve": 0, "curveNote": "", "data": None,
+            "buildings": None, "buildingsNote": "",
         }
         if self.index is None:
             return base
@@ -553,8 +556,17 @@ class Player:
             "nCurve": int(len(self.curve.xy)) if self.curve is not None and self.curve.n_bent else 0,
             "curveNote": self.curve_note,
             "data": "data/manifest.json?v=" + self.export_key[:12],
+            "buildings": None if self.buildings is None else "data/buildings.json?v=" + self.buildings["source_key"][:12],
+            "buildingsNote": self.buildings_note(),
         })
         return base
+
+    def buildings_note(self):
+        if self.buildings is None:
+            return "budynki: brak PBF w data/raw/osm"
+        c = self.buildings["counts"]
+        return (f"budynki {self.buildings['n']}: wysokość z tagu {c['tag']}, z pięter {c['levels']}, "
+                f"założenie wg klasy {c['default']} (piętra i klasa to założenia)")
 
     def boot_arrays(self):
         if self.index is None:
@@ -575,6 +587,8 @@ class Player:
     def write_site(self, dest=None):
         dest = dest or self.run_dir / "viz" / "site"
         self.export_key = viz_export.build(self.run_dir, out=Path(dest) / "data")["source_key"]
+        box, origin = viz_buildings.network_box(self.run_dir)
+        self.buildings = viz_buildings.build(Path(dest) / "data", box, origin)
         return site.write_site(dest, self.boot(), self.boot_arrays())
 
 
