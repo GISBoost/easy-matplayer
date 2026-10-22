@@ -104,6 +104,11 @@ Osobne zlecenie po założeniu repo: lista plików do przeniesienia (`viz_player
 | Rozmiar zipa | Pomiar w M3; jeśli > 150 MB, wykluczenia i przegląd zależności. |
 | Zależność od `pipeline/` przy przenosinach do nowego repo | Pliki `viz_*` są samodzielne (zależności tylko numpy/zstandard/pyproj); sprawdzone w M7. |
 
+## Ustalenia z M1 (2026-10-22)
+
+- Nazwa aplikacji: **easy-matanimation** (ścieżka danych `%LOCALAPPDATA%\easy-matanimation`, plik `easy-matanimation.exe`, zip `easy-matanimation-windows.zip`). Tytuły okien i `user_agent` zmieniam w M2.
+- **Źródło OSM (do decyzji właściciela, wpływa na M2 i M5):** budynki 3D i łamane drogi budują się z `lodzkie-*.osm.pbf` (132 MB, poza gitem), którego paczka nie zawiera. Bez PBF aplikacja działa, ale rysuje proste odcinki i bez budynków. Opcje: (a) demo niesie gotowe cache budynków i łamanych (wymaga poprawki: `build` bez PBF ma użyć cache), a runy własne dostają przycisk „wskaż plik OSM (.osm.pbf)”; (b) to samo i dodatkowo pobieranie wycinka z Geofabrik/Overpass; (c) paczka bez OSM, tylko proste odcinki. Rekomendacja: (a).
+
 ## Pytania do właściciela w trakcie (nie blokują M1)
 
 1. Ikona aplikacji (M3): dostarczysz plik czy generuję prosty znaczek?

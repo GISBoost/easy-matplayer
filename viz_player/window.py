@@ -18,10 +18,11 @@ from pathlib import Path
 import numpy as np
 
 from viz_player import check, grab, ogc, rasters
-from viz_player.player import ROOT, Player, clock, note, pick_ident, save_state, saved_run
+from viz_player.paths import DATA, RUNS
+from viz_player.player import Player, clock, note, pick_ident, save_state, saved_run
 
-SERVICES = ROOT / "output" / "viz_player_services.json"
-RASTERS = ROOT / "output" / "viz_player_rasters"
+SERVICES = DATA / "viz_player_services.json"
+RASTERS = DATA / "viz_player_rasters"
 
 # MapLibre 6 to moduły ES; przeglądarka odrzuca je bez typu JavaScript, a rejestr Windows bywa pusty
 mimetypes.add_type("text/javascript", ".mjs")
@@ -107,7 +108,7 @@ class Api:
     def raster_pick(self):
         import webview
         sel = self._window.create_file_dialog(
-            webview.FileDialog.OPEN, directory=str(ROOT),
+            webview.FileDialog.OPEN, directory=str(RUNS),
             file_types=("Obrazy (*.png;*.jpg;*.jpeg;*.tif;*.tiff;*.webp)", "Wszystkie pliki (*.*)"),
         )
         if not sel:
@@ -214,9 +215,8 @@ class Api:
     def pick_run(self):
         """Okno wyboru katalogu runu. Anulowanie zwraca {"status": "cancel"}, bieżący run zostaje."""
         import webview
-        start = ROOT / "output"
         sel = self._window.create_file_dialog(
-            webview.FileDialog.FOLDER, directory=str(start if start.is_dir() else ROOT),
+            webview.FileDialog.FOLDER, directory=str(RUNS if RUNS.is_dir() else Path.home()),
         )
         if not sel:
             return {"status": "cancel"}
@@ -689,7 +689,7 @@ def smoke(run):
             wms_stop()
             window.destroy()
 
-    storage = ROOT / "output" / "viz_player_webview"
+    storage = DATA / "viz_player_webview"
     storage.mkdir(parents=True, exist_ok=True)
     webview.start(
         body, gui="edgechromium", private_mode=False, http_server=True,
@@ -711,7 +711,7 @@ def serve(run):
     player = Player()
     player.open(run)
     import webview
-    site = ROOT / "output" / "viz_player_site"  # stały katalog strony: „otwórz run” podmienia jego zawartość i przeładowuje stronę
+    site = DATA / "viz_player_site"  # stały katalog strony: „otwórz run” podmienia jego zawartość i przeładowuje stronę
     api = Api(player, site)
     window = webview.create_window(
         "easy-matviz", url=str(player.write_site(site)), js_api=api,
@@ -725,7 +725,7 @@ def serve(run):
 
     where = "wyłączony" if player.basemap is None else "włączony"
     note(player.run_dir, f"okno run={player.run_name} podklad={where} blad={player.error or '-'}")
-    storage = ROOT / "output" / "viz_player_webview"
+    storage = DATA / "viz_player_webview"
     storage.mkdir(parents=True, exist_ok=True)
     webview.start(
         kick, gui="edgechromium", private_mode=False, http_server=True,

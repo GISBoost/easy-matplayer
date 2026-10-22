@@ -104,8 +104,8 @@ def bench(run):
             window.destroy()
 
     import webview as _w
-    from viz_player.player import ROOT
-    storage = ROOT / "output" / ("viz_player_webview_sw" if os.environ.get("WEBVIEW2_ADDITIONAL_BROWSER_ARGUMENTS") else "viz_player_webview")
+    from viz_player.paths import DATA
+    storage = DATA / ("viz_player_webview_sw" if os.environ.get("WEBVIEW2_ADDITIONAL_BROWSER_ARGUMENTS") else "viz_player_webview")
     storage.mkdir(parents=True, exist_ok=True)
     _w.start(body, gui="edgechromium", private_mode=False, http_server=True, storage_path=str(storage), user_agent="easy-matviz")
     if not result.get("ok"):

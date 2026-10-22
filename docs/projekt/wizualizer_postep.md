@@ -37,7 +37,7 @@ Wcześniej zrobione (fundamenty, D24): origin z sieci, `person_id` i klasyfikato
 
 ## Aplikacja z pulpitu i release (D27, plan: `wizualizer_aplikacja.md`)
 
-- [ ] A1. Ścieżki: zasoby do odczytu osobno od danych do zapisu (`paths.py`, `%LOCALAPPDATA%\easy-matviz`).
+- [x] A1. Ścieżki: zasoby do odczytu osobno od danych do zapisu (`paths.py`, `%LOCALAPPDATA%\easy-matanimation`).
 - [ ] A2. Zachowanie po dwukliku: wybór runu bez argumentu, log do pliku, błędy w oknie, postęp budowy indeksu, wersja.
 - [ ] A3. Pierwsza paczka PyInstaller onedir, smoke zbudowanego exe z okrojonym PATH.
 - [ ] A4. Test na czystym komputerze / Windows Sandbox.
@@ -157,3 +157,10 @@ Wcześniej zrobione (fundamenty, D24): origin z sieci, `person_id` i klasyfikato
 
 - Nowy przycisk (cztery narożniki) w lewym górnym rogu pod kompasem (`FitControl` w `shell.html`): `fitBounds` na obwiednię sieci z `boot.bounds`, margines 20 px, animacja 0,6 s; obrót i pochylenie zostają. Dla zgubionego użytkownika.
 - Dowód: smoke skacze na zoom 17,5 w róg sieci, klika przycisk i czeka, aż widok obejmie całą obwiednię (zoom < 14); zrzut okna pokazuje przycisk w kontrolkach; 72 testy.
+
+### A1: ścieżki (2026-10-22)
+
+- `viz_player/paths.py`: `locate(frozen, env, meipass, here)` daje `RES` (zasoby do odczytu), `DATA` (zapisy) i `RUNS` (od czego zaczyna się wybór runu). Repo: `RES` = katalog repo, `DATA` = `output/` (bez zmiany dla właściciela). Paczka: `RES` = katalog rozpakowania, `DATA` = `%LOCALAPPDATA%\easy-matanimation`. `EASY_MATANIMATION_DATA` nadpisuje `DATA`.
+- Przeniesione na `DATA`: stan (`viz_player_state.json`), usługi WMS i obrazy, profil WebView2, katalog strony, klucz podkładu (`DATA/viz_basemap.local.toml` ma pierwszeństwo przed `config/`). Zapamiętany run względny jest rozwiązywany względem `RES`, nie katalogu roboczego.
+- Dowód: 77 testów (5 nowych w `test_paths.py`: tryb repo, tryb zamrożony, nadpisanie zmienną, run względny i bezwzględny, klucz podkładu). Smoke z `EASY_MATANIMATION_DATA` w pustym katalogu tymczasowym przeszedł (`smoke OK n=728`, budynki 3D 83617), a po nim w tym katalogu są tylko `viz_player_state.json` i `viz_player_webview`, czyli zapisy poszły tam, a nie do `output/`.
+- Odkryte przy okazji (do M2, M3, M5): (1) budynki 3D i łamane drogi czytają `data/raw/osm/lodzkie-*.osm.pbf` (132 MB, poza gitem, przez `osmium`), a `viz_buildings.build` bez PBF zwraca `None`, nawet gdy cache jest; paczka tego pliku nie ma. (2) `viz_buildings`, `viz_export` i `viz_index` liczą skrót z własnego pliku `.py` (`Path(__file__).read_bytes()`), a w zamrożonej paczce tego pliku nie ma; musi wyjść w smoke exe (M3). (3) `viz_buildings.CONFIG` (`config/viz_buildings.toml`) w paczce wymaga `datas` w `.spec`. Pytanie do właściciela o źródło OSM w aplikacji: `wizualizer_aplikacja.md`.

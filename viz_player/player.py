@@ -10,7 +10,8 @@ import math
 import sys
 from pathlib import Path
 
-ROOT = Path(__file__).resolve().parents[1]
+from viz_player.paths import DATA, RES as ROOT
+
 sys.path.insert(0, str(ROOT / "pipeline"))
 
 import numpy as np
@@ -22,7 +23,7 @@ import viz_export
 
 from viz_player import curves, site
 
-STATE = ROOT / "output" / "viz_player_state.json"
+STATE = DATA / "viz_player_state.json"
 START = 6 * 3600
 CARTO = "https://{s}.basemaps.cartocdn.com/rastertiles/dark_nolabels/{z}/{x}/{y}.png?key="
 ATTR = "© OpenStreetMap contributors © CARTO"
@@ -160,8 +161,8 @@ def schedule(rows, t_min, t_max, trips, t):
 
 
 def carto_basemap():
-    path = ROOT / "config" / "viz_basemap.local.toml"
-    if not path.exists():
+    path = next((p for p in (DATA / "viz_basemap.local.toml", ROOT / "config" / "viz_basemap.local.toml") if p.exists()), None)
+    if path is None:
         return None
     import tomllib
     try:
@@ -187,9 +188,10 @@ def saved_run():
     if not STATE.exists():
         return None
     try:
-        return json.loads(STATE.read_text(encoding="utf-8")).get("run")
+        run = json.loads(STATE.read_text(encoding="utf-8")).get("run")
     except Exception:
         return None
+    return str(ROOT / run) if run and not Path(run).is_absolute() else run
 
 
 def note(run_dir, message):
