@@ -103,6 +103,9 @@ const ROAD = {
 };
 let t = 0, tMin = 0, tMax = 1;
 let playing = false, mult = 1, scrub = false, busy = false, dirty = false;
+// Cały stan widoku jest tu; Python liczy klatkę z (t, classesOn, selected, follow) i nic nie pamięta.
+let classesOn = [], selected = null, follow = false, rev = 0;
+function change() { rev++; dirty = true; }
 let lastPayload = null, linkKey = "", linkCanvas = document.createElement("canvas");
 window.hold = false;
 window.drawnN = 0;
@@ -143,6 +146,7 @@ const slider = document.getElementById("slider");
 const chips = document.getElementById("chips");
 function applyBoot() {
   t = boot.t;
+  classesOn = (boot.classes || []).filter((c) => c.on).map((c) => c.key);
   tMin = boot.tMin;
   tMax = boot.tMax;
   document.getElementById("run").textContent = boot.run || "";
@@ -161,8 +165,8 @@ function applyBoot() {
     b.textContent = c.name;
     b.addEventListener("click", () => {
       b.classList.toggle("on");
-      const on = [...chips.querySelectorAll(".chip.on")].map((x) => x.dataset.key);
-      py().then((api) => api.classes(on)).then(() => { dirty = true; });
+      classesOn = [...chips.querySelectorAll(".chip.on")].map((x) => x.dataset.key);
+      change();
     });
     chips.appendChild(b);
   });
@@ -274,7 +278,10 @@ function showHits(hits) {
     b.type = "button";
     b.textContent = h.id;
     b.addEventListener("click", () => {
-      py().then((api) => api.select(h.id)).then(() => { box.replaceChildren(); dirty = true; });
+      selected = {id: h.id};
+      follow = true;
+      box.replaceChildren();
+      change();
     });
     box.appendChild(b);
   });
@@ -282,8 +289,10 @@ function showHits(hits) {
 function onLookup(raw) {
   if (!raw) return;
   if (raw.followed) {
+    selected = {id: raw.followed};
+    follow = true;
     document.getElementById("hits").replaceChildren();
-    dirty = true;
+    change();
   } else {
     showHits(raw.hits || []);
   }
@@ -433,10 +442,10 @@ function pull() {
   const api = window.pywebview && window.pywebview.api;
   if (window.hold || busy || !map || !api || !api.frame) return;
   busy = true;
-  const sent = t;
+  const sent = t, sentRev = rev;
   let pending;
   try {
-    pending = api.frame(sent);
+    pending = api.frame(sent, classesOn, selected, follow);
   } catch (err) {
     busy = false;
     window.drawError = String(err);
@@ -445,7 +454,7 @@ function pull() {
   pending.then((payload) => {
     busy = false;
     if (window.hold) return;
-    if (!playing && Math.abs(sent - t) > 1e-3) {
+    if ((!playing && Math.abs(sent - t) > 1e-3) || sentRev !== rev) {
       pull();
       return;
     }
@@ -514,18 +523,18 @@ window.addEventListener("keydown", (ev) => {
   const typing = document.activeElement && document.activeElement.tagName === "INPUT";
   if (ev.key === "Escape") {
     if (typing) document.activeElement.blur();
-    py().then((api) => api.clear()).then(() => {
-      document.getElementById("hits").replaceChildren();
-      showPanel({kind: "empty"});
-      dirty = true;
-    });
+    selected = null;
+    follow = false;
+    document.getElementById("hits").replaceChildren();
+    showPanel({kind: "empty"});
+    change();
     return;
   }
   if (typing) return;
   if (ev.key === " ") { ev.preventDefault(); setPlaying(!playing); }
   else if (ev.key === "ArrowRight") { ev.preventDefault(); t = Math.min(tMax, t + 60); dirty = true; }
   else if (ev.key === "ArrowLeft") { ev.preventDefault(); t = Math.max(tMin, t - 60); dirty = true; }
-  else if (ev.key === "f" || ev.key === "F") py().then((api) => api.follow(true)).then(() => { dirty = true; });
+  else if ((ev.key === "f" || ev.key === "F") && selected && selected.id) { follow = true; change(); }
 }, true);
 
 function bootMap() {
@@ -542,9 +551,12 @@ function bootMap() {
   map.on("click", (ev) => {
     const p = ev.containerPoint;
     const q = map.containerPointToLatLng(L.point(p.x + 8, p.y));
-    py().then((api) => api.pick(ev.latlng.lat, ev.latlng.lng, q.lat, q.lng)).then((panel) => {
-      if (panel && panel.kind !== "miss") showPanel(panel);
-      dirty = true;
+    py().then((api) => api.pick(t, classesOn, ev.latlng.lat, ev.latlng.lng, q.lat, q.lng)).then((hit) => {
+      if (hit && hit.kind === "vehicle") selected = {id: hit.id};
+      else if (hit && hit.kind === "link") selected = {link: hit.link};
+      else return;
+      follow = false;
+      change();
     });
   });
   map.on("move zoom resize", () => { if (lastPayload && !window.hold) draw(lastPayload); });

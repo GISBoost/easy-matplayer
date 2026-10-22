@@ -75,9 +75,13 @@ class Curves:
                 out.append((x, y))
         return out
 
-    def nearest(self, chords, x, y, tol):
+    def prepare(self, chords):
+        """Odcinki do nearest() liczone raz przy otwarciu, nie leniwie z wielu wątków."""
         if self._seg is None:
             self._seg = segments(self, chords)
+
+    def nearest(self, chords, x, y, tol):
+        self.prepare(chords)
         x0, y0, x1, y1, owner = self._seg
         if len(owner) == 0:
             return None

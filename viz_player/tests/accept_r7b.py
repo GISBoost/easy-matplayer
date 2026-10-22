@@ -40,10 +40,9 @@ def main(run=RUN):
         lon, lat = player.fwd.transform(*player.origin)
         if abs(lat - KUTNO[0]) > 0.1 or abs(lon - KUTNO[1]) > 0.1:
             problems.append(f"origin {lat:.4f},{lon:.4f} daleko od Kutna")
-        if abs(player.t - pl.START) > 1e-6:
-            problems.append(f"start {player.t}")
-        player.t = float(meta["max_concurrent_time"])
-        if player.payload()["n"] != EXPECT["max_concurrent"]:
+        if abs(player.t_start - pl.START) > 1e-6:
+            problems.append(f"start {player.t_start}")
+        if player.frame(float(meta["max_concurrent_time"]))["n"] != EXPECT["max_concurrent"]:
             problems.append("szczyt klatki okna")
         if player.lookup(PERSON).get("followed") != PERSON:
             problems.append(f"lookup {PERSON}")

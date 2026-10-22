@@ -94,7 +94,7 @@ def test_covering():
 
 def test_open_sets_origin_start_sample(player):
     assert player.origin == fx.ORIGIN
-    assert abs(player.t - pl.START) < 1e-6 and player.sample == "0,25"
+    assert abs(player.t_start - pl.START) < 1e-6 and player.sample == "0,25"
     lat, lon = wgs(player, 0)
     east, north = player.inv.transform(lon, lat)
     assert abs(east - fx.world(0)[0]) < 0.01 and abs(north - fx.world(0)[1]) < 0.01
@@ -104,54 +104,85 @@ def test_missing_run_dir(tmp_path):
     p = pl.Player()
     p.open(tmp_path / "nie-ma", remember=False)
     assert p.error and "Brak katalogu" in p.error
+    assert p.frame(0)["panel"]["lines"] == [p.error]
 
 
 def test_morning_frame(player):
-    morning = player.payload()
+    morning = player.frame(player.t_start)
     assert morning["n"] == 1 and morning["clock"] == "06:00:00" and morning["heavy"] == [0]
 
 
 def test_activity_panel_and_axis(player):
-    player.select("r2")
-    panel = player.panel()
+    pay = player.frame(player.t_start, None, {"id": "r2"})
+    panel = pay["panel"]
     assert panel["kind"] == "activity" and "home" in panel["lines"] and "nie jedzie" in panel["lines"]
     axis = panel["axis"]
     assert [s["label"] for s in axis] == ["home", "jazda", "work"]
     assert axis[0]["on"] and not axis[1]["on"] and not axis[2]["on"]
     assert (axis[1]["t0"], axis[1]["t1"], axis[1]["trip"]) == (23000.0, 23100.0, True)
     assert axis[1]["u1"] - axis[1]["u0"] >= 0.2
-    pay = player.payload()
     assert pay["sel"] is None and not pay["path"], "stojący nie ma ducha na drodze"
-    player.t = 24000
-    later = player.panel()
+    later = player.frame(24000, None, {"id": "r2"})["panel"]
     assert later["kind"] == "activity" and "work" in later["lines"]
     assert any(s["label"] == "work" and s["on"] for s in later["axis"])
 
 
 def test_class_filter(player):
-    player.set_classes(["resident", "commuter", "outbound", "ciezkie"])
-    assert player.payload()["n"] == 0
-    player.set_classes(player.chip_keys)
-    player.t = 23050
-    both = player.payload()
+    assert player.frame(player.t_start, ["resident", "commuter", "outbound", "ciezkie"])["n"] == 0
+    both = player.frame(23050, player.chip_keys)
     assert both["n"] == 2 and sum(both["heavy"]) == 1
+    with pytest.raises(Exception):
+        player.frame(23050, ["nie-ma-takiej"])
 
 
 def test_pick_vehicle_then_link(player):
-    player.t = 23010
-    picked = player.pick(*wgs(player, 10), *wgs(player, 18))
-    assert picked["kind"] == "vehicle" and picked["lines"][0] == "r2" and "3,6 km/h" in picked["lines"]
-    assert len(player.payload()["path"]) >= 2
-    player.clear()
-    road = player.pick(*wgs(player, 80, 3), *wgs(player, 88, 3))
-    assert road["kind"] == "link" and "residential" in road["lines"] and "freespeed 36 km/h" in road["lines"]
-    assert "teraz 1 auto" in road["lines"][-1]
+    hit = player.pick(23010, None, *wgs(player, 10), *wgs(player, 18))
+    assert hit == {"kind": "vehicle", "id": "r2"}
+    pay = player.frame(23010, None, hit and {"id": hit["id"]})
+    assert pay["panel"]["kind"] == "vehicle" and pay["panel"]["lines"][0] == "r2"
+    assert "3,6 km/h" in pay["panel"]["lines"] and len(pay["path"]) >= 2 and pay["sel"] == 0
+    road = player.pick(23010, None, *wgs(player, 80, 3), *wgs(player, 88, 3))
+    assert road["kind"] == "link"
+    panel = player.frame(23010, None, {"link": road["link"]})["panel"]
+    assert panel["kind"] == "link" and "residential" in panel["lines"] and "freespeed 36 km/h" in panel["lines"]
+    assert "teraz 1 auto" in panel["lines"][-1] and "średnia na odcinku" in panel["lines"][-1]
+    assert player.pick(23010, None, *wgs(player, 10, 300), *wgs(player, 18, 300)) == {"kind": "miss"}
+
+
+def test_follow_pans_to_vehicle_and_activity(player):
+    moving = player.frame(23010, None, {"id": "r2"}, True)
+    assert moving["pan"] == [moving["lat"][moving["sel"]], moving["lon"][moving["sel"]]]
+    parked = player.frame(24000, None, {"id": "r2"}, True)
+    assert parked["pan"] is not None and parked["sel"] is None
+    assert player.frame(24000, None, {"id": "r2"}, False)["pan"] is None
+
+
+def test_stale_selection_is_ignored(player):
+    pay = player.frame(player.t_start, None, {"id": "nie-ma", "link": 999})
+    assert pay["panel"]["kind"] == "empty" and pay["sel"] is None and pay["link"] is None
 
 
 def test_lookup(player):
-    assert player.lookup("r2").get("followed") == "r2"
+    assert player.lookup("r2") == {"followed": "r2"}
     many = player.lookup("r")
     assert {h["id"] for h in many.get("hits", [])} == {"r2", "r2b"}
+    assert player.lookup("") == {"hits": []}
+
+
+def test_frame_is_stateless_across_threads(player):
+    """pywebview woła Api z wielu wątków: wynik zależy tylko od argumentów."""
+    from concurrent.futures import ThreadPoolExecutor
+
+    calls = [
+        (t, classes, sel, follow)
+        for t in (21600, 23010, 23050, 24000)
+        for classes in (None, ["tlo"], ["ciezkie", "resident"])
+        for sel, follow in (({"id": "r2"}, True), ({"link": 0}, False), (None, False))
+    ]
+    expected = [player.frame(*c) for c in calls]
+    with ThreadPoolExecutor(8) as pool:
+        got = list(pool.map(lambda c: player.frame(*c), calls * 8))
+    assert got == expected * 8
 
 
 def test_state_file(tmp_path):

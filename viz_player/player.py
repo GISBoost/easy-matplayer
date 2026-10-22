@@ -21,7 +21,7 @@ from pyproj import Transformer
 
 import viz_engine
 
-from viz_player import curves, site
+from viz_player import curves, grab, site
 
 HERE = Path(__file__).resolve().parent
 STATE = ROOT / "output" / "viz_player_state.json"
@@ -218,22 +218,27 @@ def _note(run_dir, message):
 
 
 class Player:
+    """Model okna: indeks, łamane i liczenie klatki.
+
+    Po open() tylko czyta. Stan widoku (czas, klasy, zaznaczenie, śledzenie) trzyma klient
+    i przysyła go w każdym wywołaniu, więc wątki pywebview nie dzielą żadnego stanu.
+    """
+
     def __init__(self):
         self.run_dir = None
         self.run_name = ""
         self.error = None
         self.index = None
         self.basemap = None
-        self.t = 0.0
-        self.classes = ()
         self.chip_keys = []
-        self.selected_id = None
-        self.selected_link = None
-        self.follow = False
-        self._key = None
-        self._fr = None
+        self.class_name = {}
+        self.type_names = []
+        self.t_start = 0.0
+        self.sample = "brak"
         self.curve = None
         self.origin = (0.0, 0.0)
+        self.fwd = Transformer.from_crs("EPSG:2180", "EPSG:4326", always_xy=True)
+        self.inv = Transformer.from_crs("EPSG:4326", "EPSG:2180", always_xy=True)
 
     def open(self, run, remember=True):
         self.run_dir = Path(run).resolve()
@@ -241,8 +246,6 @@ class Player:
         self.error = None
         self.index = None
         self.basemap = carto_basemap()
-        self.fwd = Transformer.from_crs("EPSG:2180", "EPSG:4326", always_xy=True)
-        self.inv = Transformer.from_crs("EPSG:4326", "EPSG:2180", always_xy=True)
         if not self.run_dir.is_dir():
             self.error = f"Brak katalogu runu {self.run_name}."
             return
@@ -269,6 +272,7 @@ class Player:
         except Exception as exc:
             self.curve = curves.empty(len(self.link_id))
             note = f"łamane: {exc}; cięciwy"
+        self.curve.prepare(self.index.link_xy)
         _note(self.run_dir, note)
         self._setup()
         if remember:
@@ -286,66 +290,36 @@ class Player:
     def _setup(self):
         meta = self.index.meta
         t0, t1 = float(meta["t_min"]), float(meta["t_max"])
-        self.t = float(START if t0 <= START <= t1 else t0)
+        self.t_start = float(START if t0 <= START <= t1 else t0)
         self.class_name = {row["key"]: row["name"] for row in meta["classes"]}
         types = meta["type_legend"]
         count = max((int(key) for key in types), default=-1) + 1
         self.type_names = [types[str(i)] for i in range(count)]
         self.chip_keys = list(self.index.class_keys)
-        self.classes = tuple(self.chip_keys)
-        self.selected_id = None
-        self.selected_link = None
-        self.follow = False
-        self._key = None
         self.sample = sample_label(meta.get("sample_size"))
 
-    def set_time(self, t):
-        t = float(t)
-        if self.index is not None:
-            t = min(max(t, float(self.index.meta["t_min"])), float(self.index.meta["t_max"]))
-        self.t = t
+    def clamp(self, t):
+        return min(max(float(t), float(self.index.meta["t_min"])), float(self.index.meta["t_max"]))
 
-    def set_classes(self, keys):
-        keys = [str(k) for k in (keys or [])]
-        for key in keys:
-            if key not in self.index.class_keys:
-                raise viz_engine.EngineFailed(f"nieznana klasa {key!r}")
-        self.classes = tuple(dict.fromkeys(keys))
-        self._key = None
-
-    def clear(self):
-        self.selected_id = None
-        self.selected_link = None
-        self.follow = False
-
-    def frame_np(self):
-        key = (round(float(self.t), 3), self.classes)
-        if key != self._key:
-            self._key = key
-            fr = viz_engine.frame(self.index, float(self.t), self.classes)
-            self._warp_frame(fr)
-            self._fr = fr
-        return self._fr
-
-    def _warp_frame(self, fr):
-        if self.curve is None or self.curve.n_bent == 0 or len(fr) == 0:
-            return
-        xs, ys, hd, mask = self.curve.place(self.index.link_xy, fr.link, fr.xy[:, 0], fr.xy[:, 1])
-        if not mask.any():
-            return
-        fr.xy[mask, 0] = xs[mask]
-        fr.xy[mask, 1] = ys[mask]
-        fr.heading[mask] = hd[mask]
+    def _frame_np(self, t, classes):
+        keys = self.chip_keys if classes is None else [str(k) for k in classes]
+        fr = viz_engine.frame(self.index, t, keys)
+        if self.curve is not None and self.curve.n_bent and len(fr):
+            xs, ys, hd, mask = self.curve.place(self.index.link_xy, fr.link, fr.xy[:, 0], fr.xy[:, 1])
+            if mask.any():
+                fr.xy[mask, 0] = xs[mask]
+                fr.xy[mask, 1] = ys[mask]
+                fr.heading[mask] = hd[mask]
+        return fr
 
     def local(self, lon, lat):
         east, north = self.inv.transform(float(lon), float(lat))
         return float(east) - self.origin[0], float(north) - self.origin[1]
 
-    def active_track(self, ident):
+    def active_track(self, ident, t):
         id_i = self.index.id_of.get(str(ident))
         if id_i is None:
             return None
-        t = float(self.t)
         a, b = int(self.index.track_off[id_i]), int(self.index.track_off[id_i + 1])
         for raw in self.index.track_order[a:b]:
             k = int(raw)
@@ -366,10 +340,6 @@ class Player:
             kmh(self.link_freespeed[link_i]),
         )
 
-    def activity_view(self, ident):
-        rows = viz_engine.activities(self.index, ident)
-        return rows, covering(rows, float(self.t))
-
     def trips_of(self, ident):
         id_i = self.index.id_of.get(str(ident))
         if id_i is None:
@@ -380,23 +350,20 @@ class Player:
             for k in self.index.track_order[a:b]
         ]
 
-    def panel(self):
+    def panel(self, t, fr, ident, link):
         if self.index is None:
             return {"kind": "empty", "lines": [self.error or "Brak runu."], "axis": []}
-        if self.selected_id is None and self.selected_link is not None:
-            return self._link_panel(self.selected_link)
-        if self.selected_id is None:
+        if ident is None and link is not None:
+            return self._link_panel(fr, link)
+        if ident is None:
             return {"kind": "empty", "lines": [], "axis": []}
-        return self._id_panel(self.selected_id)
+        return self._id_panel(t, fr, ident)
 
-    def _id_panel(self, ident):
-        rows, cover = self.activity_view(ident)
-        axis = schedule(
-            rows, self.index.meta["t_min"], self.index.meta["t_max"],
-            self.trips_of(ident), self.t,
-        )
-        track = self.active_track(ident)
-        fr = self.frame_np()
+    def _id_panel(self, t, fr, ident):
+        rows = viz_engine.activities(self.index, ident)
+        cover = covering(rows, t)
+        axis = schedule(rows, self.index.meta["t_min"], self.index.meta["t_max"], self.trips_of(ident), t)
+        track = self.active_track(ident, t)
         if track is not None:
             hit = np.where(fr.track == track)[0]
             if len(hit):
@@ -420,21 +387,20 @@ class Player:
             }
         return {"kind": "idle", "lines": [ident, "nie jedzie"], "axis": axis}
 
-    def _link_panel(self, link_i):
+    def _link_panel(self, fr, link_i):
         lid, typ, leng, free = self.link_bits(link_i)
-        now = viz_engine.link_now(self.frame_np(), link_i)
+        now = viz_engine.link_now(fr, link_i)
         line = "teraz " + auta(now["n"])
         if now["n"]:
-            line += ", średnia " + kmh(now["speed_mean"])
+            line += ", średnia na odcinku " + kmh(now["speed_mean"])
         return {
             "kind": "link",
             "lines": [lid, typ, leng, "freespeed " + free, line],
             "axis": [],
         }
 
-    def path_latlon(self, track):
+    def path_latlon(self, track, t):
         index = self.index
-        t = float(self.t)
         a, b = int(index.knot_off[track]), int(index.knot_off[track + 1])
         j = int(np.searchsorted(index.knot_t[a:b], np.float32(t), side="right"))
         j = min(max(j, 1), b - a)
@@ -456,15 +422,22 @@ class Player:
         lon, lat = self.fwd.transform(np.asarray(xs) + self.origin[0], np.asarray(ys) + self.origin[1])
         return [[round(float(lat[i]), 6), round(float(lon[i]), 6)] for i in range(len(xs))]
 
-    def payload(self):
-        empty = {
-            "t": self.t, "clock": clock(self.t), "n": 0,
-            "lon": [], "lat": [], "v": [], "hd": [], "heavy": [],
-            "sel": None, "path": [], "link": None, "pan": None, "panel": self.panel(),
-        }
+    def frame(self, t, classes=None, selected=None, follow=False):
+        """Klatka do narysowania. classes: klucze klas (None: wszystkie), selected: {"id"} albo {"link"}."""
+        selected = selected or {}
         if self.index is None:
-            return empty
-        fr = self.frame_np()
+            return {
+                "t": 0.0, "clock": clock(0), "n": 0, "lon": [], "lat": [], "v": [], "hd": [], "heavy": [],
+                "sel": None, "path": [], "link": None, "pan": None, "panel": self.panel(0.0, None, None, None),
+            }
+        t = self.clamp(t)
+        fr = self._frame_np(t, classes)
+        ident = selected.get("id")
+        if ident is not None and str(ident) not in self.index.id_of:
+            ident = None
+        link = selected.get("link")
+        if link is not None and not 0 <= int(link) < len(self.link_id):
+            link = None
         if len(fr) == 0:
             lon_l, lat_l, speed, heading, heavy = [], [], [], [], []
         else:
@@ -480,52 +453,48 @@ class Player:
         sel = None
         path = []
         pan = None
-        if self.selected_id:
-            track = self.active_track(self.selected_id)
+        if ident is not None:
+            track = self.active_track(ident, t)
             if track is not None and len(fr):
                 hit = np.where(fr.track == track)[0]
                 if len(hit):
                     sel = int(hit[0])
-                    if self.follow:
+                    if follow:
                         pan = [lat_l[sel], lon_l[sel]]
-                path = self.path_latlon(track)
-            elif self.follow:
-                _rows, cover = self.activity_view(self.selected_id)
+                path = self.path_latlon(track, t)
+            elif follow:
+                cover = covering(viz_engine.activities(self.index, ident), t)
                 if cover is not None:
                     plon, plat = self.fwd.transform(self.origin[0] + float(cover["x"]), self.origin[1] + float(cover["y"]))
                     pan = [round(float(plat), 6), round(float(plon), 6)]
         return {
-            "t": self.t, "clock": clock(self.t), "n": int(len(fr)),
+            "t": t, "clock": clock(t), "n": int(len(fr)),
             "lon": lon_l, "lat": lat_l, "v": speed, "hd": heading, "heavy": heavy,
             "sel": sel, "path": path,
-            "link": None if self.selected_id is not None else self.selected_link,
-            "pan": pan, "panel": self.panel(),
+            "link": None if ident is not None else (None if link is None else int(link)),
+            "pan": pan, "panel": self.panel(t, fr, ident, None if link is None else int(link)),
         }
 
-    def pick(self, lat, lon, lat2, lon2):
+    def pick(self, t, classes, lat, lon, lat2, lon2):
+        """Co jest pod kursorem: {"kind": "vehicle", "id"}, {"kind": "link", "link"} albo {"kind": "miss"}."""
         if self.index is None:
             return {"kind": "miss"}
         x, y = self.local(lon, lat)
         x2, y2 = self.local(lon2, lat2)
         tol = max(math.hypot(x2 - x, y2 - y), 0.5)
-        track = viz_engine.pick_vehicle(self.frame_np(), (x, y), tol)
+        track = viz_engine.pick_vehicle(self._frame_np(self.clamp(t), classes), (x, y), tol)
         if track is not None:
-            self.selected_link = None
-            self.follow = False
-            self.selected_id = str(self.index.ids[int(self.index.track_person_i[int(track)])])
-            return self.panel()
+            return {"kind": "vehicle", "id": str(self.index.ids[int(self.index.track_person_i[int(track)])])}
         if self.curve is not None and self.curve.n_bent:
             link = self.curve.nearest(self.index.link_xy, x, y, tol)
         else:
             link = viz_engine.pick_link(self.index, (x, y), tol)
         if link is not None:
-            self.selected_id = None
-            self.follow = False
-            self.selected_link = int(link)
-            return self.panel()
+            return {"kind": "link", "link": int(link)}
         return {"kind": "miss"}
 
     def lookup(self, query):
+        """{"followed": id} przy jednoznacznym trafieniu, inaczej {"hits": [{"id"}]}."""
         query = str(query).strip()
         if self.index is None or not query:
             return {"hits": []}
@@ -533,19 +502,8 @@ class Player:
         exact = [hit for hit in hits if hit["id"] == query]
         chosen = exact[0] if len(exact) == 1 else (hits[0] if len(hits) == 1 else None)
         if chosen is not None:
-            self.selected_id = chosen["id"]
-            self.selected_link = None
-            self.follow = True
             return {"followed": chosen["id"]}
         return {"hits": [{"id": hit["id"]} for hit in hits]}
-
-    def select(self, ident):
-        ident = str(ident)
-        if self.index is None or ident not in self.index.id_of:
-            return
-        self.selected_id = ident
-        self.selected_link = None
-        self.follow = True
 
     def link_lonlat(self):
         xy = self.index.link_xy.astype(np.float64)
@@ -557,7 +515,7 @@ class Player:
     def boot(self):
         """Małe metadane okna (boot.json). Tablice linków i łamanych: boot_arrays()."""
         base = {
-            "error": self.error, "run": self.run_name, "t": self.t,
+            "error": self.error, "run": self.run_name, "t": self.t_start,
             "tMin": 0, "tMax": 1, "sample": "brak", "basemap": self.basemap,
             "bounds": None, "types": [], "classes": [], "nLinks": 0, "nCurve": 0,
         }
@@ -574,10 +532,7 @@ class Player:
                 [float(max(lat1.max(), lat2.max())), float(max(lon1.max(), lon2.max()))],
             ],
             "types": self.type_names,
-            "classes": [
-                {"key": key, "name": self.class_name[key], "on": key in self.classes}
-                for key in self.chip_keys
-            ],
+            "classes": [{"key": key, "name": self.class_name[key], "on": True} for key in self.chip_keys],
             "nLinks": int(len(lon1)),
             "nCurve": int(len(self.curve.xy)) if self.curve is not None and self.curve.n_bent else 0,
         })
@@ -605,34 +560,19 @@ class Player:
 
 
 class Api:
+    """Mostek JS: cienka nakładka na Player, bez własnego stanu."""
+
     def __init__(self, player):
         self._player = player
 
-    def frame(self, t):
-        self._player.set_time(t)
-        return self._player.payload()
+    def frame(self, t, classes, selected, follow):
+        return self._player.frame(t, classes, selected, bool(follow))
 
-    def pick(self, lat, lon, lat2, lon2):
-        return self._player.pick(lat, lon, lat2, lon2)
-
-    def classes(self, keys):
-        self._player.set_classes(keys)
-        return {"ok": True}
+    def pick(self, t, classes, lat, lon, lat2, lon2):
+        return self._player.pick(t, classes, lat, lon, lat2, lon2)
 
     def lookup(self, query):
         return self._player.lookup(query)
-
-    def select(self, ident):
-        self._player.select(ident)
-        return {"ok": True}
-
-    def follow(self, on):
-        self._player.follow = bool(on) and self._player.selected_id is not None
-        return {"ok": True}
-
-    def clear(self):
-        self._player.clear()
-        return {"ok": True}
 
 
 def pick_ident(index):
@@ -658,8 +598,9 @@ def check(run):
     lon, lat = player.fwd.transform(player.origin[0], player.origin[1])
     boot = player.boot()
     t0, t1 = float(meta["t_min"]), float(meta["t_max"])
+    t_win = float(meta["max_concurrent_6_9_time"])
     need(player.sample == sample_label(meta.get("sample_size")), f"próbka {player.sample}")
-    need(abs(player.t - (START if t0 <= START <= t1 else t0)) < 1e-6, f"start {player.t}")
+    need(abs(player.t_start - (START if t0 <= START <= t1 else t0)) < 1e-6, f"start {player.t_start}")
     need(boot["nLinks"] == int(meta["n_links"]), f"linki {boot['nLinks']} {meta['n_links']}")
     south, west = boot["bounds"][0]
     north, east = boot["bounds"][1]
@@ -668,25 +609,19 @@ def check(run):
     url = "" if boot["basemap"] is None else str(boot["basemap"].get("url", ""))
     need(boot["basemap"] is None or url.startswith(CARTO), "host kafelków")
     need("openstreetmap.org" not in url, "kafelki OSM")
-    player.t = float(meta["max_concurrent_time"])
-    peak = player.payload()
+    peak = player.frame(float(meta["max_concurrent_time"]))
     need(peak["n"] == int(meta["max_concurrent"]), f"szczyt {peak['n']} != {meta['max_concurrent']}")
-    player.t = float(meta["max_concurrent_6_9_time"])
-    window = player.payload()
+    window = player.frame(t_win)
     need(window["n"] == int(meta["max_concurrent_6_9"]), f"okno 6–9 {window['n']} != {meta['max_concurrent_6_9']}")
-    need(window["clock"] == clock(meta["max_concurrent_6_9_time"]), f"zegar {window['clock']}")
+    need(window["clock"] == clock(t_win), f"zegar {window['clock']}")
     biggest = max(player.chip_keys, key=lambda key: int(meta["class_counts"].get(key, 0)))
-    player.set_classes([key for key in player.chip_keys if key != biggest])
-    thin = player.payload()
+    thin = player.frame(t_win, [key for key in player.chip_keys if key != biggest])
     need(thin["n"] < window["n"], f"filtr {biggest} {thin['n']} przy {window['n']}")
-    player.set_classes(player.chip_keys)
-    frame = player.frame_np()
+    frame = player._frame_np(t_win, None)
     if len(frame) == 0:
         problems.append("pusta klatka 6–9")
     else:
-        player.selected_id = None
-        player.selected_link = int(np.bincount(frame.link).argmax())
-        panel = player.panel()
+        panel = player.frame(t_win, None, {"link": int(np.bincount(frame.link).argmax())})["panel"]
         need(panel["kind"] == "link" and not panel["lines"][-1].startswith("teraz 0"), f"link {panel['lines']}")
     ident = pick_ident(player.index)
     need(ident is not None, "brak id z przejazdem i czynnościami")
@@ -694,7 +629,7 @@ def check(run):
     if ident is not None:
         followed = player.lookup(ident)
         need(followed.get("followed") == ident, f"lookup {followed}")
-        axis = player.panel().get("axis") or []
+        axis = player.frame(t_win, None, {"id": ident}, True)["panel"].get("axis") or []
         need(len(axis) >= 2 and any(seg["trip"] for seg in axis), f"oś {len(axis)}")
         need(sum(bool(seg["on"]) for seg in axis) <= 1, "oś: dwie naraz")
         need([seg["t0"] for seg in axis] == sorted(seg["t0"] for seg in axis), "oś nie po czasie")
@@ -704,7 +639,7 @@ def check(run):
     base = "wyłączony" if boot["basemap"] is None else "włączony"
     _note(
         player.run_dir,
-        f"check OK run={player.run_name} start={clock(player.t)} probka={player.sample} podklad={base} "
+        f"check OK run={player.run_name} start={clock(player.t_start)} probka={player.sample} podklad={base} "
         f"okno6_9={window['n']} szczyt={peak['n']} bez_{biggest}={thin['n']} os={len(axis)} linki={boot['nLinks']} "
         f"lamane={0 if player.curve is None else player.curve.n_bent} id={ident}",
     )
@@ -713,56 +648,6 @@ def check(run):
 
 def _dumps(payload):
     return json.dumps(payload, ensure_ascii=False, separators=(",", ":"), allow_nan=False)
-
-
-def _grab(path):
-    import subprocess
-    import tempfile
-    script = r"""
-Add-Type -AssemblyName System.Drawing
-Add-Type @"
-using System;
-using System.Runtime.InteropServices;
-public class Grab {
-  [DllImport("user32.dll")] public static extern bool SetProcessDPIAware();
-  [DllImport("user32.dll", CharSet=CharSet.Unicode)] public static extern IntPtr FindWindowW(string c, string t);
-  [DllImport("user32.dll")] public static extern bool GetWindowRect(IntPtr h, out RECT r);
-  [DllImport("user32.dll")] public static extern bool SetWindowPos(IntPtr h, IntPtr after, int x, int y, int cx, int cy, uint flags);
-  [StructLayout(LayoutKind.Sequential)] public struct RECT { public int Left, Top, Right, Bottom; }
-}
-"@
-[Grab]::SetProcessDPIAware() | Out-Null
-$hwnd = [Grab]::FindWindowW([NullString]::Value, "easy-matviz")
-if ($hwnd -eq [IntPtr]::Zero) { Write-Output "NOWINDOW"; exit 2 }
-[Grab]::SetWindowPos($hwnd, [IntPtr](-1), 0, 0, 0, 0, 0x0001 -bor 0x0002) | Out-Null
-Start-Sleep -Milliseconds 400
-$rect = New-Object Grab+RECT
-[Grab]::GetWindowRect($hwnd, [ref]$rect) | Out-Null
-$w = $rect.Right - $rect.Left
-$h = $rect.Bottom - $rect.Top
-if ($w -lt 100 -or $h -lt 100) { Write-Output "SMALL $w $h"; exit 3 }
-$bmp = New-Object System.Drawing.Bitmap $w, $h
-$g = [System.Drawing.Graphics]::FromImage($bmp)
-$g.CopyFromScreen($rect.Left, $rect.Top, 0, 0, (New-Object System.Drawing.Size $w, $h))
-$bmp.Save($env:VIZ_GRAB, [System.Drawing.Imaging.ImageFormat]::Png)
-$g.Dispose(); $bmp.Dispose()
-[Grab]::SetWindowPos($hwnd, [IntPtr](-2), 0, 0, 0, 0, 0x0001 -bor 0x0002) | Out-Null
-Write-Output "OK $w $h"
-"""
-    # ponytail: zrzut przez System.Drawing, bez dokładania Pillow do projektu
-    with tempfile.NamedTemporaryFile("w", suffix=".ps1", delete=False, encoding="utf-8") as handle:
-        handle.write(script)
-        ps1 = handle.name
-    try:
-        env = dict(**{k: v for k, v in __import__("os").environ.items()})
-        env["VIZ_GRAB"] = str(path)
-        done = subprocess.run(
-            ["powershell", "-NoProfile", "-ExecutionPolicy", "Bypass", "-File", ps1],
-            capture_output=True, text=True, encoding="utf-8", errors="replace", env=env, timeout=30,
-        )
-        return (done.stdout or "") + (done.stderr or ""), done.returncode
-    finally:
-        Path(ps1).unlink(missing_ok=True)
 
 
 def _wait_js(window, expr, seconds=8):
@@ -777,6 +662,7 @@ def _wait_js(window, expr, seconds=8):
 
 
 def smoke(run):
+    """Automat okna: prawdziwy WebView2, strona z lokalnego HTTP, klik w chip, szukanie id, Esc."""
     player = Player()
     player.open(run)
     if player.error:
@@ -787,37 +673,33 @@ def smoke(run):
         "easy-matviz", url=str(player.write_site()), js_api=Api(player),
         width=1440, height=900, background_color="#121418", text_select=True,
     )
-    shot = ROOT / "docs" / "research" / "wizualizer_okno.png"
+    shot = player.run_dir / "viz" / "smoke.png"
     result = {"ok": False}
+
+    def js(expr):
+        return window.evaluate_js(expr)
 
     def body():
         try:
-            ready = _wait_js(window, "window.mapReady === true && window.apiReady === true")
-            if not ready:
+            if not _wait_js(window, "window.mapReady === true && window.apiReady === true"):
                 result["error"] = "mapa nie wstała"
                 return
-            n_curve = int(window.evaluate_js("boot.curveLon ? boot.curveLon.length : 0") or 0)
+            n_curve = int(js("boot.curveLon ? boot.curveLon.length : 0") or 0)
             if n_curve != player.boot()["nCurve"]:
                 result["error"] = f"łamane w oknie {n_curve}, w indeksie {player.boot()['nCurve']}"
                 return
-            opened = _wait_js(window, "document.getElementById('clock').textContent === '06:00:00'", seconds=15)
-            if not opened:
-                result["error"] = "brak klatki " + str(window.evaluate_js("window.drawError"))
+            if not _wait_js(window, f"document.getElementById('clock').textContent === '{clock(player.t_start)}'", 15):
+                result["error"] = "brak klatki " + str(js("window.drawError"))
                 return
-            window.evaluate_js("window.hold = true")
+            js("window.hold = true")
             time.sleep(0.4)
-            meta = player.index.meta
-            player.clear()
-            player.set_classes(player.chip_keys)
-            player.t = float(meta["max_concurrent_6_9_time"])
-            full = player.payload()
-            thin_key = player.chip_keys[int(np.bincount(player.frame_np().cls).argmax())]
-            window.evaluate_js("draw(" + _dumps(full) + ")")
-            err = window.evaluate_js("window.drawError")
-            drawn = window.evaluate_js("window.drawnN")
-            size = window.evaluate_js("window.mapSize")
-            sample = window.evaluate_js("document.getElementById('sample').textContent")
-            base = window.evaluate_js("document.getElementById('base').textContent")
+            t_win = float(player.index.meta["max_concurrent_6_9_time"])
+            full = player.frame(t_win, player.chip_keys)
+            thin_key = player.chip_keys[int(np.bincount(player._frame_np(t_win, None).cls).argmax())]
+            js("draw(" + _dumps(full) + ")")
+            err, drawn, size = js("window.drawError"), js("window.drawnN"), js("window.mapSize")
+            sample = js("document.getElementById('sample').textContent")
+            base = js("document.getElementById('base').textContent")
             if err:
                 result["error"] = err
                 return
@@ -827,60 +709,52 @@ def smoke(run):
             if not size or int(str(size).split("x")[0]) < 200:
                 result["error"] = f"mapa {size}"
                 return
-            if "0,25" not in str(sample):
+            if player.sample not in str(sample):
                 result["error"] = f"próbka {sample}"
                 return
             if player.basemap is None and str(base) != "Podkład wyłączony.":
                 result["error"] = f"podkład {base}"
                 return
-            window.evaluate_js("document.getElementById('hide').click()")
+            js("document.getElementById('hide').click()")
             time.sleep(0.3)
-            back = window.evaluate_js(
+            back = js(
                 "(function(){var b=document.getElementById('hide');var r=b.getBoundingClientRect();"
                 "return r.width>20 && r.left>=0 && r.right<=window.innerWidth+1 && b.textContent==='panel';})()"
             )
-            window.evaluate_js("document.getElementById('hide').click()")
+            js("document.getElementById('hide').click()")
             if back is not True:
                 result["error"] = "przycisk panelu " + str(back)
                 return
-            window.evaluate_js("document.querySelector('.chip[data-key=\"" + thin_key + "\"]').click()")
-            time.sleep(0.8)
-            if thin_key in player.classes:
+            chip = "document.querySelector('.chip[data-key=\"" + thin_key + "\"]').click()"
+            js(chip)
+            if thin_key in js("classesOn"):
                 result["error"] = f"chip {thin_key} został włączony"
                 return
-            thin = player.payload()
-            window.evaluate_js("draw(" + _dumps(thin) + ")")
-            drawn_thin = window.evaluate_js("window.drawnN")
-            if drawn_thin != thin["n"] or not (thin["n"] < full["n"]):
-                result["error"] = f"filtr {drawn_thin} {thin['n']} {full['n']}"
+            thin = player.frame(t_win, js("classesOn"))
+            js("draw(" + _dumps(thin) + ")")
+            if js("window.drawnN") != thin["n"] or not thin["n"] < full["n"]:
+                result["error"] = f"filtr {js('window.drawnN')} {thin['n']} {full['n']}"
                 return
-            window.evaluate_js("document.querySelector('.chip[data-key=\"" + thin_key + "\"]').click()")
-            time.sleep(0.8)
-            if thin_key not in player.classes:
+            js(chip)
+            if thin_key not in js("classesOn"):
                 result["error"] = f"chip {thin_key} nie wrócił"
                 return
-            player.t = float(meta["max_concurrent_6_9_time"])
-            window.evaluate_js("draw(" + _dumps(player.payload()) + ")")
-            window.evaluate_js("document.getElementById('play').click()")
-            label = window.evaluate_js("document.getElementById('play').textContent")
-            window.evaluate_js("document.getElementById('play').click()")
+            js("draw(" + _dumps(player.frame(t_win, player.chip_keys)) + ")")
+            js("document.getElementById('play').click()")
+            label = js("document.getElementById('play').textContent")
+            js("document.getElementById('play').click()")
             if label != "pauza":
                 result["error"] = f"start {label}"
                 return
-            note, code = _grab(shot)
+            note, code = grab.window_png(shot)
             result["grab"] = note.strip()
-            result["grab_code"] = code
             ident = pick_ident(player.index)
-            player.lookup(ident)
-            if player.selected_id != ident:
-                result["error"] = f"lookup {player.selected_id}"
+            js("window.hold = false; t = " + str(t_win) + "; change();")
+            js(f"document.getElementById('q').value = {json.dumps(ident)}; document.getElementById('find').requestSubmit();")
+            if not _wait_js(window, f"document.getElementById('detail').innerText.indexOf({json.dumps(ident)}) >= 0", 15):
+                result["error"] = f"panel {js('document.getElementById(\"detail\").innerText')}"
                 return
-            window.evaluate_js("draw(" + _dumps(player.payload()) + ")")
-            detail = window.evaluate_js("document.getElementById('detail').innerText")
-            if ident not in str(detail):
-                result["error"] = f"panel {detail}"
-                return
-            axis_ok = window.evaluate_js(
+            axis_ok = js(
                 "(function(){var box=document.getElementById('axis');"
                 "var bar=document.getElementById('axis-bar');"
                 "var n=bar?bar.querySelectorAll('.seg').length:0;"
@@ -892,16 +766,11 @@ def smoke(run):
             if axis_ok is not True:
                 result["error"] = "oś " + str(axis_ok)
                 return
-            window.evaluate_js("window.dispatchEvent(new KeyboardEvent('keydown', {key: 'Escape'}))")
-            time.sleep(0.5)
-            if player.selected_id is not None:
-                result["error"] = f"escape {player.selected_id}"
+            js("window.dispatchEvent(new KeyboardEvent('keydown', {key: 'Escape'}))")
+            if js("selected === null && follow === false") is not True:
+                result["error"] = "escape nie czyści zaznaczenia"
                 return
-            result["ok"] = True
-            result["n"] = full["n"]
-            result["thin"] = thin["n"]
-            result["clock"] = full["clock"]
-            result["size"] = size
+            result.update(ok=True, n=full["n"], thin=thin["n"], clock=full["clock"], size=size, key=thin_key)
         except Exception:
             import traceback
             result["error"] = traceback.format_exc()
@@ -917,12 +786,10 @@ def smoke(run):
     if not result.get("ok"):
         _note(player.run_dir, "FAIL smoke " + str(result.get("error") or result))
         return 1
-    png = "zrzut=" + str(shot.relative_to(ROOT)).replace("\\", "/")
-    if not shot.exists() or shot.stat().st_size < 10000:
-        png = "zrzut=nieudany " + str(result.get("grab"))
+    png = "zrzut=" + str(shot) if shot.exists() and shot.stat().st_size >= 10000 else "zrzut=nieudany " + str(result.get("grab"))
     _note(
         player.run_dir,
-        f"smoke OK n={result['n']} bez_t={result['thin']} zegar={result['clock']} "
+        f"smoke OK n={result['n']} bez_{result['key']}={result['thin']} zegar={result['clock']} "
         f"mapa={result['size']} {png}",
     )
     return 0
