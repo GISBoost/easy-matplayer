@@ -51,6 +51,7 @@ body { display: grid; grid-template-columns: 1fr 320px; grid-template-rows: 1fr 
 #axis-bar .now { position: absolute; top: 0; bottom: 0; width: 2px; margin-left: -1px; background: #e7e9ee; pointer-events: none; z-index: 2; }
 #axis-ends { display: flex; justify-content: space-between; gap: 8px; margin-top: 4px; color: #9aa3b2; font-size: 11px; font-variant-numeric: tabular-nums; }
 .muted { color: #9aa3b2; }
+#credit { margin: 14px 0 0; font-size: 12px; }
 #hint { margin-top: 18px; color: #9aa3b2; font-size: 12px; line-height: 1.4; }
 #bar { display: flex; align-items: center; gap: 8px; padding: 0 12px; background: #1b1f27; min-width: 0;
   grid-column: 1 / -1; grid-row: 2; }
@@ -97,6 +98,7 @@ body.panel-off #panel { display: none; }
     <div id="axis-bar"></div>
     <div id="axis-ends"><span id="axis-a"></span><span id="axis-note">postoje ściśnięte</span><span id="axis-b"></span></div>
   </div>
+  <p id="credit" class="muted" hidden>Modele aut: Quaternius (CC0).</p>
   <p id="hint">Spacja: start. Strzałki: ±1 min. F: śledź. Esc: wyczyść. Prawy przycisk myszy: obrót i pochylenie mapy.</p>
 </aside>
 <div id="bar">
@@ -191,6 +193,25 @@ const MESH = {
   car: box([[-2.25, 2.25, -0.9, 0.9, 0.25, 0.95], [-1.3, 0.8, -0.8, 0.8, 0.95, 1.5]]),
   heavy: box([[-5, 2.4, -1.25, 1.25, 0.5, 3.2], [2.6, 5, -1.2, 1.2, 0.5, 2.7]]),
 };
+// Osobówka: model Quaternius (CC0), przeliczony przez pipeline/viz_models.py. Nadwozie dostaje kolor pojazdu, reszta zostaje ciemna.
+const CAR_ROLE_COLOR = [[1, 1, 1, 1], [0.18, 0.24, 0.32, 1], [0.15, 0.15, 0.17, 1], [0.94, 0.86, 0.5, 1], [0.92, 0.92, 0.92, 1]];
+async function loadCarMesh() {
+  try {
+    const res = await fetch("vendor/quaternius/car_mesh.json");
+    if (!res.ok) return;
+    const m = await res.json();
+    const n = m.n, colors = new Float32Array(4 * n), index = new Uint16Array(n);
+    for (let i = 0; i < n; i++) { colors.set(CAR_ROLE_COLOR[m.roles[i]], 4 * i); index[i] = i; }
+    MESH.car = {
+      attributes: {positions: {value: new Float32Array(m.positions), size: 3}, normals: {value: new Float32Array(m.normals), size: 3},
+        texCoords: {value: new Float32Array(2 * n), size: 2}, colors: {value: colors, size: 4}},
+      indices: {value: index, size: 1},
+    };
+    carMeshColors = true;
+    dirty = true;
+  } catch (err) { /* zostaje bryła z kodu */ }
+}
+let carMeshColors = false;
 let modelsOn = false;
 let osmRoads = false;
 let t = 0, tMin = 0, tMax = 1;
@@ -601,7 +622,7 @@ function render() {
       }
       ["car", "heavy"].forEach((key) => {
         layers.push(new deck.SimpleMeshLayer({
-          id: key + "-models", data: rows[key], mesh: MESH[key], sizeScale: modelScale(key === "heavy"),
+          id: key + "-models", data: rows[key], mesh: MESH[key], _useMeshColors: key === "car" && carMeshColors, sizeScale: modelScale(key === "heavy"),
           getPosition: (d) => d.p, getColor: (d) => d.c, getOrientation: (d) => d.o,
           material: {ambient: 0.5, diffuse: 0.7, shininess: 20, specularColor: [60, 60, 60]},
         }));
@@ -712,7 +733,7 @@ function setPlaying(on) {
   b.classList.toggle("on", playing);
 }
 document.getElementById("three").addEventListener("click", () => setThreeD(!threeD));
-document.getElementById("models").addEventListener("change", (ev) => { modelsOn = ev.target.checked; dirty = true; });
+document.getElementById("models").addEventListener("change", (ev) => { modelsOn = ev.target.checked; document.getElementById("credit").hidden = !modelsOn; dirty = true; });
 document.getElementById("carcolor").addEventListener("click", () => setCarColor(!carByClass));
 document.getElementById("osmroads").addEventListener("change", (ev) => setOsmRoads(ev.target.checked));
 document.getElementById("play").addEventListener("click", () => setPlaying(!playing));
@@ -826,6 +847,7 @@ async function bootMap() {
     return;
   }
   roads = buildRoads();
+  loadCarMesh();
   markerAtlas = makeMarker();
   const style = {version: 8, sources: {}, layers: [{id: "bg", type: "background", paint: {"background-color": "#121418"}}]};
   if (boot.basemap) {

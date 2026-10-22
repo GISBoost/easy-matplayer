@@ -53,7 +53,7 @@ def smoke(run):
         return 1
     import webview
     window = webview.create_window(
-        "easy-matviz", url=str(player.write_site()), js_api=Api(player),
+        "easy-matviz smoke", url=str(player.write_site()), js_api=Api(player),
         width=1440, height=900, background_color="#121418", text_select=True,
     )
     shot = player.run_dir / "viz" / "smoke.png"
@@ -214,7 +214,7 @@ def smoke(run):
                 if not _wait_js(window, "threeD === false && map.getPitch() < 5", 15):
                     result["error"] = "3D nie wyłącza się " + str(js("map.getPitch()"))
                     return
-            out, _code = grab.window_png(shot)
+            out, _code = grab.window_png(shot, "easy-matviz smoke")
             result["grab"] = out.strip()
             js(
                 "window.hold = false; window._r0 = window.renders; document.getElementById('models').click();"
@@ -229,11 +229,11 @@ def smoke(run):
                 result["error"] = f"skala modelu {scale} (oczekiwane ok. 3 przy zoomie 18,5)"
                 return
             time.sleep(0.6)
-            grab.window_png(shot.with_name("smoke_zoom.png"))
+            grab.window_png(shot.with_name("smoke_zoom.png"), "easy-matviz smoke")
             js("window._r0 = window.renders; document.getElementById('models').click(); dirty = true;")
             _wait_js(window, "window.renders > window._r0", 15)
             time.sleep(0.6)
-            grab.window_png(shot.with_name("smoke_icon.png"))
+            grab.window_png(shot.with_name("smoke_icon.png"), "easy-matviz smoke")
             js("window.hold = true;")
             ident = pick_ident(player.index)
             js("window.hold = false; t = " + str(t_win) + "; change();")

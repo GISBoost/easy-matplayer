@@ -5,7 +5,7 @@ import tempfile
 from pathlib import Path
 
 
-def window_png(path):
+def window_png(path, title="easy-matviz"):
     script = r"""
 Add-Type -AssemblyName System.Drawing
 Add-Type @"
@@ -20,7 +20,7 @@ public class Grab {
 }
 "@
 [Grab]::SetProcessDPIAware() | Out-Null
-$hwnd = [Grab]::FindWindowW([NullString]::Value, "easy-matviz")
+$hwnd = [Grab]::FindWindowW([NullString]::Value, "__TITLE__")
 if ($hwnd -eq [IntPtr]::Zero) { Write-Output "NOWINDOW"; exit 2 }
 [Grab]::SetWindowPos($hwnd, [IntPtr](-1), 0, 0, 0, 0, 0x0001 -bor 0x0002) | Out-Null
 Start-Sleep -Milliseconds 400
@@ -39,7 +39,7 @@ Write-Output "OK $w $h"
 """
     # ponytail: zrzut przez System.Drawing, bez dokładania Pillow do projektu
     with tempfile.NamedTemporaryFile("w", suffix=".ps1", delete=False, encoding="utf-8") as handle:
-        handle.write(script)
+        handle.write(script.replace("__TITLE__", title))
         ps1 = handle.name
     try:
         env = dict(os.environ)

@@ -177,7 +177,7 @@ Grot z półkolem (`IconLayer`, atlas w `makeMarker` w `shell.html`): podstawa 1
 
 ## Modele 3D pojazdów
 
-Checkbox „modele 3D pojazdów”: `SimpleMeshLayer` z bryłami z kodu (`MESH` w `shell.html`, osobówka i ciężarówka, metry, przód w +x). Rozmiar na ekranie dorównuje znacznikowi (`MODEL_PX`, mnożnik zoomu znacznika), nie jest prawdziwymi metrami, bo te byłyby kilkupikselowe. Ikony chowają się od zoomu `MODEL_ICON_ZOOM` (17). Dane idą jako obiekty z akcesorami, bo binarne `getOrientation` jest w tej wersji deck.gl ignorowane. Kolor modelu jak ikony (prędkość albo klasa).
+Checkbox „modele 3D pojazdów”: `SimpleMeshLayer` z bryłami z kodu (`MESH` w `shell.html`, osobówka i ciężarówka, metry, przód w +x). Rozmiar na ekranie dorównuje znacznikowi (`MODEL_PX`, mnożnik zoomu znacznika), nie jest prawdziwymi metrami, bo te byłyby kilkupikselowe. Ikony chowają się od zoomu `MODEL_ICON_ZOOM` (17). Osobówka to model Quaternius (paczka „LowPoly Car pack”, CC0, `viz_player/vendor/quaternius/`, przeliczony przez `pipeline/viz_models.py`: osie, długość 4,5 m, kolory z tekstury; nadwozie dostaje kolor pojazdu, szyby, koła i światła zostają ciemne). Ciężarówka to nadal bryła z kodu, bo paczka nie ma ciężarówki. Przy włączonych modelach panel podpisuje autora. Dane idą jako obiekty z akcesorami, bo binarne `getOrientation` jest w tej wersji deck.gl ignorowane. Kolor modelu jak ikony (prędkość albo klasa).
 
 ## Kolor auta
 
@@ -288,6 +288,7 @@ Kod, w gicie:
 
 | plik | rola |
 |---|---|
+| `pipeline/viz_models.py` | konwersja modelu Quaternius (OBJ + tekstura) do `vendor/quaternius/car_mesh.json` |
 | `pipeline/viz_index.py` | jeden przebieg eventów i sieci, zapis indeksu |
 | `pipeline/viz_engine.py` | klatka, klik, szukanie, czynności; bez rysowania i bez XML |
 | `pipeline/viz_classes.py` | klasa osoby z atrybutów planów, fallback na literę id |
