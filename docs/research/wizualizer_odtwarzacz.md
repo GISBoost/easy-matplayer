@@ -187,6 +187,10 @@ Legenda w rogu mapy: `0 / 20 / 50 km/h`. Liczba w panelu jest osobno: prędkoś�
 
 Checkbox „kolor dróg OSM” w panelu przełącza kolor kresek z szarej palety na kolor klasy drogi (`ROAD_OSM` w `shell.html`, tabela z `wizualizer_plan.md`). Atrybut `type` jest ten sam co w indeksie, PBF nie jest czytany. Legenda w lewym dolnym rogu ma wiersz dla każdego typu obecnego w runie.
 
+## Kolor auta
+
+Przycisk „kolor auta” w panelu: `prędkość` (rampa, domyślnie) albo `klasa` (jeden kolor na literę id, tabela `CLASS_COLOR` w `shell.html`). Chipy dalej tylko chowają warstwy. Legenda klas zastępuje pasek prędkości.
+
 ## Klasy
 
 Klasa osoby (pipeline/viz_classes.py), w tej kolejności: atrybut `kind`, atrybut `subpopulation` z `output_plans.xml.zst`; bez planów albo dla osoby spoza planów pierwsza litera id (`r c o t h` → klucze poniżej); inaczej `?` („inne”). Legenda klas (`classes`: klucz, nazwa, czy większa kropka) jest w `meta.json`. Kolejność chipów: znane klucze, potem reszta alfabetycznie, `?` na końcu. Chip jest tylko dla klas, które mają przejazdy.

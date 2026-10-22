@@ -173,6 +173,22 @@ def smoke(run):
             if road_ok is not True or js("osmRoads === false && document.getElementById('lg-road').hidden") is not True:
                 result["error"] = f"kolor dróg {road_ok} {js('window.drawError')}"
                 return
+            js("document.getElementById('carcolor').click()")
+            car_ok = js(
+                "carByClass === true && document.getElementById('lg-speed').hidden && !document.getElementById('lg-class').hidden"
+                " && document.querySelectorAll('#lg-class div').length === boot.classes.length && !window.drawError"
+            )
+            if car_ok is True:
+                js("t = t + 1; change();")
+                car_ok = _wait_js(
+                    window,
+                    "(function(){var c=buf.col, k=engine.classKeys[engine.out.cls[0]], h=CLASS_COLOR[k]||CLASS_COLOR['?'];"
+                    "var r=hexRgb(h);return c[0]===r[0]&&c[1]===r[1]&&c[2]===r[2];})()", 15,
+                )
+            js("document.getElementById('carcolor').click()")
+            if car_ok is not True or js("carByClass === false && !document.getElementById('lg-speed').hidden") is not True:
+                result["error"] = f"kolor auta {car_ok} {js('window.drawError')}"
+                return
             js("document.getElementById('play').click()")
             label = js("document.getElementById('play').textContent")
             js("document.getElementById('play').click()")

@@ -26,7 +26,7 @@ Cel: 30 FPS na Kutnie 100%. Łódź tylko 10%. Test tylko na GPU właściciela (
 - [ ] 8. (decyzja o wygaszeniu `g6_bake.py` zapisana w D26 2026-10-22; reszta:) test na iGPU (odłożony), przeglądarka opcjonalnie.
 - [x] P1. Poprawki okna (plan `wizualizer_plan.md`, zlecenie 2026-10-22): mnożnik ze strzałkami co 1.
 - [x] P2. Kolor dróg wg `type` (checkbox, legenda).
-- [ ] P3. Kolor auta: prędkość / klasa (przełącznik, legenda).
+- [x] P3. Kolor auta: prędkość / klasa (przełącznik, legenda).
 - [ ] P4. Znacznik grot + półkole (`IconLayer`), skalowany z zoomem w granicach 0,25–3.
 - [ ] P5. (później, na zlecenie) własny raster, WMS, otwieranie runu przez wybór folderu.
 
@@ -80,3 +80,8 @@ Wcześniej zrobione (fundamenty, D24): origin z sieci, `person_id` i klasyfikato
 
 - Checkbox „kolor dróg OSM” w panelu (domyślnie wyłączony = dawna szara paleta). Tabela kolorów z planu, `*_link` bierze kolor klasy głównej, grubości bez zmian. Legenda (lewy dolny róg, pod rampą prędkości) pokazuje tylko typy z `types` otwartego runu, „inna” gdy jest typ spoza tabeli. Kolor to akcesor `PathLayer` z `updateTriggers`, dane się nie przebudowują.
 - Dowód: smoke przełącza checkbox: legenda widoczna, ≥3 wiersze, brak błędu rysowania, po wyłączeniu legenda znika; 52 testy; smoke OK 728 aut. Wygląd ocenia człowiek.
+
+### P3: kolor auta, prędkość / klasa (2026-10-22)
+
+- Przycisk „kolor auta” w panelu przełącza rampę prędkości na kolor klasy (`CLASS_COLOR`: r `#5aa2ff`, c `#3dbe7a`, o `#e0c15a`, t `#a89880`, h `#e15a4a`, inne `#e7e9ee`). W trybie klasy rampa chowa się, a legenda klas (klasy z chipami) staje w tym samym miejscu. Liczba km/h w panelu bez zmian.
+- Dowód: smoke przełącza tryb, sprawdza legendę (liczba wierszy = liczba chipów), a bufor kolorów pierwszego auta równy kolorowi jego klasy, i wraca do prędkości; 52 testy; smoke OK 728 aut.
