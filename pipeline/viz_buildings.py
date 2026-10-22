@@ -59,8 +59,12 @@ def height_of(tags, osm_id, cfg):
 
 
 def find_pbf():
-    hits = sorted((ROOT / "data" / "raw" / "osm").glob("lodzkie-*.osm.pbf"))
-    return hits[-1] if hits else None
+    """Najnowszy lodzkie-*.osm.pbf; w worktree gita szuka też w głównym repo (data/ jest poza gitem)."""
+    for base in [ROOT, *ROOT.parents]:
+        hits = sorted((base / "data" / "raw" / "osm").glob("lodzkie-*.osm.pbf"))
+        if hits:
+            return hits[-1]
+    return None
 
 
 def source_key(pbf, cfg_path, box, origin_lonlat):

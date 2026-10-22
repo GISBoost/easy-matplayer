@@ -242,9 +242,9 @@ def segments(curves, chords):
 
 
 def find_pbf():
-    root = Path(__file__).resolve().parents[1]
-    hits = sorted((root / "data" / "raw" / "osm").glob("lodzkie-*.osm.pbf"))
-    return hits[-1] if hits else None
+    import viz_buildings
+
+    return viz_buildings.find_pbf()
 
 
 def read_ends(path):
