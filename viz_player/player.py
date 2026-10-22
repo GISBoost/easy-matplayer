@@ -10,6 +10,7 @@ import math
 import sys
 from pathlib import Path
 
+from viz_player import __version__
 from viz_player.paths import DATA, RES as ROOT
 
 sys.path.insert(0, str(ROOT / "pipeline"))
@@ -535,7 +536,7 @@ class Player:
     def boot(self):
         """Małe metadane okna (boot.json). Tablice linków i łamanych: boot_arrays()."""
         base = {
-            "error": self.error, "run": self.run_name, "t": self.t_start,
+            "error": self.error, "run": self.run_name, "version": __version__, "t": self.t_start,
             "tMin": 0, "tMax": 1, "sample": "brak", "basemap": self.basemap,
             "bounds": None, "types": [], "classes": [], "nLinks": 0, "nCurve": 0, "curveNote": "", "data": None,
             "buildings": None, "buildingsNote": "",

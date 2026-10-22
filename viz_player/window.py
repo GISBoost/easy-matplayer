@@ -18,6 +18,7 @@ from pathlib import Path
 import numpy as np
 
 from viz_player import check, grab, ogc, rasters
+from viz_player import APP_NAME, __version__, startup
 from viz_player.paths import DATA, RUNS
 from viz_player.player import Player, clock, note, pick_ident, save_state, saved_run
 
@@ -404,7 +405,7 @@ def smoke(run):
     api = Api(player, services=services_file, rasters_dir=player.run_dir / "viz" / "smoke_rasters")
     wms_url, wms_requests, wms_stop = _fake_wms()
     window = webview.create_window(
-        "easy-matviz smoke", url=str(player.write_site()), js_api=api,
+        f"{APP_NAME} smoke", url=str(player.write_site()), js_api=api,
         width=1440, height=900, background_color="#121418", text_select=True,
     )
     api.attach(window)
@@ -427,6 +428,10 @@ def smoke(run):
                 result["error"] = "brak klatki " + str(js("window.drawError"))
                 return
             js("window.hold = true")
+            title, ver = js("document.title"), js("document.getElementById('ver').textContent")
+            if title != APP_NAME or ver != "v" + __version__:
+                result["error"] = f"tytuł albo wersja okna: {title!r} {ver!r}"
+                return
             time.sleep(0.4)
             t_win = float(player.index.meta["max_concurrent_6_9_time"])
             ref = player._frame_np(t_win, None)
@@ -566,7 +571,7 @@ def smoke(run):
                 if not _wait_js(window, "threeD === false && map.getPitch() < 5", 15):
                     result["error"] = "3D nie wyłącza się " + str(js("map.getPitch()"))
                     return
-            out, _code = grab.window_png(shot, "easy-matviz smoke")
+            out, _code = grab.window_png(shot, f"{APP_NAME} smoke")
             result["grab"] = out.strip()
             js(
                 "window.hold = false; window._r0 = window.renders; document.getElementById('models').click();"
@@ -584,14 +589,14 @@ def smoke(run):
                 result["error"] = f"skala modelu {scale} (oczekiwane ok. 3 przy zoomie 18,5)"
                 return
             time.sleep(0.6)
-            grab.window_png(shot.with_name("smoke_zoom.png"), "easy-matviz smoke")
+            grab.window_png(shot.with_name("smoke_zoom.png"), f"{APP_NAME} smoke")
             js("window._r0 = window.renders; document.getElementById('models').click(); dirty = true;")
             _wait_js(window, "window.renders > window._r0", 15)
             time.sleep(0.6)
             if js("window.layerIds.indexOf('cars') >= 0 && window.layerIds.indexOf('car-models') < 0") is not True:
                 result["error"] = f"po wyłączeniu modeli brak grota: {js('window.layerIds')}"
                 return
-            grab.window_png(shot.with_name("smoke_icon.png"), "easy-matviz smoke")
+            grab.window_png(shot.with_name("smoke_icon.png"), f"{APP_NAME} smoke")
             js("window.hold = true;")
             ident = pick_ident(player.index)
             js("window.hold = false; t = " + str(t_win) + "; change();")
@@ -693,7 +698,7 @@ def smoke(run):
     storage.mkdir(parents=True, exist_ok=True)
     webview.start(
         body, gui="edgechromium", private_mode=False, http_server=True,
-        storage_path=str(storage), user_agent="easy-matviz",
+        storage_path=str(storage), user_agent=APP_NAME,
     )
     if not result.get("ok"):
         note(player.run_dir, "FAIL smoke " + str(result.get("error") or result))
@@ -714,7 +719,7 @@ def serve(run):
     site = DATA / "viz_player_site"  # stały katalog strony: „otwórz run” podmienia jego zawartość i przeładowuje stronę
     api = Api(player, site)
     window = webview.create_window(
-        "easy-matviz", url=str(player.write_site(site)), js_api=api,
+        APP_NAME, url=str(player.write_site(site)), js_api=api,
         width=1440, height=900, background_color="#121418", text_select=True,
     )
     api.attach(window)
@@ -729,12 +734,13 @@ def serve(run):
     storage.mkdir(parents=True, exist_ok=True)
     webview.start(
         kick, gui="edgechromium", private_mode=False, http_server=True,
-        storage_path=str(storage), user_agent="easy-matviz",
+        storage_path=str(storage), user_agent=APP_NAME,
     )
     return 0
 
 
 def main(argv):
+    startup.setup_logging()
     if hasattr(sys.stdout, "reconfigure"):
         sys.stdout.reconfigure(encoding="utf-8", errors="replace")
         sys.stderr.reconfigure(encoding="utf-8", errors="replace")
@@ -742,11 +748,18 @@ def main(argv):
         return check.run(argv[1])
     if argv[:1] == ["--smoke"] and len(argv) >= 2:
         return smoke(argv[1])
+    if argv[:1] == ["--version"]:
+        print(f"{APP_NAME} {__version__}")
+        return 0
     run = argv[0] if argv else saved_run()
     if not run:
         print("podaj katalog runu, np. output/g5r7b_25pct_s4711")
         return 2
-    return serve(run)
+    try:
+        return serve(run)
+    except Exception:
+        startup.crash()
+        return 1
 
 
 if __name__ == "__main__":

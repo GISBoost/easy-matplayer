@@ -38,7 +38,7 @@ Wcześniej zrobione (fundamenty, D24): origin z sieci, `person_id` i klasyfikato
 ## Aplikacja z pulpitu i release (D27, plan: `wizualizer_aplikacja.md`)
 
 - [x] A1. Ścieżki: zasoby do odczytu osobno od danych do zapisu (`paths.py`, `%LOCALAPPDATA%\easy-matanimation`).
-- [ ] A2. Zachowanie po dwukliku: wybór runu bez argumentu, log do pliku, błędy w oknie, postęp budowy indeksu, wersja.
+- [ ] A2. Zachowanie po dwukliku. Zrobione: A2a nazwa, wersja, log do pliku, komunikaty błędów. Czeka: A2b wybór runu bez argumentu i pełny pasek postępu indeksu, A2c własny plik OSM.
 - [ ] A3. Pierwsza paczka PyInstaller onedir, smoke zbudowanego exe z okrojonym PATH.
 - [ ] A4. Test na czystym komputerze / Windows Sandbox.
 - [ ] A5. Zip z małym runem demo.
@@ -172,3 +172,10 @@ Wcześniej zrobione (fundamenty, D24): origin z sieci, `person_id` i klasyfikato
 - Dopasowanie dróg przy zmienionych id: łamana jest brana tylko, gdy droga o tym `origid` istnieje w PBF, ma węzły `from` i `to` linku (id węzłów MATSim to id węzłów OSM), końce łamanej leżą blisko cięciwy (`END_M`), długość łuku zgadza się z długością linku (`LEN_M`) i łamana odbiega od cięciwy (`DEV_M`). Inaczej link zostaje cięciwą. Zmienione id dróg w innym PBF dają więc mniej łamanych, nigdy złą geometrię. Brakuje jeszcze komunikatu „plik nie pokrywa sieci / dopasowano X z Y linków” (M2).
 - Dowód: 78 testów (nowy test: budynki bez PBF z tą samą obwiednią wracają, inna obwiednia, inny origin i brak pliku dają `None`); prawdziwy run `g5r7b_25pct_s4711` z podmienionym `find_pbf` na `None`: łamane 4705 z 10383 z cache, budynki 83 617 z zapisanych plików.
 - Ryzyko do M5: cache łamanych jest odrzucany, gdy `output_network.xml.zst` ma nowszy mtime niż `curves.npz`; zip demo musi zachować czasy plików (sprawdzić po rozpakowaniu, w razie czego zmienić regułę na rozmiar sieci).
+
+### A2a: nazwa, wersja, log i komunikaty błędów (2026-10-22)
+
+- Nazwa **easy-matanimation** w tytule okna, nagłówku panelu (z wersją `v0.1.0` z `viz_player/__init__.py`), `user_agent`, zrzutach i smoke; `--version` drukuje nazwę i wersję.
+- `viz_player/startup.py`: `setup_logging` (bez konsoli albo w paczce `stdout` i `stderr` idą do `DATA/easy-matanimation.log`, rotacja po 2 MB; w repo z konsolą bez zmian), `show_error` (okno systemowe, zawsze też do dziennika), `crash` (ślad do dziennika, krótki komunikat; brak WebView2 dostaje link do instalatora Microsoftu). `main` opakowuje start w `crash`.
+- Dowód: 84 testy (6 nowych w `test_startup.py`); `pythonw -m viz_player --version` uruchomiony przez `Start-Process` (prawdziwie bez konsoli) zapisał nagłówek i wersję do dziennika w `EASY_MATANIMATION_DATA`; smoke w oknie sprawdza teraz `document.title` i wersję w panelu (`smoke OK`). Zrzut okna przy tym uruchomieniu złapał przeglądarkę zasłaniającą ekran, więc dowodem jest odczyt z DOM, nie obraz.
+- Nie sprawdzone: komunikat o braku WebView2 na maszynie bez tego składnika (test jednostkowy tylko z atrapą wyjątku; prawdziwa próba w A4).

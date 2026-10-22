@@ -9,6 +9,7 @@ import os
 import sys
 import time
 
+from viz_player import APP_NAME
 from viz_player.player import Player, note
 from viz_player.window import Api, _wait_js
 
@@ -43,7 +44,7 @@ def bench(run):
         return 1
     import webview
     window = webview.create_window(
-        "easy-matviz bench", url=str(player.write_site()), js_api=Api(player),
+        f"{APP_NAME} bench", url=str(player.write_site()), js_api=Api(player),
         width=1440, height=900, background_color="#121418",
     )
     rows = []
@@ -107,7 +108,7 @@ def bench(run):
     from viz_player.paths import DATA
     storage = DATA / ("viz_player_webview_sw" if os.environ.get("WEBVIEW2_ADDITIONAL_BROWSER_ARGUMENTS") else "viz_player_webview")
     storage.mkdir(parents=True, exist_ok=True)
-    _w.start(body, gui="edgechromium", private_mode=False, http_server=True, storage_path=str(storage), user_agent="easy-matviz")
+    _w.start(body, gui="edgechromium", private_mode=False, http_server=True, storage_path=str(storage), user_agent=APP_NAME)
     if not result.get("ok"):
         print("FAIL", result.get("error"))
         return 1

@@ -1,11 +1,11 @@
-"""Zrzut okna easy-matviz przez user32 (Windows, PowerShell). Tylko do smoke; błąd zrzutu nie wywala testu."""
+"""Zrzut okna easy-matanimation przez user32 (Windows, PowerShell). Tylko do smoke; błąd zrzutu nie wywala testu."""
 import os
 import subprocess
 import tempfile
 from pathlib import Path
 
 
-def window_png(path, title="easy-matviz"):
+def window_png(path, title="easy-matanimation"):
     script = r"""
 Add-Type -AssemblyName System.Drawing
 Add-Type @"
