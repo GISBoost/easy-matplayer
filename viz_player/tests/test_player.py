@@ -3,6 +3,7 @@ from pathlib import Path
 
 import pytest
 
+from viz_player import check as chk
 from viz_player import player as pl
 
 from . import fixture as fx
@@ -41,7 +42,6 @@ def test_clock_and_labels():
     assert pl.clock(pl.START) == "06:00:00" and pl.clock(28591) == "07:56:31"
     assert pl.clock(30 * 3600 + 12 * 60) == "30:12:00" and pl.clock(-5) == "00:00:00"
     assert pl.sample_label(0.25) == "0,25" and pl.sample_label(None) == "brak"
-    assert pl.ramp_rgb(0) == (255, 31, 13) and pl.ramp_rgb(pl.VMAX) == (26, 230, 255)
 
 
 DAY = [
@@ -224,4 +224,4 @@ def test_site_curves(player, tmp_path):
 
 
 def test_generic_check_passes(run_dir):
-    assert pl.check(run_dir) == 0
+    assert chk.run(run_dir) == 0

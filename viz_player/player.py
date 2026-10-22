@@ -1,16 +1,13 @@
-"""Okno odtwarzacza (D24). WebView2 + Leaflet. Panel id ma oś czynności.
+"""Model okna odtwarzacza (D24): indeks runu, łamane OSM i bezstanowe liczenie klatki.
 
-Nie parsuje XML. Czyta indeks przez pipeline/viz_engine.py i rysuje klatkę.
+Nie parsuje XML i nie zna okna. Czyta indeks przez pipeline/viz_engine.py.
+Okno (pywebview) jest w viz_player/window.py, akceptacja runu w check.py.
 Łamane OSM są tylko rysunkiem (viz_player/curves.py): sieć, eventy i run bez zmian.
 Bez klucza CARTO zostaje sieć na #121418 i zdanie „Podkład wyłączony.”
-
-  uv run --group viz python -m viz_player output/g5r7b_25pct_s4711
-  uv run --group viz pytest viz_player/tests
 """
 import json
 import math
 import sys
-import time
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -21,11 +18,9 @@ from pyproj import Transformer
 
 import viz_engine
 
-from viz_player import curves, grab, site
+from viz_player import curves, site
 
-HERE = Path(__file__).resolve().parent
 STATE = ROOT / "output" / "viz_player_state.json"
-VMAX = 14.0
 START = 6 * 3600
 CARTO = "https://{s}.basemaps.cartocdn.com/rastertiles/dark_nolabels/{z}/{x}/{y}.png?key="
 ATTR = "© OpenStreetMap contributors © CARTO"
@@ -62,17 +57,6 @@ def auta(n):
     if 2 <= digit <= 4 and not 12 <= hundred <= 14:
         return f"{n} auta"
     return f"{n} aut"
-
-
-def ramp_rgb(speed):
-    """Te same progi co rampa w shell.html i w blender/g6_load.py (vmax 14 m/s)."""
-    u = max(0.0, min(1.0, float(speed) / VMAX))
-    red, yellow, cyan = (255, 31, 13), (255, 179, 26), (26, 230, 255)
-    if u <= 0.4:
-        span, left, right = u / 0.4, red, yellow
-    else:
-        span, left, right = (u - 0.4) / 0.6, yellow, cyan
-    return tuple(int(round(left[i] + (right[i] - left[i]) * span)) for i in range(3))
 
 
 def covering(rows, t):
@@ -206,7 +190,7 @@ def saved_run():
         return None
 
 
-def _note(run_dir, message):
+def note(run_dir, message):
     print(message)
     if run_dir is None:
         return
@@ -266,14 +250,14 @@ class Player:
             self.error = f"Indeks się nie zbudował: {exc}"
             return
         try:
-            self.curve, note = curves.load(
+            self.curve, msg = curves.load(
                 self.run_dir, self.link_id, self.index.link_xy, self.link_length, self.origin,
             )
         except Exception as exc:
             self.curve = curves.empty(len(self.link_id))
-            note = f"łamane: {exc}; cięciwy"
+            msg = f"łamane: {exc}; cięciwy"
         self.curve.prepare(self.index.link_xy)
-        _note(self.run_dir, note)
+        note(self.run_dir, msg)
         self._setup()
         if remember:
             save_state(self.run_dir)
@@ -559,280 +543,7 @@ class Player:
         return site.write_site(dest, self.boot(), self.boot_arrays())
 
 
-class Api:
-    """Mostek JS: cienka nakładka na Player, bez własnego stanu."""
-
-    def __init__(self, player):
-        self._player = player
-
-    def frame(self, t, classes, selected, follow):
-        return self._player.frame(t, classes, selected, bool(follow))
-
-    def pick(self, t, classes, lat, lon, lat2, lon2):
-        return self._player.pick(t, classes, lat, lon, lat2, lon2)
-
-    def lookup(self, query):
-        return self._player.lookup(query)
-
-
 def pick_ident(index):
     """Pierwsze id, które jedzie i ma czynności (do sprawdzeń bez wiedzy o runie)."""
     both = np.flatnonzero((np.diff(index.act_off) > 0) & (np.diff(index.track_off) > 0))
     return index.id_text[int(both[0])] if len(both) else None
-
-
-def check(run):
-    """Akceptacja okna na dowolnym runie: klatka musi zgadzać się z liczbami w meta.json."""
-    player = Player()
-    player.open(run)
-    if player.error:
-        _note(player.run_dir if player.run_dir and player.run_dir.exists() else None, f"FAIL {player.error}")
-        return 1
-    meta = player.index.meta
-    problems = []
-
-    def need(cond, message):
-        if not cond:
-            problems.append(message)
-
-    lon, lat = player.fwd.transform(player.origin[0], player.origin[1])
-    boot = player.boot()
-    t0, t1 = float(meta["t_min"]), float(meta["t_max"])
-    t_win = float(meta["max_concurrent_6_9_time"])
-    need(player.sample == sample_label(meta.get("sample_size")), f"próbka {player.sample}")
-    need(abs(player.t_start - (START if t0 <= START <= t1 else t0)) < 1e-6, f"start {player.t_start}")
-    need(boot["nLinks"] == int(meta["n_links"]), f"linki {boot['nLinks']} {meta['n_links']}")
-    south, west = boot["bounds"][0]
-    north, east = boot["bounds"][1]
-    need(abs(lat - (south + north) / 2) < 0.02 and abs(lon - (west + east) / 2) < 0.02,
-         f"origin {lat:.4f},{lon:.4f} daleko od środka sieci {boot['bounds']}")
-    url = "" if boot["basemap"] is None else str(boot["basemap"].get("url", ""))
-    need(boot["basemap"] is None or url.startswith(CARTO), "host kafelków")
-    need("openstreetmap.org" not in url, "kafelki OSM")
-    peak = player.frame(float(meta["max_concurrent_time"]))
-    need(peak["n"] == int(meta["max_concurrent"]), f"szczyt {peak['n']} != {meta['max_concurrent']}")
-    window = player.frame(t_win)
-    need(window["n"] == int(meta["max_concurrent_6_9"]), f"okno 6–9 {window['n']} != {meta['max_concurrent_6_9']}")
-    need(window["clock"] == clock(t_win), f"zegar {window['clock']}")
-    biggest = max(player.chip_keys, key=lambda key: int(meta["class_counts"].get(key, 0)))
-    thin = player.frame(t_win, [key for key in player.chip_keys if key != biggest])
-    need(thin["n"] < window["n"], f"filtr {biggest} {thin['n']} przy {window['n']}")
-    frame = player._frame_np(t_win, None)
-    if len(frame) == 0:
-        problems.append("pusta klatka 6–9")
-    else:
-        panel = player.frame(t_win, None, {"link": int(np.bincount(frame.link).argmax())})["panel"]
-        need(panel["kind"] == "link" and not panel["lines"][-1].startswith("teraz 0"), f"link {panel['lines']}")
-    ident = pick_ident(player.index)
-    need(ident is not None, "brak id z przejazdem i czynnościami")
-    axis = []
-    if ident is not None:
-        followed = player.lookup(ident)
-        need(followed.get("followed") == ident, f"lookup {followed}")
-        axis = player.frame(t_win, None, {"id": ident}, True)["panel"].get("axis") or []
-        need(len(axis) >= 2 and any(seg["trip"] for seg in axis), f"oś {len(axis)}")
-        need(sum(bool(seg["on"]) for seg in axis) <= 1, "oś: dwie naraz")
-        need([seg["t0"] for seg in axis] == sorted(seg["t0"] for seg in axis), "oś nie po czasie")
-    if problems:
-        _note(player.run_dir, "FAIL " + "; ".join(problems))
-        return 1
-    base = "wyłączony" if boot["basemap"] is None else "włączony"
-    _note(
-        player.run_dir,
-        f"check OK run={player.run_name} start={clock(player.t_start)} probka={player.sample} podklad={base} "
-        f"okno6_9={window['n']} szczyt={peak['n']} bez_{biggest}={thin['n']} os={len(axis)} linki={boot['nLinks']} "
-        f"lamane={0 if player.curve is None else player.curve.n_bent} id={ident}",
-    )
-    return 0
-
-
-def _dumps(payload):
-    return json.dumps(payload, ensure_ascii=False, separators=(",", ":"), allow_nan=False)
-
-
-def _wait_js(window, expr, seconds=8):
-    deadline = time.perf_counter() + seconds
-    value = None
-    while time.perf_counter() < deadline:
-        value = window.evaluate_js(expr)
-        if value:
-            return value
-        time.sleep(0.1)
-    return value
-
-
-def smoke(run):
-    """Automat okna: prawdziwy WebView2, strona z lokalnego HTTP, klik w chip, szukanie id, Esc."""
-    player = Player()
-    player.open(run)
-    if player.error:
-        _note(player.run_dir, f"FAIL {player.error}")
-        return 1
-    import webview
-    window = webview.create_window(
-        "easy-matviz", url=str(player.write_site()), js_api=Api(player),
-        width=1440, height=900, background_color="#121418", text_select=True,
-    )
-    shot = player.run_dir / "viz" / "smoke.png"
-    result = {"ok": False}
-
-    def js(expr):
-        return window.evaluate_js(expr)
-
-    def body():
-        try:
-            if not _wait_js(window, "window.mapReady === true && window.apiReady === true"):
-                result["error"] = "mapa nie wstała"
-                return
-            n_curve = int(js("boot.curveLon ? boot.curveLon.length : 0") or 0)
-            if n_curve != player.boot()["nCurve"]:
-                result["error"] = f"łamane w oknie {n_curve}, w indeksie {player.boot()['nCurve']}"
-                return
-            if not _wait_js(window, f"document.getElementById('clock').textContent === '{clock(player.t_start)}'", 15):
-                result["error"] = "brak klatki " + str(js("window.drawError"))
-                return
-            js("window.hold = true")
-            time.sleep(0.4)
-            t_win = float(player.index.meta["max_concurrent_6_9_time"])
-            full = player.frame(t_win, player.chip_keys)
-            thin_key = player.chip_keys[int(np.bincount(player._frame_np(t_win, None).cls).argmax())]
-            js("draw(" + _dumps(full) + ")")
-            err, drawn, size = js("window.drawError"), js("window.drawnN"), js("window.mapSize")
-            sample = js("document.getElementById('sample').textContent")
-            base = js("document.getElementById('base').textContent")
-            if err:
-                result["error"] = err
-                return
-            if drawn != full["n"] or full["n"] < 100:
-                result["error"] = f"rysunek {drawn} dane {full['n']}"
-                return
-            if not size or int(str(size).split("x")[0]) < 200:
-                result["error"] = f"mapa {size}"
-                return
-            if player.sample not in str(sample):
-                result["error"] = f"próbka {sample}"
-                return
-            if player.basemap is None and str(base) != "Podkład wyłączony.":
-                result["error"] = f"podkład {base}"
-                return
-            js("document.getElementById('hide').click()")
-            time.sleep(0.3)
-            back = js(
-                "(function(){var b=document.getElementById('hide');var r=b.getBoundingClientRect();"
-                "return r.width>20 && r.left>=0 && r.right<=window.innerWidth+1 && b.textContent==='panel';})()"
-            )
-            js("document.getElementById('hide').click()")
-            if back is not True:
-                result["error"] = "przycisk panelu " + str(back)
-                return
-            chip = "document.querySelector('.chip[data-key=\"" + thin_key + "\"]').click()"
-            js(chip)
-            if thin_key in js("classesOn"):
-                result["error"] = f"chip {thin_key} został włączony"
-                return
-            thin = player.frame(t_win, js("classesOn"))
-            js("draw(" + _dumps(thin) + ")")
-            if js("window.drawnN") != thin["n"] or not thin["n"] < full["n"]:
-                result["error"] = f"filtr {js('window.drawnN')} {thin['n']} {full['n']}"
-                return
-            js(chip)
-            if thin_key not in js("classesOn"):
-                result["error"] = f"chip {thin_key} nie wrócił"
-                return
-            js("draw(" + _dumps(player.frame(t_win, player.chip_keys)) + ")")
-            js("document.getElementById('play').click()")
-            label = js("document.getElementById('play').textContent")
-            js("document.getElementById('play').click()")
-            if label != "pauza":
-                result["error"] = f"start {label}"
-                return
-            note, code = grab.window_png(shot)
-            result["grab"] = note.strip()
-            ident = pick_ident(player.index)
-            js("window.hold = false; t = " + str(t_win) + "; change();")
-            js(f"document.getElementById('q').value = {json.dumps(ident)}; document.getElementById('find').requestSubmit();")
-            if not _wait_js(window, f"document.getElementById('detail').innerText.indexOf({json.dumps(ident)}) >= 0", 15):
-                result["error"] = f"panel {js('document.getElementById(\"detail\").innerText')}"
-                return
-            axis_ok = js(
-                "(function(){var box=document.getElementById('axis');"
-                "var bar=document.getElementById('axis-bar');"
-                "var n=bar?bar.querySelectorAll('.seg').length:0;"
-                "var trip=bar?bar.querySelector('.seg.trip'):null;"
-                "var tw=trip?trip.getBoundingClientRect().width:0;"
-                "var bw=bar?bar.getBoundingClientRect().width:0;"
-                "return !!box && !box.hidden && n>0 && bw>40 && tw>bw*0.12;})()"
-            )
-            if axis_ok is not True:
-                result["error"] = "oś " + str(axis_ok)
-                return
-            js("window.dispatchEvent(new KeyboardEvent('keydown', {key: 'Escape'}))")
-            if js("selected === null && follow === false") is not True:
-                result["error"] = "escape nie czyści zaznaczenia"
-                return
-            result.update(ok=True, n=full["n"], thin=thin["n"], clock=full["clock"], size=size, key=thin_key)
-        except Exception:
-            import traceback
-            result["error"] = traceback.format_exc()
-        finally:
-            window.destroy()
-
-    storage = ROOT / "output" / "viz_player_webview"
-    storage.mkdir(parents=True, exist_ok=True)
-    webview.start(
-        body, gui="edgechromium", private_mode=False, http_server=True,
-        storage_path=str(storage), user_agent="easy-matviz",
-    )
-    if not result.get("ok"):
-        _note(player.run_dir, "FAIL smoke " + str(result.get("error") or result))
-        return 1
-    png = "zrzut=" + str(shot) if shot.exists() and shot.stat().st_size >= 10000 else "zrzut=nieudany " + str(result.get("grab"))
-    _note(
-        player.run_dir,
-        f"smoke OK n={result['n']} bez_{result['key']}={result['thin']} zegar={result['clock']} "
-        f"mapa={result['size']} {png}",
-    )
-    return 0
-
-
-def serve(run):
-    player = Player()
-    player.open(run)
-    import webview
-    window = webview.create_window(
-        "easy-matviz", url=str(player.write_site()), js_api=Api(player),
-        width=1440, height=900, background_color="#121418", text_select=True,
-    )
-
-    def kick():
-        if not _wait_js(window, "window.mapReady === true && window.apiReady === true", seconds=20):
-            _note(player.run_dir, "FAIL okno nie wstało")
-
-    where = "wyłączony" if player.basemap is None else "włączony"
-    _note(player.run_dir, f"okno run={player.run_name} podklad={where} blad={player.error or '-'}")
-    storage = ROOT / "output" / "viz_player_webview"
-    storage.mkdir(parents=True, exist_ok=True)
-    webview.start(
-        kick, gui="edgechromium", private_mode=False, http_server=True,
-        storage_path=str(storage), user_agent="easy-matviz",
-    )
-    return 0
-
-
-def main(argv):
-    if hasattr(sys.stdout, "reconfigure"):
-        sys.stdout.reconfigure(encoding="utf-8", errors="replace")
-        sys.stderr.reconfigure(encoding="utf-8", errors="replace")
-    if argv[:1] == ["--check"] and len(argv) >= 2:
-        return check(argv[1])
-    if argv[:1] == ["--smoke"] and len(argv) >= 2:
-        return smoke(argv[1])
-    run = argv[0] if argv else saved_run()
-    if not run:
-        print("podaj katalog runu, np. output/g5r7b_25pct_s4711")
-        return 2
-    return serve(run)
-
-
-if __name__ == "__main__":
-    sys.exit(main(sys.argv[1:]))

@@ -2,7 +2,6 @@ import numpy as np
 import pytest
 
 import viz_engine
-import viz_index
 
 from . import fixture as fx
 
