@@ -1,9 +1,11 @@
 """Pomiar FPS w prawdziwym oknie (WebView2): ikony / modele 3D x bez / z budynkami 3D, widok gminy i zbliżenie.
 
   uv run --group viz python -m viz_player.bench output/<run>
+Bez GPU: WEBVIEW2_ADDITIONAL_BROWSER_ARGUMENTS="--disable-gpu --enable-unsafe-swiftshader" (renderer SwiftShader, osobny profil WebView2).
 Wynik: tabela na stdout i linia w player.log. Odtwarzanie 1x w szczycie 6-9, każdy wariant 6 s.
 """
 import json
+import os
 import sys
 import time
 
@@ -62,6 +64,7 @@ def bench(run):
                 result["error"] = "mapa nie wstała"
                 return
             print('ready', flush=True)
+            print('renderer', js("(function(){var g=document.createElement('canvas').getContext('webgl2');var e=g&&g.getExtension('WEBGL_debug_renderer_info');return e?g.getParameter(e.UNMASKED_RENDERER_WEBGL):String(g)})()"), flush=True)
             t_win = float(player.index.meta["max_concurrent_6_9_time"])
             js("window.hold = false; t = " + str(t_win) + "; mult = 1; change();")
             if not _wait_js(window, "window.drawnN > 100", 30):
@@ -102,7 +105,7 @@ def bench(run):
 
     import webview as _w
     from viz_player.player import ROOT
-    storage = ROOT / "output" / "viz_player_webview"
+    storage = ROOT / "output" / ("viz_player_webview_sw" if os.environ.get("WEBVIEW2_ADDITIONAL_BROWSER_ARGUMENTS") else "viz_player_webview")
     storage.mkdir(parents=True, exist_ok=True)
     _w.start(body, gui="edgechromium", private_mode=False, http_server=True, storage_path=str(storage), user_agent="easy-matviz")
     if not result.get("ok"):
@@ -110,7 +113,7 @@ def bench(run):
         return 1
     lines = [f"{'widok':10} {'znacznik':8} {'budynki':7} {'FPS':>6} {'gap p95':>8} {'gap max':>8} {'cpu med':>8} {'cpu p95':>8} {'aut':>5}"]
     for v, mk, th, m in rows:
-        lines.append(f"{v:10} {mk:8} {th:7} {m['fps']:6.1f} {m['gap_p95']:7.1f}ms {m['gap_max']:7.1f}ms {m['cpu_med']:7.2f}ms {m['cpu_p95']:7.2f}ms {m['n']:5d}"
+        lines.append(f"{v:10} {mk:8} {th:7} {(m['fps'] or 0):6.1f} {m['gap_p95']:7.1f}ms {m['gap_max']:7.1f}ms {m['cpu_med']:7.2f}ms {m['cpu_p95']:7.2f}ms {m['n']:5d}"
                      + (" BŁĄD " + m["err"] if m.get("err") else ""))
     print("\n".join(lines))
     note(player.run_dir, "bench " + json.dumps([[v, mk, th, round(m["fps"], 1), round(m["cpu_med"], 2)] for v, mk, th, m in rows], ensure_ascii=False))
