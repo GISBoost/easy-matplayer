@@ -225,3 +225,7 @@ def test_site_curves(player, tmp_path):
 
 def test_generic_check_passes(run_dir):
     assert chk.run(run_dir) == 0
+
+
+def test_curve_note_reaches_boot(player):
+    assert player.boot()["curveNote"] == player.curve_note and player.curve_note.startswith("łamane")

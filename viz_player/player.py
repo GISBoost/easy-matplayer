@@ -220,6 +220,7 @@ class Player:
         self.t_start = 0.0
         self.sample = "brak"
         self.curve = None
+        self.curve_note = ""
         self.origin = (0.0, 0.0)
         self.fwd = Transformer.from_crs("EPSG:2180", "EPSG:4326", always_xy=True)
         self.inv = Transformer.from_crs("EPSG:4326", "EPSG:2180", always_xy=True)
@@ -257,6 +258,8 @@ class Player:
             self.curve = curves.empty(len(self.link_id))
             msg = f"łamane: {exc}; cięciwy"
         self.curve.prepare(self.index.link_xy)
+        n_bent = self.curve.n_bent
+        self.curve_note = f"łamane: {n_bent} z {len(self.link_id)}" if n_bent else msg
         note(self.run_dir, msg)
         self._setup()
         if remember:
@@ -501,7 +504,7 @@ class Player:
         base = {
             "error": self.error, "run": self.run_name, "t": self.t_start,
             "tMin": 0, "tMax": 1, "sample": "brak", "basemap": self.basemap,
-            "bounds": None, "types": [], "classes": [], "nLinks": 0, "nCurve": 0,
+            "bounds": None, "types": [], "classes": [], "nLinks": 0, "nCurve": 0, "curveNote": "",
         }
         if self.index is None:
             return base
@@ -519,6 +522,7 @@ class Player:
             "classes": [{"key": key, "name": self.class_name[key], "on": True} for key in self.chip_keys],
             "nLinks": int(len(lon1)),
             "nCurve": int(len(self.curve.xy)) if self.curve is not None and self.curve.n_bent else 0,
+            "curveNote": self.curve_note,
         })
         return base
 

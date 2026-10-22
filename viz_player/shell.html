@@ -47,7 +47,7 @@ body { display: grid; grid-template-columns: 1fr 320px; grid-template-rows: 1fr 
 #bar button.on, #play.on { border-color: #7eb6ff; color: #7eb6ff; }
 #slider { flex: 1; min-width: 80px; accent-color: #7eb6ff; }
 #clock { font-variant-numeric: tabular-nums; min-width: 72px; }
-#count, #sample, #base { color: #9aa3b2; white-space: nowrap; }
+#count, #sample, #base, #curves { color: #9aa3b2; white-space: nowrap; }
 body.panel-off { grid-template-columns: 1fr 0; }
 body.panel-off #panel { display: none; }
 .leaflet-container { background: #121418; font-family: "Segoe UI", sans-serif; }
@@ -88,6 +88,7 @@ body.panel-off #panel { display: none; }
   <span id="count">0 aut</span>
   <span id="sample"></span>
   <span id="base">Podkład wyłączony.</span>
+  <span id="curves"></span>
   <button id="hide" type="button">ukryj</button>
 </div>
 <script src="vendor/leaflet.js"></script>
@@ -151,6 +152,7 @@ function applyBoot() {
   tMax = boot.tMax;
   document.getElementById("run").textContent = boot.run || "";
   document.getElementById("sample").textContent = "próbka " + boot.sample;
+  document.getElementById("curves").textContent = boot.curveNote || "";
   document.getElementById("clock").textContent = clock(t);
   slider.min = tMin;
   slider.max = tMax;

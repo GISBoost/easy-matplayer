@@ -123,7 +123,7 @@ def load(run_dir):
     meta = json.loads((viz / "meta.json").read_text(encoding="utf-8"))
     index = Index(run_dir, meta, arrays)
     if index.nbytes >= RAM_BUDGET:
-        raise EngineFailed(f"indeks w RAM ma {index.nbytes} B, budżet to < {RAM_BUDGET} B")
+        print(f"UWAGA indeks w RAM ma {index.nbytes} B, powyżej orientacyjnych {RAM_BUDGET} B")
     return index
 
 

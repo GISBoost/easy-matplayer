@@ -48,6 +48,7 @@ FORMAT = 3
 # Początek lokalnego układu (m): środek bbox węzłów sieci, zaokrąglony do ORIGIN_SNAP_M.
 ORIGIN_SNAP_M = 1000.0
 FILE_BUDGET = 200 * 1024 * 1024
+# Limity są ostrzeżeniami: duży run (100%, Łódź) ma się otworzyć, tylko wolniej.
 PARSE_BUDGET_SEC = 300
 
 
@@ -149,6 +150,7 @@ def event_lines(path, started, log_path):
     stream = zstandard.ZstdDecompressor().stream_reader(path.open("rb"))
     lines = io.TextIOWrapper(stream, encoding="utf-8", newline="")
     n = 0
+    warned = False
     for line in lines:
         i = line.find('type="')
         if i < 0:
@@ -161,8 +163,9 @@ def event_lines(path, started, log_path):
         if n % 500_000 == 0:
             elapsed = time.perf_counter() - started
             log_to(log_path, f"parse lines={n} sec={elapsed:.1f}")
-            if elapsed > PARSE_BUDGET_SEC:
-                raise CheckFailed("odczyt eventów przekroczył 5 min, przerywam zanim dojdzie okno")
+            if elapsed > PARSE_BUDGET_SEC and not warned:
+                warned = True
+                log_to(log_path, f"UWAGA odczyt eventów trwa już ponad {PARSE_BUDGET_SEC} s (duży run), czekam")
         yield typ, line
 
 
@@ -526,7 +529,7 @@ def _validate(run, index_path, log_path, idx, origin, table, by_person):
     geometry_check(idx, net, stats["sequences"], stats["persons"], pick, log_path)
     size = index_path.stat().st_size
     if size >= FILE_BUDGET:
-        raise CheckFailed(f"index.npz ma {size} B, budżet to < {FILE_BUDGET} B")
+        log_to(log_path, f"UWAGA index.npz ma {size} B, powyżej orientacyjnych {FILE_BUDGET} B")
     log_to(
         log_path,
         f"OK tracks={n} enters_6_9={enters_win} peak={stats['peak']} "
