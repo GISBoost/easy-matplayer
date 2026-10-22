@@ -1,0 +1,9 @@
+# Zależności zbudowanej aplikacji (easy-matanimation). Osobny, szczupły zestaw: bez geopandas, pandas, scipy i matplotlib z głównego projektu.
+# Budowa: scripts/build_viz.bat (venv w build_viz/venv, PyInstaller z build_viz/requirements-build.txt).
+numpy==2.5.4
+pyproj==3.8.0
+zstandard==0.25.0
+lxml==6.1.3
+pillow==12.3.0
+pywebview==6.2.1
+osmium==4.3.1

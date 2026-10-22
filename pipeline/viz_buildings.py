@@ -18,7 +18,8 @@ from pathlib import Path
 
 import numpy as np
 
-ROOT = Path(__file__).resolve().parents[1]
+FROZEN = bool(getattr(sys, "frozen", False))
+ROOT = Path(sys._MEIPASS) if FROZEN else Path(__file__).resolve().parents[1]
 CONFIG = ROOT / "config" / "viz_buildings.toml"
 FORMAT = 1
 MARGIN_DEG = 0.003  # ok. 300 m wokół obwiedni sieci
@@ -66,7 +67,7 @@ def find_pbf():
     if USER_PBF is not None:
         path = Path(USER_PBF)
         return path if path.is_file() else None
-    for base in [ROOT, *ROOT.parents]:
+    for base in ([] if FROZEN else [ROOT, *ROOT.parents]):
         hits = sorted((base / "data" / "raw" / "osm").glob("lodzkie-*.osm.pbf"))
         if hits:
             return hits[-1]
@@ -78,7 +79,7 @@ def source_key(pbf, cfg_path, box, origin_lonlat):
     parts = [
         str(FORMAT), f"{pbf.name}:{st.st_size}:{st.st_mtime_ns}",
         hashlib.sha256(Path(cfg_path).read_bytes()).hexdigest(), json.dumps(box), json.dumps(origin_lonlat),
-        hashlib.sha256(Path(__file__).read_bytes()).hexdigest(),
+        hashlib.sha256(Path(__file__).with_suffix(".py").read_bytes()).hexdigest(),  # w paczce PyInstaller __file__ wskazuje nieistniejący .pyc; źródła .py leżą obok jako dane (viz_player/easy-matanimation.spec)
     ]
     return hashlib.sha256("|".join(parts).encode()).hexdigest()
 

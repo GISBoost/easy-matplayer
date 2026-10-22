@@ -39,7 +39,7 @@ Wcześniej zrobione (fundamenty, D24): origin z sieci, `person_id` i klasyfikato
 
 - [x] A1. Ścieżki: zasoby do odczytu osobno od danych do zapisu (`paths.py`, `%LOCALAPPDATA%\easy-matanimation`).
 - [x] A2. Zachowanie po dwukliku: A2a nazwa, wersja, log do pliku, komunikaty błędów; A2b wybór runu bez argumentu i pełny pasek postępu; A2c własny plik OSM.
-- [ ] A3. Pierwsza paczka PyInstaller onedir, smoke zbudowanego exe z okrojonym PATH.
+- [x] A3. Pierwsza paczka PyInstaller onedir, smoke zbudowanego exe z okrojonym PATH.
 - [ ] A4. Test na czystym komputerze / Windows Sandbox.
 - [ ] A5. Zip z małym runem demo.
 - [ ] A6. Licencje, README użytkownika, workflow release (bez pusha), próba w czystym klonie.
@@ -199,3 +199,14 @@ Wcześniej zrobione (fundamenty, D24): origin z sieci, `person_id` i klasyfikato
 ### A2 zamknięte (2026-10-22)
 
 Wszystkie trzy części (A2a, A2b, A2c) przeszły: 96 testów i smoke w prawdziwym oknie.
+
+### A3: pierwsza paczka PyInstaller (2026-10-22)
+
+- Pliki: `viz_player/easy-matanimation.spec` (onedir, `console=False`, ikona, wersja w metadanych exe, `pathex` na `pipeline/`, dane: `shell.html`, `engine.js`, `vendor/`, `config/viz_buildings.toml`, `LICENSE`, źródła `pipeline/viz_*.py`, malutki plik OSM do smoke), `viz_player/requirements.txt` i `requirements-build.txt` (szczupły zestaw, wersje przypięte; bez geopandas, pandas, scipy, matplotlib), `scripts/viz_build.bat` (jedno źródło prawdy budowania: venv w `build_viz/venv` przez `uv`, PyInstaller, kontrola, zip), `viz_player/icon.ico` (tymczasowa ikona, generator `scripts/viz_make_icon.py`), `scripts/viz_make_selftest_pbf.py`. `build_viz/` w `.gitignore`.
+- Poprawki pod paczkę: `viz_buildings`, `viz_export`, `viz_index` liczą skrót własnego pliku przez `Path(__file__).with_suffix(".py")` (w paczce `__file__` to nieistniejący `.pyc`, `.py` leżą obok jako dane); `viz_buildings.ROOT` w paczce to katalog rozpakowania i bez szukania PBF w `data/raw`. Zmiana tych plików unieważnia skróty, więc indeksy runów przeliczają się raz (25%: ok. 20 s).
+- Wynik: folder 116 MB, zip 43,8 MB (chart_lab: 108 MB), budowa ok. 41 s, `easy-matanimation.exe --version` zapisuje wersję do dziennika; metadane exe (opis, wersja, licencja) widoczne we właściwościach pliku.
+- **Dowód (smoke zbudowanego exe, PATH okrojony do `System32` i `Windows`, bez Pythona i `uv`, dane w pustym katalogu, katalog roboczy poza repo): `smoke OK`, kod wyjścia 0, 22 s (z gotowym indeksem).** W exe pierwszy raz zbudował od zera indeks dwóch runów 25% (24 304 i 29 660 pojazdów, wyniki jak w trybie deweloperskim), wczytał budynki, WMS (atrapa), obrazy, przełączył run, odczytał malutki PBF (jeden budynek: „budynki 1”, „plik OSM nie pokrywa tej sieci”) i wrócił po „zapomnij plik”.
+- Błędy znalezione przez ten test (naprawione): (1) błąd składni w `window.py` po mojej zmianie: PyInstaller zgłosił tylko ostrzeżenie „invalid module” i zbudował paczkę bez okna (użytkownik zobaczył „No module named viz_player.window”); `viz_build.bat` kończy się teraz błędem przy „invalid module” i sprawdza, że zbudowany exe startuje i zapisuje wersję (test negatywny z celowym błędem składni: kod 1); (2) po przeładowaniu strony (zmiana pliku OSM, otwarcie runu) `fetch("boot.json")` mógł wziąć starą kopię z pamięci podręcznej, bo serwer okna nie wysyła `Cache-Control`; w trybie deweloperskim maskował to czas, w exe (szybciej) wyszło; `fetch(..., {cache: "no-store"})` dla `boot.json` i tablic linków.
+- Dodatkowo: pyosmium w exe czyta PBF (test wyżej); pisanie PBF w exe (`SimpleWriter`) kończy się `UnicodeDecodeError`, ale aplikacja tego nie używa (tylko generator pliku testowego, uruchamiany w trybie deweloperskim).
+- Uwaga: smoke z malutkim PBF zostawia w folderze `viz/site/data` runu budynki z tego pliku (1 budynek). Przy następnym otwarciu z prawdziwym PBF (klucz inny) budynki przeliczają się same.
+- Nie sprawdzone: uruchomienie na innym komputerze / w Windows Sandbox (A4), brak WebView2 (A4), podpis i SmartScreen, rozmiar po instalacji na czystym profilu.

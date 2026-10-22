@@ -1,0 +1,3 @@
+# Narzędzia budowy paczki (tylko scripts/viz_build.bat), przypięte jak zależności aplikacji.
+pyinstaller==6.22.3
+pyinstaller-hooks-contrib==2026.9

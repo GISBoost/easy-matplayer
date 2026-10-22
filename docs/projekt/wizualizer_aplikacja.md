@@ -56,7 +56,7 @@ Dlaczego: bez argumentu i bez zapisanego runu program dziś kończy się komunik
 
 Weryfikacja: testy; start bez argumentu na pustym `EASY_MATVIZ_DATA` (okno wyboru, wybór runu z indeksem, wybór runu bez indeksu: postęp, potem odtwarzanie); smoke; uruchomienie z `pythonw`, żeby sprawdzić brak konsoli; zrzut okna z postępem.
 
-### M3. Pierwsza paczka lokalnie (PyInstaller onedir)
+### M3. Pierwsza paczka lokalnie (PyInstaller onedir) ✅ 2026-10-22 (opis i dowody: `wizualizer_postep.md`, A3)
 
 - `viz_player/requirements.txt` (szczupły zestaw: numpy, pyproj, zstandard, lxml, Pillow, pywebview, PyInstaller z przypiętymi wersjami; bez geopandas/pandas/scipy/matplotlib). Budowa w osobnym venv, tak jak chart_lab, żeby PyInstaller nie skanował ciężkich pakietów z głównego projektu.
 - `viz_player/easy-matviz.spec`: `pathex=[pipeline]`, `hiddenimports` dla `viz_*`, `datas` z `vendor/`, `shell.html`, `engine.js`, `collect_data_files("pyproj")` (proj.db), tkinter, `excludes` dla zbędnych, `console=False`, ikona `.ico`, wersja w metadanych exe.

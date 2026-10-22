@@ -649,7 +649,7 @@ def _run(run_dir):
     PROG.phase("Sprawdzam pliki runu", 0.0, 0.01)
     hash_t = time.perf_counter()
     ev_sha, net_sha = sha256_file(events), sha256_file(network)
-    script_sha = sha256_file(Path(__file__)) + sha256_file(Path(viz_classes.__file__))
+    script_sha = sha256_file(Path(__file__).with_suffix(".py")) + sha256_file(Path(viz_classes.__file__).with_suffix(".py"))  # w paczce PyInstaller __file__ wskazuje nieistniejący .pyc; źródła .py leżą obok jako dane (viz_player/easy-matanimation.spec)
     plans = run_dir / viz_classes.PLANS_NAME
     plans_sha = sha256_file(plans) if plans.exists() else None
     log_to(log_path, f"sha256 sec={time.perf_counter() - hash_t:.1f}")

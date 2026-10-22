@@ -19,7 +19,7 @@ import numpy as np
 
 from viz_player import check, grab, ogc, rasters
 from viz_player import APP_NAME, __version__, startup
-from viz_player.paths import DATA, RUNS
+from viz_player.paths import DATA, RES as ROOT, RUNS
 from viz_player.player import Player, clock, note, pick_ident, save_pbf, save_state, saved_pbf, saved_run, scaled
 
 SERVICES = DATA / "viz_player_services.json"
@@ -251,6 +251,7 @@ class Api:
             self._progress = {"busy": False, "label": "", "frac": 1.0}
         if out["status"] != "ok":
             save_pbf(before)
+        print(f"plik OSM {path or '(zapomniany)'}: {out}", flush=True)
         return out
 
     def progress(self):
@@ -357,32 +358,32 @@ def _fake_wms():
     return f"http://127.0.0.1:{server.server_port}/wms", requests, server.shutdown
 
 
-def _smoke_osm(window, js, work):
-    """Plik OSM (A2c): panel pokazuje źródło, własny plik bez dróg i budynków tej sieci daje komunikat o braku pokrycia,
-    „zapomnij plik” wraca do stanu bez wyboru. Zwraca zdanie błędu albo None."""
-    import osmium
-
+def _smoke_osm(window, js):
+    """Plik OSM (A2c): panel pokazuje źródło; malutki plik (jeden budynek w centrum Kutna, viz_player/selftest) daje budynek z prawdziwego
+    skanu PBF i komunikat o braku dróg tej sieci w pliku; „zapomnij plik” wraca do stanu bez wyboru. Zwraca zdanie błędu albo None."""
     from viz_player.player import save_pbf
 
-    work.mkdir(parents=True, exist_ok=True)
-    pbf = work / "smoke.osm.pbf"
-    with osmium.SimpleWriter(str(pbf)) as w:
-        w.add_node(osmium.osm.mutable.Node(id=1, location=(0.5, 0.5)))
+    pbf = ROOT / "viz_player" / "selftest" / "kutno_tiny.osm.pbf"
+    if not pbf.is_file():
+        return f"osm: brak pliku testowego {pbf}"
     ready = "window.mapReady === true && window.apiReady === true"
     try:
         if not str(js("document.getElementById('osmname').textContent")).startswith("OSM: "):
             return "osm: brak linii źródła w panelu"
         js(f"window.useOsm({json.dumps(str(pbf).replace(chr(92), '/'))});")
-        if not _wait_js(window, f"boot.osm && boot.osm.user === true && boot.osm.file === 'smoke.osm.pbf' && {ready} && window.drawnN > 0", 180):
+        if not _wait_js(window, f"boot.osm && boot.osm.user === true && boot.osm.file === 'kutno_tiny.osm.pbf' && {ready} && window.drawnN > 0", 180):
             return f"osm: po wskazaniu pliku {js('JSON.stringify(boot.osm)')} msg={js('document.getElementById(\'runmsg\').textContent')}"
         curves_text = str(js("document.getElementById('curves').textContent"))
         if "nie pokrywa" not in curves_text and "brak origid" not in curves_text:
             return f"osm: brak komunikatu o pokryciu: {curves_text!r}"
+        buildings_note = str(js("boot.buildingsNote"))
+        if not buildings_note.startswith("budynki 1:"):
+            return f"osm: budynek z malutkiego pliku: {buildings_note!r}"
         if js("document.getElementById('osm-clear').hidden"):
             return "osm: brak przycisku „zapomnij plik”"
         js("document.getElementById('osm-clear').click();")
         if not _wait_js(window, f"boot.osm && boot.osm.user === false && {ready} && window.drawnN > 0", 180):
-            return f"osm: po zapomnieniu pliku {js('JSON.stringify(boot.osm)')}"
+            return f"osm: po zapomnieniu pliku {js('JSON.stringify(boot.osm)')} msg={js('document.getElementById(' + chr(34) + 'runmsg' + chr(34) + ').textContent')}"
         return None
     finally:
         save_pbf(None)
@@ -765,7 +766,7 @@ def smoke(run):
                         result["error"] = f"otwórz run {want}: {js('boot.run')} {js('window.drawError')} msg={js('document.getElementById(\"runmsg\").textContent')}"
                         return
                 result["switched"] = other.name
-            err = _smoke_osm(window, js, player.run_dir / "viz" / "smoke_osm")
+            err = _smoke_osm(window, js)
             if err:
                 result["error"] = err
                 return

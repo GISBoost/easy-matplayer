@@ -435,7 +435,8 @@ function applyBoot() {
 // boot.json to małe metadane; tablice (linki, łamane) idą jako pliki binarne tego samego serwera.
 async function loadBoot() {
   const get = async (name, kind) => {
-    const res = await fetch(name);
+    // no-store: serwer okna nie wysyła Cache-Control, a po „otwórz run” albo zmianie pliku OSM strona ma wziąć świeże boot.json i tablice
+    const res = await fetch(name, {cache: "no-store"});
     if (!res.ok) throw new Error(name + " " + res.status);
     return kind === "json" ? res.json() : new kind(await res.arrayBuffer());
   };
