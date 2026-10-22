@@ -431,9 +431,11 @@ function render() {
       buf.ang[i] = fr.heading[i] * 180 / Math.PI;
     }
     const layers = [];
-    if (threeD && boot.bld) {
+    if (boot.bld) {
+      // warstwa istnieje od pierwszej klatki (ukryta), więc triangulacja nie blokuje kliknięcia „3D”
       if (!buildingData) buildingData = buildBuildings();
       layers.push(new deck.SolidPolygonLayer({
+        visible: threeD,
         id: "buildings", data: buildingData, getPolygon: (d) => d.polygon, getElevation: (d) => d.h, getFillColor: (d) => d.color,
         extruded: true, material: {ambient: 0.55, diffuse: 0.6, shininess: 8, specularColor: [40, 44, 52]},
       }));

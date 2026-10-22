@@ -23,7 +23,7 @@ Cel: 30 FPS na Kutnie 100%. Łódź tylko 10%. Test tylko na GPU właściciela (
 - [x] 5. Leaflet → MapLibre 6 + deck.gl, kamera pitch/bearing, komunikat przy braku WebGL2.
 - [x] 6. Budynki z preprocessingu (wysokość: tag > levels × 3 m > H0 wg klasy, ±15% z hasha, `h_source`).
 - [ ] 7. Nowe tryby, PT, atrybuty osób.
-- [ ] 8. Wygaszenie `g6_bake.py`, test na iGPU (odłożony), przeglądarka opcjonalnie.
+- [ ] 8. (decyzja o wygaszeniu `g6_bake.py` zapisana w D26 2026-10-22; reszta:) test na iGPU (odłożony), przeglądarka opcjonalnie.
 
 Wcześniej zrobione (fundamenty, D24): origin z sieci, `person_id` i klasyfikator, bezstanowa klatka, podział kodu, testy pytest. Patrz PROGRESS 2026-10-22.
 
@@ -60,3 +60,8 @@ Wcześniej zrobione (fundamenty, D24): origin z sieci, `person_id` i klasyfikato
 - Dowód: pytest 52 passed (w tym budynki z małego PBF utworzonego w teście: kolejność tag/piętra/klasa, hash, cache, obwiednia), `--smoke` w prawdziwym oknie: 83 617 budynków, pochylenie >50° po włączeniu i <5° po wyłączeniu, zrzut w panelu przeglądarki pokazuje bryły.
 - **Nie zmierzone:** FPS z włączonym 3D w prawdziwym oknie (próby pomiaru zawiesił błąd skryptu pomiarowego, nie aplikacja). Do zrobienia osobno.
 - Ograniczenia: tylko zamknięte linie (bez relacji multipolygon), obrys zewnętrzny, bez dachów.
+
+### Poprawki po teście właściciela (2026-10-22)
+
+- Stutter przy „3D”: warstwa budynków jest tworzona od pierwszej klatki jako ukryta (`visible: threeD`), więc triangulacja 83 tys. wielokątów nie blokuje kliknięcia. Zgłoszone przez właściciela po teście na R7b; nowych funkcji (kształt pojazdu itd.) jeszcze nie ruszamy.
+- Budynki nie pojawiały się w worktree bez `data/raw`: PBF jest szukany też w głównym repo.
