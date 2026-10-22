@@ -189,6 +189,10 @@ def smoke(run):
             if car_ok is not True or js("carByClass === false && !document.getElementById('lg-speed').hidden") is not True:
                 result["error"] = f"kolor auta {car_ok} {js('window.drawError')}"
                 return
+            scale_ok = js("markerScale(15) === 1 && markerScale(5) === MARKER.min && markerScale(30) === MARKER.max && markerScale(17) > markerScale(13)")
+            if scale_ok is not True or js("window.drawError"):
+                result["error"] = f"znacznik {scale_ok} {js('window.drawError')}"
+                return
             js("document.getElementById('play').click()")
             label = js("document.getElementById('play').textContent")
             js("document.getElementById('play').click()")

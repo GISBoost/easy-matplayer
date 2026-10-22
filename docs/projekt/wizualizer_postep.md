@@ -27,7 +27,7 @@ Cel: 30 FPS na Kutnie 100%. Łódź tylko 10%. Test tylko na GPU właściciela (
 - [x] P1. Poprawki okna (plan `wizualizer_plan.md`, zlecenie 2026-10-22): mnożnik ze strzałkami co 1.
 - [x] P2. Kolor dróg wg `type` (checkbox, legenda).
 - [x] P3. Kolor auta: prędkość / klasa (przełącznik, legenda).
-- [ ] P4. Znacznik grot + półkole (`IconLayer`), skalowany z zoomem w granicach 0,25–3.
+- [x] P4. Znacznik grot + półkole (`IconLayer`), skalowany z zoomem w granicach 0,25–3.
 - [ ] P5. (później, na zlecenie) własny raster, WMS, otwieranie runu przez wybór folderu.
 
 Wcześniej zrobione (fundamenty, D24): origin z sieci, `person_id` i klasyfikator, bezstanowa klatka, podział kodu, testy pytest. Patrz PROGRESS 2026-10-22.
@@ -85,3 +85,9 @@ Wcześniej zrobione (fundamenty, D24): origin z sieci, `person_id` i klasyfikato
 
 - Przycisk „kolor auta” w panelu przełącza rampę prędkości na kolor klasy (`CLASS_COLOR`: r `#5aa2ff`, c `#3dbe7a`, o `#e0c15a`, t `#a89880`, h `#e15a4a`, inne `#e7e9ee`). W trybie klasy rampa chowa się, a legenda klas (klasy z chipami) staje w tym samym miejscu. Liczba km/h w panelu bez zmian.
 - Dowód: smoke przełącza tryb, sprawdza legendę (liczba wierszy = liczba chipów), a bufor kolorów pierwszego auta równy kolorowi jego klasy, i wraca do prędkości; 52 testy; smoke OK 728 aut.
+
+### P4: znacznik grot + półkole (2026-10-22)
+
+- Auto to `IconLayer` z atlasem trzech ikon (wypełnienie, obrys 1 px `#121418`, kontur zaznaczenia `#7eb6ff` 1,5 px). Podstawa 16 px, półkole z tyłu o promieniu 8, grot 32 px przed środkiem podstawy; ciężkie ×22/16. Punkt pojazdu w środku podstawy. Kółko i kreska kierunku usunięte, tolerancja kliku 8 px bez zmian.
+- Skalowanie z zoomem: mnożnik `2^(0,5·(zoom−15))`, granice 0,25–3 (`MARKER` w `shell.html`, jedno miejsce do strojenia). Przy zoomie 15 znacznik ma rozmiar z planu; bardzo duże przybliżenie daje 3×, widok całej gminy 0,25×.
+- Dowód: smoke (skala 1 przy zoomie 15, granice, rośnie z zoomem, brak błędu rysowania), 52 testy, zrzut `smoke.png` pokazuje znaczniki w widoku całej gminy. Czeka na ocenę wzrokową na kilku zoomach i sprawdzenie kierunku grota względem jazdy (obrót jak dotychczasowa kreska).

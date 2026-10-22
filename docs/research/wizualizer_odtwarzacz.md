@@ -171,6 +171,10 @@ Klik w pasek ustawia zegar na czas wewnątrz klikniętego bloku. Jeśli odtwarza
 
 Na R6, id `r6510903_5`, check z 2026-10-20 zapisał pięć bloków: dom `00:00:14–00:04:32`, jazda `00:05:09–00:12:40`, praca `00:17:33–08:17:33` (zaznaczona o 07:56), jazda `08:22:27–08:31:17`, dom do `32:23:09`.
 
+## Znacznik auta
+
+Grot z półkolem (`IconLayer`, atlas w `makeMarker` w `shell.html`): podstawa 16 px, promień półkola 8 px, grot 32 px przed środkiem podstawy, ciężkie ×22/16. Rozmiar skaluje się z zoomem (`MARKER`: `2^(0,5·(zoom−15))`, granice 0,25–3), żeby po przybliżeniu nie był malutki, a w widoku gminy nie zlewał aut w plamę.
+
 ## Kolor auta
 
 Kolor to prędkość, ta sama rampa co w `blender/g6_load.py`. Skala kanwy kończy się na 14 m/s.

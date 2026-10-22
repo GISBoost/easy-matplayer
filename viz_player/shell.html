@@ -147,6 +147,12 @@ const ROAD_OSM_OTHER = ["inna", "#4e5663"];
 // Kolor auta w trybie „klasa”: kim jest pojazd (inna tabela niż drogi). „?” to klasa „inne”.
 const CLASS_COLOR = {r: "#5aa2ff", c: "#3dbe7a", o: "#e0c15a", t: "#a89880", h: "#e15a4a", "?": "#e7e9ee"};
 let carByClass = false, classRgb = null;
+// Znacznik auta: grot (kierunek jazdy) + półkole z tyłu, punkt pojazdu w środku podstawy. Rozmiary w pikselach
+// przy zoomie z0 (mnożnik 1); mnożnik rośnie z zoomem o 2^(exp·Δzoom), w granicach min–max. Do strojenia po obejrzeniu.
+const MARKER = {base: 16, heavy: 22, z0: 15, exp: 0.5, min: 0.25, max: 3};
+function markerScale(zoom) {
+  return Math.min(MARKER.max, Math.max(MARKER.min, Math.pow(2, MARKER.exp * (zoom - MARKER.z0))));
+}
 let osmRoads = false;
 let t = 0, tMin = 0, tMax = 1;
 let playing = false, mult = 1, scrub = false, dirty = false;
@@ -155,7 +161,7 @@ let classesOn = [], selected = null, follow = false;
 let engine = null, mask = null, anchor = null;
 let panelForce = true, panelAt = 0, panelSeq = 0;
 let wantKey = "", lastSel = null;
-let overlay = null, roads = null, buf = null, tickIcon = null, threeD = false, buildingData = null;
+let overlay = null, roads = null, buf = null, threeD = false, buildingData = null;
 function change() { dirty = true; panelForce = true; }
 function setMask() {
   mask = Uint8Array.from(engine.classKeys, (k) => (classesOn.indexOf(k) >= 0 ? 1 : 0));
@@ -488,7 +494,7 @@ function setThreeD(on) {
 }
 
 function allocBuffers(max) {
-  return {pos: new Float64Array(2 * max), col: new Uint8Array(4 * max), rad: new Float32Array(max), ang: new Float32Array(max)};
+  return {pos: new Float64Array(2 * max), col: new Uint8Array(4 * max), size: new Float32Array(max), ang: new Float32Array(max)};
 }
 // Rysuje klatkę z engine.frame. Zwraca false, gdy porcja czasu jeszcze się nie wczytała.
 function render() {
@@ -497,6 +503,7 @@ function render() {
     const fr = engine.frame(t, mask);
     if (!fr) return false;
     if (!buf) buf = allocBuffers(fr.lon.length);
+    const zs = markerScale(map.getZoom());
     if (!classRgb) classRgb = engine.classKeys.map((k) => hexRgb(CLASS_COLOR[k] || CLASS_COLOR["?"]));
     let track = null, sel = -1;
     if (selected && selected.id) {
@@ -514,7 +521,7 @@ function render() {
         buf.col[4 * i] = RAMP[k]; buf.col[4 * i + 1] = RAMP[k + 1]; buf.col[4 * i + 2] = RAMP[k + 2];
       }
       buf.col[4 * i + 3] = 255;
-      buf.rad[i] = engine.classHeavy[fr.cls[i]] ? 3.5 : 2.5;
+      buf.size[i] = MARKER_ICON_H * zs * (engine.classHeavy[fr.cls[i]] ? MARKER.heavy / MARKER.base : 1);
       buf.ang[i] = fr.heading[i] * 180 / Math.PI;
     }
     const layers = [];
@@ -547,21 +554,21 @@ function render() {
         }));
       }
     }
-    layers.push(new deck.IconLayer({
-      id: "ticks", data: {length: fr.n, attributes: {
-        getPosition: {value: buf.pos, size: 2}, getAngle: {value: buf.ang, size: 1}, getColor: {value: buf.col, size: 4},
-      }}, iconAtlas: tickIcon, iconMapping: {tick: {x: 0, y: 0, width: 16, height: 16, anchorX: 8, anchorY: 8, mask: true}},
-      getIcon: "tick", getSize: 14, sizeUnits: "pixels", billboard: false,
-    }));
-    layers.push(new deck.ScatterplotLayer({
-      id: "vehicles", data: {length: fr.n, attributes: {
-        getPosition: {value: buf.pos, size: 2}, getFillColor: {value: buf.col, size: 4}, getRadius: {value: buf.rad, size: 1},
-      }}, radiusUnits: "pixels",
-    }));
+    const mdata = {length: fr.n, attributes: {
+      getPosition: {value: buf.pos, size: 2}, getAngle: {value: buf.ang, size: 1}, getSize: {value: buf.size, size: 1},
+    }};
+    const marker = (id, icon, extra) => new deck.IconLayer(Object.assign({
+      id, data: mdata, iconAtlas: markerAtlas, iconMapping: markerMapping, getIcon: icon, sizeUnits: "pixels", billboard: false,
+    }, extra));
+    layers.push(marker("car-outline", "out", {getColor: [18, 20, 24, 255]}));
+    layers.push(marker("cars", "fill", {data: {length: fr.n, attributes: {
+      getPosition: {value: buf.pos, size: 2}, getAngle: {value: buf.ang, size: 1}, getSize: {value: buf.size, size: 1},
+      getColor: {value: buf.col, size: 4},
+    }}}));
     if (sel >= 0) {
-      layers.push(new deck.ScatterplotLayer({
-        id: "ring", data: [{p: [fr.lon[sel], fr.lat[sel]], r: buf.rad[sel] + 3}], getPosition: (d) => d.p, getRadius: (d) => d.r,
-        radiusUnits: "pixels", stroked: true, filled: false, getLineColor: [126, 182, 255], lineWidthUnits: "pixels", getLineWidth: 1.5,
+      layers.push(marker("car-sel", "ring", {
+        data: [{p: [fr.lon[sel], fr.lat[sel]], a: buf.ang[sel], s: buf.size[sel]}],
+        getPosition: (d) => d.p, getAngle: (d) => d.a, getSize: (d) => d.s, getColor: [126, 182, 255, 255],
       }));
     }
     overlay.setProps({layers});
@@ -718,16 +725,38 @@ function noGL(text) {
   box.style.display = "flex";
   window.mapReady = true;
 }
-function makeTick() {
+// Atlas znacznika: trzy ikony obok siebie (wypełnienie, obrys 1 px, obrys zaznaczenia), jednostka = piksel przy mnożniku 1.
+const MARKER_ICON_W = 48, MARKER_ICON_H = 24, MARKER_PX = 4;
+let markerAtlas = null, markerMapping = null;
+function makeMarker() {
+  const S = MARKER_PX, W = MARKER_ICON_W * S, H = MARKER_ICON_H * S;
   const c = document.createElement("canvas");
-  c.width = c.height = 16;
+  c.width = 3 * W;
+  c.height = H;
   const g = c.getContext("2d");
-  g.strokeStyle = "#fff";
-  g.lineWidth = 2;
-  g.beginPath();
-  g.moveTo(8, 8);
-  g.lineTo(16, 8);
+  const half = MARKER.base / 2;
+  const shape = (ix) => {
+    g.beginPath();
+    g.translate(ix * W + 12 * S, H / 2);
+    g.moveTo(2 * MARKER.base * S, 0);
+    g.lineTo(0, -half * S);
+    g.arc(0, 0, half * S, -Math.PI / 2, Math.PI / 2, true);
+    g.closePath();
+    g.setTransform(1, 0, 0, 1, 0, 0);
+  };
+  g.fillStyle = g.strokeStyle = "#fff";
+  g.lineJoin = "round";
+  shape(0);
+  g.fill();
+  shape(1);
+  g.lineWidth = 2 * S;
   g.stroke();
+  g.fill();
+  shape(2);
+  g.lineWidth = 1.5 * S;
+  g.stroke();
+  const icon = (ix) => ({x: ix * W, y: 0, width: W, height: H, anchorX: 12 * S, anchorY: H / 2, mask: true});
+  markerMapping = {fill: icon(0), out: icon(1), ring: icon(2)};
   return c.toDataURL();
 }
 async function bootMap() {
@@ -743,7 +772,7 @@ async function bootMap() {
     return;
   }
   roads = buildRoads();
-  tickIcon = makeTick();
+  markerAtlas = makeMarker();
   const style = {version: 8, sources: {}, layers: [{id: "bg", type: "background", paint: {"background-color": "#121418"}}]};
   if (boot.basemap) {
     style.sources.carto = {
