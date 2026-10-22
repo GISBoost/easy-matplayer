@@ -78,3 +78,14 @@ def test_build_from_small_pbf(mini_pbf, tmp_path):
 
 def test_no_pbf_means_no_buildings(tmp_path):
     assert vb.build(tmp_path / "out", (0, 0, 1, 1), (0.5, 0.5), pbf=tmp_path / "nie-ma.pbf") is None
+
+
+def test_saved_buildings_are_used_without_pbf(mini_pbf, tmp_path):
+    box, origin = (19.39, 52.24, 19.42, 52.26), (19.4, 52.25)
+    built = vb.build(tmp_path / "out", box, origin, pbf=mini_pbf, cfg_path=vb.CONFIG)
+    gone = tmp_path / "nie-ma.pbf"
+    assert vb.build(tmp_path / "out", box, origin, pbf=gone) == built, "demo bez PBF pokazuje zapisane budynki"
+    assert vb.build(tmp_path / "out", (19.0, 52.0, 19.1, 52.1), origin, pbf=gone) is None, "inna sieć: nie podstawiać cudzych budynków"
+    assert vb.build(tmp_path / "out", box, (19.5, 52.25), pbf=gone) is None
+    (tmp_path / "out" / "buildings_h.bin").unlink()
+    assert vb.build(tmp_path / "out", box, origin, pbf=gone) is None, "niekompletne pliki to brak budynków"

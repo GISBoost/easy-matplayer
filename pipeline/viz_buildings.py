@@ -104,11 +104,28 @@ def scan(pbf, box, cfg):
     return rows
 
 
+def _near(a, b, n):
+    return a is not None and len(a) == n and bool(np.allclose(a, b, atol=1e-9))
+
+
+def cached(out, box, origin_lonlat):
+    """Opis zapisanych budynków, gdy leżą w <out> dla tej samej obwiedni i tego samego origin (bez PBF), inaczej None."""
+    out = Path(out)
+    try:
+        old = json.loads((out / "buildings.json").read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        return None
+    same = old.get("format") == FORMAT and _near(old.get("box"), box, 4) and _near(old.get("origin_lonlat"), origin_lonlat, 2)
+    if not same or not all((out / f"buildings_{n}.bin").exists() for n in ("off", "xy", "h", "src")):
+        return None
+    return old
+
+
 def build(out, box, origin_lonlat, pbf=None, cfg_path=CONFIG):
-    """Zapisuje <out>/buildings.json i buildings_*.bin. Zwraca opis albo None, gdy brak PBF."""
+    """Zapisuje <out>/buildings.json i buildings_*.bin. Bez PBF zwraca zapisane budynki tej sieci (demo, cache) albo None."""
     pbf = Path(pbf) if pbf else find_pbf()
     if pbf is None or not pbf.is_file():
-        return None
+        return cached(out, box, origin_lonlat)
     out = Path(out)
     out.mkdir(parents=True, exist_ok=True)
     key = source_key(pbf, cfg_path, box, origin_lonlat)

@@ -107,7 +107,7 @@ Osobne zlecenie po założeniu repo: lista plików do przeniesienia (`viz_player
 ## Ustalenia z M1 (2026-10-22)
 
 - Nazwa aplikacji: **easy-matanimation** (ścieżka danych `%LOCALAPPDATA%\easy-matanimation`, plik `easy-matanimation.exe`, zip `easy-matanimation-windows.zip`). Tytuły okien i `user_agent` zmieniam w M2.
-- **Źródło OSM (do decyzji właściciela, wpływa na M2 i M5):** budynki 3D i łamane drogi budują się z `lodzkie-*.osm.pbf` (132 MB, poza gitem), którego paczka nie zawiera. Bez PBF aplikacja działa, ale rysuje proste odcinki i bez budynków. Opcje: (a) demo niesie gotowe cache budynków i łamanych (wymaga poprawki: `build` bez PBF ma użyć cache), a runy własne dostają przycisk „wskaż plik OSM (.osm.pbf)”; (b) to samo i dodatkowo pobieranie wycinka z Geofabrik/Overpass; (c) paczka bez OSM, tylko proste odcinki. Rekomendacja: (a).
+- **Źródło OSM (decyzja właściciela 2026-10-22):** domyślnie sieć z `network` runu (proste odcinki, bez budynków), opcjonalnie własny `.osm.pbf` wskazany przyciskiem (drogi zakręcone i budynki 3D, wynik w cache przy runie, ok. 5 MB). Demo niesie gotowe cache. Bez pobierania z Overpass/Geofabrik. Poprawka `build` bez PBF: zrobiona (A1b).
 
 ## Pytania do właściciela w trakcie (nie blokują M1)
 
