@@ -287,3 +287,8 @@ Wszystkie trzy części (A2a, A2b, A2c) przeszły: 96 testów i smoke w prawdziw
 
 - Zgłoszenie: `https://mapsneu.wien.gv.at/basemapneu/1.0.0/WMTSCapabilities.xml` pokazywał wszystkie 7 warstw jako „nie ma zestawu kafelków w EPSG:3857; ma: EPSG:6”. Przyczyna: `ogc.epsg()` czytał z URN `urn:ogc:def:crs:EPSG:6.18.3:3857` pierwszą liczbę po `EPSG:` (wersję bazy EPSG, 6), a nie kod. Naprawa: kod to ostatni człon (`EPSG:(?:[\d.]*:)?(\d+)`), test `test_epsg_code_forms` (URN z wersją, bez, `EPSG:2180`, `epsg:900913`, `CRS:84`). 106 testów.
 - Dowód na żywym serwisie: 7 warstw bez błędu; kafelek `geolandbasemap` (image/png) i `bmaporthofoto30cm` (image/jpeg) z z=15 pobrane i rozpoznane jako obrazy. Nie sprawdzone w oknie (dodanie warstwy kliknięciem).
+
+## Plan kolejnych funkcji (nie robione, na życzenie właściciela 2026-10-23)
+
+- [ ] **Skala mapy:** pasek skali (MapLibre `ScaleControl`, metry/kilometry) w oknie, żeby było widać aktualną skalę.
+- [ ] **Większe oddalenie:** obniżyć `minZoom` (dziś 8 w `viz_player/shell.html`, `new maplibregl.Map`), tak by dało się pokazać całą szeroką sieć (Wiedeń, Berlin) i by „cały obszar sieci” obejmował pełną obwiednię; po zmianie sprawdzić, czy kafelki WMS/WMTS i warstwy deck.gl dobrze się zachowują przy niskim zoomie.
