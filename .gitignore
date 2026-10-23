@@ -1,0 +1,16 @@
+# duże pliki i dane (OSM, runy MATSim); bez nich repo ma być małe
+data/
+output/
+*.pbf
+!viz_player/selftest/*.pbf
+*.zip
+# paczka aplikacji (scripts/viz_build.bat)
+build_viz/
+# Python
+.venv/
+__pycache__/
+*.log
+# klucze (CARTO) - nigdy do gita
+.env
+config/viz_basemap.local.toml
+.idea/

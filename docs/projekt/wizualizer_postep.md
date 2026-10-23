@@ -298,3 +298,10 @@ Wszystkie trzy części (A2a, A2b, A2c) przeszły: 96 testów i smoke w prawdziw
 - [x] **Skala mapy:** `ScaleControl` (metry/kilometry) w lewym dolnym rogu okna.
 - [x] **Większe oddalenie:** `minZoom` 8 -> 3, więc „cały obszar sieci” obejmuje pełną obwiednię także szerokich sieci.
 - Dowód: smoke sprawdza, że napis skali istnieje i zmienia się między zoomem 16 i 12 oraz że `getMinZoom() <= 3` i widok schodzi do zoomu 3; smoke OK na runie Kutna (g1r8 25%, WMS 24 kafelki). Na Wiedniu te kroki też przeszły, smoke kończy się tam znanym, kutnowskim testem „budynek z malutkiego pliku”. Do oceny wzrokowej przez właściciela: wygląd skali na ciemnym podkładzie, kafelki WMS/WMTS przy zoomie 3-6 (krok 15 listy testu).
+
+## Przeniesienie do osobnego repo (2026-10-23, A7)
+
+- Repo `C:\Users\Michal\Desktop\MATSim\easy-matanimation`, lokalne, bez `origin` (remote i push robi właściciel). Historia wycięta z gałęzi `claude/viz-fundamenty-e093b2` repo matsim-kutno (`git filter-branch`, 75 commitów z 165, te same autor i daty); w matsim-kutno nic nie zmieniono ani nie usunięto.
+- Dodane: `pyproject.toml` (zależności jak w `viz_player/requirements.txt`, grupa `viz` z pytest i matplotlib do testów modeli aut), `uv.lock`, `.gitignore`, `.gitattributes` (`.bat` w CRLF), `README.md`.
+- Układ katalogów bez zmian (`viz_player/`, `pipeline/viz_*.py`, `scripts/`, `config/`), więc ścieżki w kodzie działają. Uwaga: uruchomienie z kodu używa `output/` jako domyślnego katalogu runów (puste w nowym repo, run wskazuje się jawnie), a `viz_buildings.find_pbf` szuka `data/raw/osm/lodzkie-*.osm.pbf` w repo i katalogach nadrzędnych; tu leży kopia pliku w `data/raw/osm/` (ignorowana przez git).
+- Dowód: 107 testów, smoke OK na runie Kutna 25% (łamane 4705 z 10383, budynki 3D 83617, WMS 49 kafelków), `scripts\viz_build.bat` buduje exe i zip (46 MB), `viz_make_demo.py` buduje demo.

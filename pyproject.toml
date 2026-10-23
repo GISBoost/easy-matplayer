@@ -1,0 +1,22 @@
+[project]
+name = "easy-matanimation"
+version = "0.1.0"
+description = "Odtwarzacz wyników symulacji MATSim: ruch samochodów na mapie 2D/3D (aplikacja okienkowa na Windows)"
+requires-python = ">=3.12"
+license = "GPL-3.0-or-later"
+# te same wersje co viz_player/requirements.txt (paczka PyInstaller); testy i uruchomienie z kodu: uv run --group viz ...
+dependencies = [
+    "numpy==2.5.4",
+    "pyproj==3.8.0",
+    "zstandard==0.25.0",
+    "lxml==6.1.3",
+    "pillow==12.3.0",
+    "pywebview==6.2.1",
+    "osmium==4.3.1",
+]
+
+[dependency-groups]
+viz = [
+    "pytest>=9.1.1",
+    "matplotlib>=3.11.2",  # tylko testy modeli aut (porównanie obrazów)
+]
