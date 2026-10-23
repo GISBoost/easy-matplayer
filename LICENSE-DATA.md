@@ -24,6 +24,8 @@ Zgodnie z ODbL każda publiczna, wyprowadzona baza danych zawierająca dane z OS
 
 Dane z TomTom (wariant A, D22) i z innych API komercyjnych nie są w repozytorium. Wyjątek to zagregowane metryki i raporty. Nie są na licencji CC BY ani ODbL.
 
+Wyniki symulacji MATSim (eventy, sieć i plany wynikowe w runach demo) są na licencji **CC BY 4.0**, tak jak pliki wejściowe i wyjściowe w `matsim-example-project` (`matsim/README.md`, sekcja Licenses). Ponieważ powstały na sieci z OSM, sieć w nich zachowuje ODbL.
+
 Dane z Senozon AG (licencja własna) nie są używane w tym projekcie.
 
 ## Źródła
