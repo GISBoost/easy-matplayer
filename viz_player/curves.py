@@ -9,6 +9,8 @@ from pathlib import Path
 
 import numpy as np
 
+from viz_player.i18n import t
+
 LEN_M = 1.0
 END_M = 1.0
 # ponytail: odchylenie <= 2 m zostaje cięciwą. Na ekranie i tak prosta.
@@ -351,7 +353,7 @@ def coverage(curves):
     """„, w pliku OSM X z Y dróg sieci” albo pusty napis, gdy nie wiadomo."""
     if curves.wanted is None or curves.found is None:
         return ""
-    return f"; w pliku OSM {curves.found} z {curves.wanted} dróg sieci"
+    return t("; w pliku OSM {found} z {wanted} dróg sieci").format(found=curves.found, wanted=curves.wanted)
 
 
 def read_cache(cache, n, network, pbf, origin, crs="EPSG:2180"):
@@ -406,24 +408,26 @@ def load(run_dir, link_id, link_xy, link_length, origin, crs="EPSG:2180"):
     pbf = find_pbf()
     cached = read_cache(cache, n, network, pbf, origin, crs)
     if cached is not None:
-        return cached, f"łamane: {cached.n_bent} z {n}, cache{coverage(cached)}"
+        return cached, t("łamane: {n_bent} z {n}, cache{coverage}").format(n_bent=cached.n_bent, n=n, coverage=coverage(cached))
     try:
         ends = read_ends(network)
     except Exception as exc:
-        return empty(n), f"łamane: sieć nieczytelna ({exc}); cięciwy"
+        return empty(n), t("łamane: sieć nieczytelna ({exc}); cięciwy").format(exc=exc)
     if list(ends[0]) != [str(x) for x in link_id]:
-        return empty(n), "łamane: inna kolejność linków; cięciwy"
+        return empty(n), t("łamane: inna kolejność linków; cięciwy")
     wanted = {int(oid) for oid in ends[3] if oid and str(oid).lstrip("-").isdigit()}
     if not wanted or pbf is None:
-        why = "brak origid ani osm:way:id" if not wanted else "brak PBF"
-        return empty(n), f"łamane: {why}; cięciwy"
-    print("łamane: czytam OSM…", flush=True)
+        why = t("brak origid ani osm:way:id") if not wanted else t("brak PBF")
+        return empty(n), t("łamane: {why}; cięciwy").format(why=why)
+    print(t("łamane: czytam OSM…"), flush=True)
     started = time.perf_counter()
     ways = grab_ways(pbf, wanted)
     built = assemble(link_xy, link_length, ends, project(ways, origin, crs))
     built.found, built.wanted = len(ways), len(wanted)
     write_cache(cache, built, origin, pbf, crs)
     if not ways:
-        return built, f"łamane: plik OSM nie pokrywa tej sieci (0 z {len(wanted)} dróg); cięciwy"
-    return built, f"łamane: {built.n_bent} z {n}, skan {time.perf_counter() - started:.1f} s{coverage(built)}"
+        return built, t("łamane: plik OSM nie pokrywa tej sieci (0 z {n} dróg); cięciwy").format(n=len(wanted))
+    return built, t("łamane: {n_bent} z {n}, skan {s} s{coverage}").format(
+        n_bent=built.n_bent, n=n, s=f"{time.perf_counter() - started:.1f}", coverage=coverage(built),
+    )
 

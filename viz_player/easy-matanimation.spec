@@ -45,7 +45,7 @@ version_info = VSVersionInfo(
     kids=[
         StringFileInfo([StringTable("040904B0", [
             StringStruct("CompanyName", "GISBoost"),
-            StringStruct("FileDescription", "easy-matanimation: odtwarzacz runów MATSim"),
+            StringStruct("FileDescription", "easy-matanimation: MATSim run player"),
             StringStruct("FileVersion", VERSION),
             StringStruct("InternalName", "easy-matanimation"),
             StringStruct("LegalCopyright", "GPL-3.0-or-later"),

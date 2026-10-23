@@ -19,7 +19,8 @@ from pathlib import Path
 import numpy as np
 
 from viz_player import check, grab, ogc, rasters
-from viz_player import APP_NAME, __version__, startup
+from viz_player import APP_NAME, __version__, i18n, startup
+from viz_player.i18n import t
 from viz_player.paths import DATA, RES as ROOT, RUNS
 from viz_player.player import Player, clock, note, pick_ident, save_pbf, save_state, saved_pbf, saved_run, scaled
 
@@ -30,7 +31,9 @@ RASTERS = DATA / "viz_player_rasters"
 mimetypes.add_type("text/javascript", ".mjs")
 
 
-BUSY = {"status": "error", "message": "Poprzednia operacja jeszcze trwa."}
+def _busy():
+    """Funkcja, nie stała: tekst zależy od języka wybranego po imporcie."""
+    return {"status": "error", "message": t("Poprzednia operacja jeszcze trwa.")}
 
 
 class Api:
@@ -75,7 +78,7 @@ class Api:
             row = {"name": layer["name"], "title": layer["title"], "path": layer["path"]}
             try:
                 spec = ogc.make_spec(cap, layer["name"])
-                how = {"3857": "", "4326": " (przeliczany ze stopni)", "proj": " (przeliczany)"}.get(spec.get("mode", "3857"), "")
+                how = {"3857": "", "4326": " " + t("(przeliczany ze stopni)"), "proj": " " + t("(przeliczany)")}.get(spec.get("mode", "3857"), "")
                 row.update(ok=True, note=(spec.get("crs") or "EPSG:3857") + how)
             except ogc.OgcError as exc:
                 row.update(ok=False, note=str(exc))
@@ -115,7 +118,7 @@ class Api:
         import webview
         sel = self._window.create_file_dialog(
             webview.FileDialog.OPEN, directory=str(RUNS),
-            file_types=("Obrazy (*.png;*.jpg;*.jpeg;*.tif;*.tiff;*.webp)", "Wszystkie pliki (*.*)"),
+            file_types=(t("Obrazy (*.png;*.jpg;*.jpeg;*.tif;*.tiff;*.webp)"), t("Wszystkie pliki (*.*)")),
         )
         if not sel:
             return {"status": "cancel"}
@@ -129,7 +132,7 @@ class Api:
             name, size, src = rasters.store_image(path, self._rasters_dir, ident)
             base = {"id": ident, "type": "image", "name": Path(path).stem, "file": name, "size": list(size), "on": True, "opacity": 1.0}
             if georef is None:
-                entry = dict(base, corners=rasters.manual_corners(view, size), georef="ręczne")
+                entry = dict(base, corners=rasters.manual_corners(view, size), georef=t("ręczne"))
                 return self._add_image(entry, "manual")
             if georef["crs"] is None:
                 self._staged[ident] = {"entry": base, "affine": georef["affine"], "src": src, "source": georef["source"]}
@@ -151,13 +154,13 @@ class Api:
     def _epsg(value):
         code = ogc.epsg(str(value)) or (str(value).strip() if str(value).strip().isdigit() else None)
         if not code:
-            raise rasters.RasterError("Podaj kod układu, np. 2180 albo EPSG:4326.")
+            raise rasters.RasterError(t("Podaj kod układu, np. 2180 albo EPSG:4326."))
         return int(code)
 
     def raster_set_crs(self, ident, crs):
         stage = self._staged.get(ident)
         if stage is None:
-            return {"status": "error", "message": "Ten obraz już nie czeka na układ."}
+            return {"status": "error", "message": t("Ten obraz już nie czeka na układ.")}
         try:
             entry = dict(stage["entry"], corners=rasters.corners_from_affine(stage["affine"], stage["src"], self._epsg(crs)),
                          georef=f"{stage['source']}, EPSG:{self._epsg(crs)}")
@@ -173,18 +176,18 @@ class Api:
                     s["corners"], s["georef"] = corners, how
                     self._save_services()
                     return {"status": "ok", "service": s}
-        return {"status": "error", "message": "Nie ma takiego obrazu."}
+        return {"status": "error", "message": t("Nie ma takiego obrazu.")}
 
     def raster_set_corners(self, ident, corners):
-        return self._update_image(ident, [[float(a), float(b)] for a, b in corners], "ręczne")
+        return self._update_image(ident, [[float(a), float(b)] for a, b in corners], t("ręczne"))
 
     def raster_set_bbox(self, ident, west, south, east, north, crs):
         try:
             code = self._epsg(crs)
             corners = rasters.corners_from_bbox(float(west), float(south), float(east), float(north), code)
         except (rasters.RasterError, ValueError) as exc:
-            return {"status": "error", "message": str(exc) if isinstance(exc, rasters.RasterError) else "Zakres musi składać się z czterech liczb."}
-        return self._update_image(ident, corners, f"zakres EPSG:{code}")
+            return {"status": "error", "message": str(exc) if isinstance(exc, rasters.RasterError) else t("Zakres musi składać się z czterech liczb.")}
+        return self._update_image(ident, corners, t("zakres EPSG:{code}").format(code=code))
 
     def raster_data(self, ident):
         entry = next((s for s in self._services if s["id"] == ident and s.get("type") == "image"), None)
@@ -233,7 +236,7 @@ class Api:
         import webview
         sel = self._window.create_file_dialog(
             webview.FileDialog.OPEN, directory=str(RUNS if RUNS.is_dir() else Path.home()),
-            file_types=("Plik OSM (*.osm.pbf;*.pbf)", "Wszystkie pliki (*.*)"),
+            file_types=(t("Plik OSM (*.osm.pbf;*.pbf)"), t("Wszystkie pliki (*.*)")),
         )
         if not sel:
             return {"status": "cancel"}
@@ -243,7 +246,7 @@ class Api:
         """Ustawia plik OSM (path pusty: usuwa wybór) i otwiera bieżący run od nowa, żeby powstały budynki i łamane drogi.
         Błąd przywraca poprzedni wybór."""
         if self._progress["busy"]:
-            return BUSY
+            return _busy()
         before = saved_pbf()
         if path:
             problem = _pbf_problem(Path(path))
@@ -270,10 +273,21 @@ class Api:
     def open_path(self, path):
         """Otwiera run w nowym Playerze. Błąd zostawia bieżący run; sukces zapisuje stan i strona ma się przeładować."""
         if self._progress["busy"]:
-            return BUSY
+            return _busy()
         self._report("Start", 0.0)
         try:
             return self._open_path(path)
+        finally:
+            self._progress = {"busy": False, "label": "", "frac": 1.0}
+
+    def set_language(self, code):
+        """Zapisuje język i otwiera bieżący run od nowa: nazwy klas i komunikaty z Pythona powstają przy otwarciu. Strona się przeładowuje."""
+        if self._progress["busy"]:
+            return _busy()
+        i18n.save(code)
+        self._report("Start", 0.0)
+        try:
+            return self._open_path(str(self._player.run_dir))
         finally:
             self._progress = {"busy": False, "label": "", "frac": 1.0}
 
@@ -282,13 +296,13 @@ class Api:
         try:
             fresh.open(path, remember=False, progress=scaled(self._report, 0.0, 0.85))
         except Exception as exc:
-            return {"status": "error", "message": f"Nie udało się otworzyć: {exc}"}
+            return {"status": "error", "message": t("Nie udało się otworzyć: {exc}").format(exc=exc)}
         if fresh.error:
             return {"status": "error", "message": fresh.error}
         try:
             fresh.write_site(self._site, progress=scaled(self._report, 0.85, 1.0))
         except Exception as exc:
-            return {"status": "error", "message": f"Nie udało się przygotować strony: {exc}"}
+            return {"status": "error", "message": t("Nie udało się przygotować strony: {exc}").format(exc=exc)}
         save_state(fresh.run_dir)
         self._player = fresh
         return {"status": "ok", "run": fresh.run_name}
@@ -297,15 +311,15 @@ class Api:
 def _pbf_problem(path):
     """Opis kłopotu z plikiem OSM albo None. Sprawdza rozszerzenie i nagłówek (szybko, bez skanowania)."""
     if not path.is_file():
-        return f"Nie ma pliku {path.name}."
+        return t("Nie ma pliku {name}.").format(name=path.name)
     if path.suffix.lower() != ".pbf":
-        return "To nie jest plik .osm.pbf."
+        return t("To nie jest plik .osm.pbf.")
     try:
         import osmium
         with osmium.io.Reader(str(path), osmium.osm.osm_entity_bits.NOTHING) as reader:
             reader.header()
     except Exception as exc:
-        return f"Nie da się odczytać pliku OSM: {exc}"
+        return t("Nie da się odczytać pliku OSM: {exc}").format(exc=exc)
     return None
 
 
@@ -842,7 +856,7 @@ def prepare(run, site):
         index_html = None if player.error else player.write_site(site, progress=scaled(progress, 0.85, 1.0))
         return player, index_html
 
-    return startup.with_progress(f"Otwieram run {Path(run).name}", work)
+    return startup.with_progress(t("Otwieram run {name}").format(name=Path(run).name), work)
 
 
 def serve(run, explicit=False):
@@ -855,7 +869,7 @@ def serve(run, explicit=False):
     while True:
         if not run or not Path(run).is_dir():
             if explicit:
-                startup.show_error("Nie da się otworzyć runu", f"Brak katalogu {run}.")
+                startup.show_error(t("Nie da się otworzyć runu"), t("Brak katalogu {run}.").format(run=run))
                 return 1
             run = startup.pick_run(RUNS if RUNS.is_dir() else Path.home())
             if not run:
@@ -871,7 +885,7 @@ def serve(run, explicit=False):
             error = player.error
         if not error:
             break
-        startup.show_error("Nie da się otworzyć runu", error)
+        startup.show_error(t("Nie da się otworzyć runu"), error)
         if explicit:
             return 1
         run = None
@@ -902,6 +916,9 @@ def main(argv):
     if hasattr(sys.stdout, "reconfigure"):
         sys.stdout.reconfigure(encoding="utf-8", errors="replace")
         sys.stderr.reconfigure(encoding="utf-8", errors="replace")
+    i18n.load()
+    if argv[:1] in (["--check"], ["--smoke"]):  # harness czyta polskie napisy z DOM i z komunikatów
+        i18n.set_lang("pl")
     if argv[:1] == ["--check"] and len(argv) >= 2:
         return check.run(argv[1])
     if argv[:1] == ["--smoke"] and len(argv) >= 2:

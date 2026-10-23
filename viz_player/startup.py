@@ -9,6 +9,7 @@ import traceback
 from pathlib import Path
 
 from viz_player import APP_NAME, __version__
+from viz_player.i18n import t
 from viz_player.paths import DATA, FROZEN
 
 LOG = DATA / f"{APP_NAME}.log"
@@ -58,9 +59,9 @@ def webview2_missing():
 
 def show_webview2_missing():
     show_error(
-        "brak WebView2",
-        "Aplikacja potrzebuje składnika Microsoft Edge WebView2 Runtime.\nPobierz go z:\n" + WEBVIEW2_URL
-        + "\n\nPotem uruchom aplikację ponownie.",
+        t("brak WebView2"),
+        t("Aplikacja potrzebuje składnika Microsoft Edge WebView2 Runtime.\nPobierz go z:\n") + WEBVIEW2_URL
+        + t("\n\nPotem uruchom aplikację ponownie."),
     )
 
 
@@ -73,7 +74,7 @@ def crash(exc=None):
         show_webview2_missing()
         return
     last = trace.strip().splitlines()[-1] if trace.strip() else "nieznany błąd"
-    show_error("błąd", f"{last}\n\nSzczegóły są w pliku:\n{LOG}")
+    show_error(t("błąd"), f"{last}\n\n" + t("Szczegóły są w pliku:\n{log}").format(log=LOG))
 
 
 def pick_run(initial):
@@ -87,7 +88,7 @@ def pick_run(initial):
     try:
         path = filedialog.askdirectory(
             parent=root, initialdir=str(initial), mustexist=True,
-            title=f"{APP_NAME}: wskaż folder runu MATSim (z plikami output_events.xml.zst i output_network.xml.zst)",
+            title=t("{app}: wskaż folder runu MATSim (z plikami output_events.xml.zst i output_network.xml.zst)").format(app=APP_NAME),
         )
     finally:
         root.destroy()

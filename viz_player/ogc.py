@@ -13,7 +13,9 @@ import urllib.parse
 import urllib.request
 import xml.etree.ElementTree as ET
 
-UA = "easy-matanimation"
+from viz_player.i18n import t
+
+UA ="easy-matanimation"
 ORIGIN = 20037508.342789244  # połowa obwodu Ziemi w EPSG:3857, m
 SCALE0 = 559082264.0287178  # mianownik skali kafelka 256 px przy z=0 (piksel 0,28 mm)
 WEBMERC = {"3857", "900913", "102100", "102113", "3785"}
@@ -27,7 +29,7 @@ class OgcError(Exception):
 
 def _fetch(url, timeout=TIMEOUT):
     if urllib.parse.urlsplit(url).scheme not in ("http", "https"):
-        raise OgcError("Adres usługi musi zaczynać się od http:// albo https://")
+        raise OgcError(t("Adres usługi musi zaczynać się od http:// albo https://"))
     req = urllib.request.Request(url, headers={"User-Agent": UA})
     for attempt in range(RETRIES):
         try:
@@ -36,7 +38,7 @@ def _fetch(url, timeout=TIMEOUT):
         except Exception as exc:  # urllib daje kilka różnych wyjątków, użytkownik chce jedno zdanie
             # publiczne usługi bywają chwilowo niedostępne (zrywane połączenie, losowe 404), więc kilka prób
             if attempt == RETRIES - 1:
-                raise OgcError(f"Usługa nie odpowiada: {exc}") from exc
+                raise OgcError(t("Usługa nie odpowiada: {exc}").format(exc=exc)) from exc
             time.sleep(0.8)
 
 
@@ -90,7 +92,7 @@ def capabilities(url):
     """Pobiera i parsuje opis usługi. Zwraca słownik z kind 'wms' albo 'wmts'."""
     url = url.strip()
     if not url:
-        raise OgcError("Wpisz adres usługi.")
+        raise OgcError(t("Wpisz adres usługi."))
     if "{z}" in url and "{x}" in url:
         return {"kind": "xyz", "url": url, "title": "", "template": url,
                 "layers": [{"name": "xyz", "title": "Kafelki XYZ", "path": "Kafelki XYZ", "crs": ["EPSG:3857"]}]}
@@ -102,7 +104,7 @@ def capabilities(url):
         try:
             root = ET.fromstring(body)
         except ET.ParseError as exc:
-            last = OgcError(f"Odpowiedź usługi nie jest XML-em ({exc}).")
+            last = OgcError(t("Odpowiedź usługi nie jest XML-em ({exc}).").format(exc=exc))
             continue
         name = _tag(root)
         if name in ("WMS_Capabilities", "WMT_MS_Capabilities"):
@@ -110,8 +112,8 @@ def capabilities(url):
         if name == "Capabilities":
             return _parse_wmts(root, url)
         text = " ".join("".join(root.itertext()).split())[:200]
-        last = OgcError(f"Usługa zwróciła błąd: {text or name}")
-    raise last or OgcError("Nie rozpoznano usługi.")
+        last = OgcError(t("Usługa zwróciła błąd: {text}").format(text=text or name))
+    raise last or OgcError(t("Nie rozpoznano usługi."))
 
 
 def _parse_wms(root, url):
@@ -211,7 +213,7 @@ def make_spec(cap, layer_name):
     """Z opisu usługi i nazwy warstwy robi samodzielny opis do pobierania kafelków albo rzuca OgcError."""
     layer = next((l for l in cap["layers"] if l["name"] == layer_name), None)
     if layer is None:
-        raise OgcError(f"Usługa nie ma warstwy {layer_name}.")
+        raise OgcError(t("Usługa nie ma warstwy {layer_name}.").format(layer_name=layer_name))
     if cap["kind"] == "xyz":
         return {"kind": "xyz", "template": cap["template"]}
     if cap["kind"] == "wms":
@@ -229,7 +231,7 @@ def make_spec(cap, layer_name):
         else:
             other = next((c for c in layer["crs"] if epsg(c)), None)
             if other is None:
-                raise OgcError("Warstwa nie podaje żadnego układu współrzędnych.")
+                raise OgcError(t("Warstwa nie podaje żadnego układu współrzędnych."))
             spec.update(crs=other, mode="proj")
         return spec
     # WMTS
@@ -241,7 +243,7 @@ def make_spec(cap, layer_name):
             break
     if best is None:
         have = ", ".join(sorted({"EPSG:" + str(cap["sets"][s]["crs"]) for s in layer["sets"] if s in cap["sets"]})) or "brak"
-        raise OgcError(f"Warstwa WMTS nie ma zestawu kafelków w EPSG:3857 (256 px); ma: {have}.")
+        raise OgcError(t("Warstwa WMTS nie ma zestawu kafelków w EPSG:3857 (256 px); ma: {have}.").format(have=have))
     set_id, tms = best
     matrices = {}
     for m in tms["matrices"]:
@@ -250,7 +252,7 @@ def make_spec(cap, layer_name):
             if abs(SCALE0 / 2 ** z - m["scale"]) / m["scale"] < 1e-3:
                 matrices[z] = m["id"]
     if not matrices:
-        raise OgcError("Zestaw kafelków WMTS nie ma skal zgodnych z siatką Web Mercator.")
+        raise OgcError(t("Zestaw kafelków WMTS nie ma skal zgodnych z siatką Web Mercator."))
     fmt = _pick_format(layer["formats"])
     spec = {"kind": "wmts", "layer": layer_name, "style": layer["style"], "set": set_id, "format": fmt,
             "matrices": {str(z): i for z, i in matrices.items()}, "kvp": cap["kvp"]}
@@ -296,7 +298,7 @@ def wms_tile_url(spec, z, x, y):
 def wmts_tile_url(spec, z, x, y):
     ident = spec["matrices"].get(str(z))
     if ident is None:
-        raise OgcError(f"Brak poziomu {z} w zestawie kafelków.")
+        raise OgcError(t("Brak poziomu {z} w zestawie kafelków.").format(z=z))
     if spec.get("rest"):
         url = spec["rest"]
         for key, val in (("TileMatrixSet", spec["set"]), ("TileMatrix", ident), ("TileRow", y), ("TileCol", x), ("Style", spec["style"])):
@@ -311,7 +313,7 @@ def wmts_tile_url(spec, z, x, y):
 def _check_image(body, ctype):
     if not ctype.lower().startswith("image/"):
         text = " ".join(body[:400].decode("utf-8", "replace").split())
-        raise OgcError(f"Usługa zwróciła nie obraz: {text[:160]}")
+        raise OgcError(t("Usługa zwróciła nie obraz: {text}").format(text=text[:160]))
     return ctype.split(";")[0].strip(), body
 
 
@@ -329,7 +331,7 @@ def _tile_proj(spec, z, x, y):
     fwd = Transformer.from_crs(3857, code, always_xy=True)
     px, py = fwd.transform(gx, gy)
     if not np.isfinite(px).all():
-        raise OgcError("Kafelek poza zakresem układu usługi.")
+        raise OgcError(t("Kafelek poza zakresem układu usługi."))
     x0, x1, y0, y1 = float(px.min()), float(px.max()), float(py.min()), float(py.max())
     pad = max(x1 - x0, y1 - y0) / n * 2
     x0, x1, y0, y1 = x0 - pad, x1 + pad, y0 - pad, y1 + pad

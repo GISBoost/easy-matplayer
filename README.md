@@ -1,24 +1,26 @@
 # easy-matanimation
 
-Odtwarzacz wyników symulacji [MATSim](https://matsim.org/): ruch samochodów na mapie w 2D i 3D, z budynkami. Aplikacja okienkowa na Windows, bez instalacji i bez Pythona.
+A player for [MATSim](https://matsim.org/) simulation results: car traffic on a map, in 2D and 3D, with buildings. A desktop app for Windows, with no installation and no Python needed.
 
-Opis dla użytkownika: [docs/viz/README_pl.md](docs/viz/README_pl.md). Postęp i decyzje: [docs/projekt/wizualizer_postep.md](docs/projekt/wizualizer_postep.md).
+User guide: [docs/viz/README.md](docs/viz/README.md). Progress and decisions (in Polish): [docs/projekt/wizualizer_postep.md](docs/projekt/wizualizer_postep.md).
 
-## Uruchomienie z kodu
+Polish version: [README_pl.md](README_pl.md).
+
+## Running from source
 
 ```
-uv run --group viz python -m viz_player <folder runu MATSim>
+uv run --group viz python -m viz_player <MATSim run folder>
 uv run --group viz pytest viz_player/tests -q
 ```
 
-## Paczka i wydanie
+## Package and release
 
 ```
 scripts\viz_build.bat
 ```
 
-Wydanie: tag `viz-v<wersja>` uruchamia `.github/workflows/viz_release.yml`.
+Release: a tag `viz-v<version>` starts `.github/workflows/viz_release.yml`.
 
-## Licencje
+## Licences
 
-Kod: GPL-3.0-or-later ([LICENSE](LICENSE)). Dane: [LICENSE-DATA.md](LICENSE-DATA.md).
+Code: GPL-3.0-or-later ([LICENSE](LICENSE)). Data: [LICENSE-DATA.en.md](LICENSE-DATA.en.md) (English translation of [LICENSE-DATA.md](LICENSE-DATA.md), which is binding).

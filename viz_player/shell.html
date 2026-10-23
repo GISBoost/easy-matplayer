@@ -132,7 +132,7 @@ body.panel-off #panel { display: none; }
 <aside id="panel">
   <h1>easy-matanimation <small id="ver"></small></h1>
   <p class="run" id="run"></p>
-  <button id="openrun" type="button" class="chip">otwórz run…</button>
+  <button id="openrun" type="button" class="chip">otwórz run…</button> <button id="lang" type="button" class="chip">English</button>
   <p id="runmsg" class="muted" hidden></p>
   <progress id="runbar" max="1" value="0" hidden></progress>
   <p id="crsnote" class="muted" style="color:#f0b35a" hidden></p>
@@ -217,6 +217,26 @@ window.mapLibrary = import("./vendor/maplibre/maplibre-gl.mjs").then((m) => { wi
 <script src="engine.js"></script>
 <script>
 let boot = {};
+// Teksty: klucz to polski tekst z kodu. Tabela przychodzi w boot.json (po angielsku), po polsku jest pusta i zostaje tekst z kodu.
+let STR = {};
+const T = (text) => STR[text] || text;
+const F = (text, vars) => Object.keys(vars).reduce((s, k) => s.split("{" + k + "}").join(vars[k]), T(text));
+// Statyczny tekst w HTML i atrybuty title, placeholder, aria-label: zamiana po całym tekście węzła.
+function translateStatic() {
+  const walker = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT);
+  const nodes = [];
+  while (walker.nextNode()) nodes.push(walker.currentNode);
+  nodes.forEach((n) => {
+    const key = n.nodeValue.trim();
+    if (key && STR[key]) n.nodeValue = n.nodeValue.replace(key, STR[key]);
+  });
+  document.querySelectorAll("[title], [placeholder], [aria-label]").forEach((el) => {
+    ["title", "placeholder", "aria-label"].forEach((attr) => {
+      const v = el.getAttribute(attr);
+      if (v && STR[v]) el.setAttribute(attr, STR[v]);
+    });
+  });
+}
 const VMAX = 14;
 const ROAD = {
   motorway: "#d5dde6", motorway_link: "#d5dde6",
@@ -330,10 +350,10 @@ function clock(sec) {
   return String(h).padStart(2, "0") + ":" + String(m).padStart(2, "0") + ":" + String(s).padStart(2, "0");
 }
 function auta(n) {
-  if (n === 1) return "1 auto";
+  if (n === 1) return T("1 auto");
   const d = n % 10, h = n % 100;
-  if (d >= 2 && d <= 4 && (h < 12 || h > 14)) return n + " auta";
-  return n + " aut";
+  const form = d >= 2 && d <= 4 && (h < 12 || h > 14) ? "{n} auta" : "{n} aut";
+  return T(form).split("{n}").join(String(n));
 }
 const RAMP = (() => {
   const a = [255, 31, 13], b = [255, 179, 26], c = [26, 230, 255];
@@ -359,12 +379,12 @@ function roadLegend() {
     d.append(i, label);
     box.appendChild(d);
   };
-  ROAD_OSM.forEach((r) => { if (types.some((x) => r[2].indexOf(x) >= 0)) add(r[0], r[1]); });
-  if (types.some((x) => !ROAD_OSM.some((r) => r[2].indexOf(x) >= 0))) add(ROAD_OSM_OTHER[0], ROAD_OSM_OTHER[1]);
+  ROAD_OSM.forEach((r) => { if (types.some((x) => r[2].indexOf(x) >= 0)) add(T(r[0]), r[1]); });
+  if (types.some((x) => !ROAD_OSM.some((r) => r[2].indexOf(x) >= 0))) add(T(ROAD_OSM_OTHER[0]), ROAD_OSM_OTHER[1]);
 }
 function setCarColor(byClass) {
   carByClass = byClass;
-  document.getElementById("carcolor").textContent = "kolor auta: " + (byClass ? "klasa" : "prędkość");
+  document.getElementById("carcolor").textContent = T("kolor auta: ") + T(byClass ? "klasa" : "prędkość");
   document.getElementById("carcolor").classList.toggle("on", byClass);
   document.getElementById("lg-speed").hidden = byClass;
   const box = document.getElementById("lg-class");
@@ -404,9 +424,10 @@ function applyBoot() {
   document.getElementById("run").textContent = boot.run || "";
   document.getElementById("ver").textContent = boot.version ? "v" + boot.version : "";
   const osm = boot.osm || {file: null, user: false, cached: false};
-  document.getElementById("osmname").textContent = osm.file ? "OSM: " + osm.file : osm.cached ? "OSM: dane zapisane przy runie" : "OSM: brak (proste odcinki, bez budynków)";
+  document.getElementById("osmname").textContent = osm.file ? F("OSM: {file}", {file: osm.file})
+    : T(osm.cached ? "OSM: dane zapisane przy runie" : "OSM: brak (proste odcinki, bez budynków)");
   document.getElementById("osm-clear").hidden = !osm.user;
-  document.getElementById("sample").textContent = "próbka " + boot.sample;
+  document.getElementById("sample").textContent = F("próbka {s}", {s: boot.sample});
   document.getElementById("curves").textContent = boot.curveNote || "";
   const cn = document.getElementById("crsnote");
   cn.textContent = boot.crsNote || "";
@@ -445,6 +466,10 @@ async function loadBoot() {
     return kind === "json" ? res.json() : new kind(await res.arrayBuffer());
   };
   boot = await get("boot.json", "json");
+  STR = boot.strings || {};
+  document.documentElement.lang = boot.lang || "en";
+  document.getElementById("lang").textContent = boot.lang === "en" ? "Polski" : "English";
+  translateStatic();
   if (boot.error) return;
   boot.linkLL = await get("link_ll.bin", Float64Array);
   boot.linkType = await get("link_type.bin", Uint8Array);
@@ -473,8 +498,8 @@ async function loadBoot() {
 
 const STAY_NAME = {home: "dom", work: "praca", tlo_start: "tło", tlo_end: "tło"};
 function segName(seg) {
-  if (seg.trip) return "jazda";
-  return STAY_NAME[seg.label] || seg.label;
+  if (seg.trip) return T("jazda");
+  return T(STAY_NAME[seg.label] || seg.label);
 }
 function axisPos(segments, time) {
   let prev = 0;
@@ -536,7 +561,7 @@ function showPanel(p) {
   if (!p || p.kind === "miss") return;
   el.className = p.kind === "empty" ? "muted" : "";
   el.replaceChildren();
-  const lines = (p.lines && p.lines.length) ? p.lines : (p.kind === "empty" ? ["Kliknij auto albo drogę."] : []);
+  const lines = (p.lines && p.lines.length) ? p.lines : (p.kind === "empty" ? [T("Kliknij auto albo drogę.")] : []);
   lines.forEach((text) => {
     const d = document.createElement("div");
     d.textContent = text;
@@ -550,7 +575,7 @@ function showHits(hits) {
   if (!hits.length) {
     const d = document.createElement("div");
     d.className = "muted";
-    d.textContent = "Brak takiego id.";
+    d.textContent = T("Brak takiego id.");
     box.appendChild(d);
     return;
   }
@@ -834,7 +859,7 @@ function loop(now) {
 function setPlaying(on) {
   playing = on && t < tMax;
   const b = document.getElementById("play");
-  b.textContent = playing ? "pauza" : "start";
+  b.textContent = T(playing ? "pauza" : "start");
   b.classList.toggle("on", playing);
 }
 document.getElementById("three").addEventListener("click", () => setThreeD(!threeD));
@@ -864,7 +889,7 @@ async function runBusy(start, text) {
   return r;
 }
 async function openRunPath(path) {
-  return runBusy((api) => api.open_path(path), "Run się otwiera…");
+  return runBusy((api) => api.open_path(path), T("Run się otwiera…"));
 }
 window.openRunPath = openRunPath;
 // Plik OSM (opcjonalny): bez niego proste odcinki z sieci runu, z nim łamane drogi i budynki 3D; wynik w cache przy runie
@@ -872,10 +897,16 @@ document.getElementById("osm-pick").addEventListener("click", async () => {
   const api = window.pywebview && window.pywebview.api;
   if (!api) return;
   const r = await api.osm_pick();
-  if (r.status === "path") runBusy((a) => a.osm_use(r.path), "Czytam plik OSM…");
+  if (r.status === "path") runBusy((a) => a.osm_use(r.path), T("Czytam plik OSM…"));
 });
-document.getElementById("osm-clear").addEventListener("click", () => runBusy((a) => a.osm_use(""), "Otwieram run bez pliku OSM…"));
-window.useOsm = (path) => runBusy((a) => a.osm_use(path), "Czytam plik OSM…");
+document.getElementById("osm-clear").addEventListener("click", () => runBusy((a) => a.osm_use(""), T("Otwieram run bez pliku OSM…")));
+window.useOsm = (path) => runBusy((a) => a.osm_use(path), T("Czytam plik OSM…"));
+// Przełącznik języka: Python zapisuje wybór, przeładowuje run (nazwy klas i komunikaty powstają przy otwarciu), strona się przeładowuje.
+document.getElementById("lang").addEventListener("click", () => {
+  const api = window.pywebview && window.pywebview.api;
+  if (!api) return;
+  runBusy((a) => a.set_language(boot.lang === "en" ? "pl" : "en"), T("Run się otwiera…"));
+});
 document.getElementById("openrun").addEventListener("click", async () => {
   const api = window.pywebview && window.pywebview.api;
   if (!api) return;
@@ -1018,7 +1049,7 @@ function svcRender() {
     const name = document.createElement("span");
     name.textContent = s.name; name.title = s.name;
     const del = document.createElement("button");
-    del.type = "button"; del.textContent = "×"; del.title = "usuń";
+    del.type = "button"; del.textContent = "×"; del.title = T("usuń");
     const op = document.createElement("input");
     op.type = "range"; op.min = "0"; op.max = "1"; op.step = "0.05"; op.value = String(s.opacity);
     on.addEventListener("change", () => { s.on = on.checked; svcApi().ogc_set(s.id, s.on, s.opacity); svcSync(); });
@@ -1027,7 +1058,7 @@ function svcRender() {
     row.append(on, name, del, op);
     if (s.type === "image") {
       const set = document.createElement("button");
-      set.type = "button"; set.textContent = "ustaw"; set.title = s.georef || "";
+      set.type = "button"; set.textContent = T("ustaw"); set.title = s.georef || "";
       set.addEventListener("click", () => (editing && editing.s === s ? editStop() : editStart(s)));
       row.append(set);
     }
@@ -1053,11 +1084,11 @@ svcEl("svc-form").addEventListener("submit", async (ev) => {
   const url = svcEl("svc-url").value.trim(), msg = svcEl("svc-msg"), list = svcEl("svc-layers");
   svcEl("svc-ok").disabled = true;
   list.hidden = true; list.textContent = "";
-  msg.textContent = "Łączę…";
+  msg.textContent = T("Łączę…");
   const r = await svcApi().ogc_connect(url);
   if (r.status !== "ok") { msg.textContent = r.message; return; }
   svcCap = {url, title: r.title};
-  msg.textContent = (r.kind === "wmts" ? "WMTS" : "WMS") + (r.title ? ": " + r.title : "") + ", warstw: " + r.layers.length;
+  msg.textContent = (r.kind === "wmts" ? "WMTS" : "WMS") + (r.title ? ": " + r.title : "") + F(", warstw: {n}", {n: r.layers.length});
   if (!svcEl("svc-name").value.trim()) svcEl("svc-name").value = r.title || "";
   r.layers.forEach((l) => {
     const lab = document.createElement("label");
@@ -1089,7 +1120,9 @@ async function addImagePath(path) {
   if (r.status === "error") { svcEl("runmsg").textContent = r.message; svcEl("runmsg").hidden = false; return r; }
   if (r.status === "needs_crs") {
 
-    imgDialog("crs", "Plik świata bez układu", "Obraz ma georeferencję (" + r.source + "), ale nie wiadomo, w jakim układzie jest zapisana. Podpowiedź z liczb: EPSG:" + r.guess + ".", String(r.guess));
+    imgDialog("crs", T("Plik świata bez układu"),
+      F("Obraz ma georeferencję ({source}), ale nie wiadomo, w jakim układzie jest zapisana. Podpowiedź z liczb: EPSG:{guess}.", {source: r.source, guess: r.guess}),
+      String(r.guess));
     imgPending = {id: r.id, mode: "crs"};
     return r;
   }
@@ -1110,8 +1143,8 @@ svcEl("img-close").addEventListener("click", () => {
 });
 svcEl("edit-bbox").addEventListener("click", () => {
   imgPending = {id: editing.s.id, mode: "bbox"};
-  svcEl("img-title").textContent = "Wpisz zakres obrazu";
-  svcEl("img-text").textContent = "Współrzędne krawędzi obrazu w wybranym układzie (dla stopni: długość jako W i E, szerokość jako S i N).";
+  svcEl("img-title").textContent = T("Wpisz zakres obrazu");
+  svcEl("img-text").textContent = T("Współrzędne krawędzi obrazu w wybranym układzie (dla stopni: długość jako W i E, szerokość jako S i N).");
   svcEl("img-msg").textContent = "";
   svcEl("img-bbox").hidden = false;
   svcEl("img-dlg").hidden = false;
@@ -1174,7 +1207,7 @@ document.getElementById("axis-bar").addEventListener("click", (ev) => {
 document.getElementById("hide").addEventListener("click", () => {
   const off = document.body.classList.toggle("panel-off");
   const b = document.getElementById("hide");
-  b.textContent = off ? "panel" : "ukryj";
+  b.textContent = T(off ? "panel" : "ukryj");
   b.classList.toggle("on", off);
   if (map) setTimeout(() => { map.resize(); dirty = true; }, 0);
 });
@@ -1254,7 +1287,7 @@ class FitControl {
     this.el.className = "maplibregl-ctrl maplibregl-ctrl-group";
     const btn = document.createElement("button");
     btn.type = "button"; btn.id = "fit"; btn.className = "maplibregl-ctrl-icon";
-    btn.title = "Pokaż cały obszar sieci"; btn.setAttribute("aria-label", btn.title);
+    btn.title = T("Pokaż cały obszar sieci"); btn.setAttribute("aria-label", btn.title);
     btn.addEventListener("click", fitNetwork);
     this.el.append(btn);
     return this.el;
@@ -1269,8 +1302,8 @@ async function bootMap() {
   }
   await window.mapLibrary;
   if (!hasWebGL2() || !window.maplibregl) {
-    noGL("Ta aplikacja rysuje mapę w WebGL2, a to okno go nie ma" + (window.mapLibraryError ? " (" + window.mapLibraryError + ")" : "") +
-      ". Zaktualizuj sterownik karty graficznej albo uruchom program na komputerze z kartą obsługującą WebGL2.");
+    noGL(T("Ta aplikacja rysuje mapę w WebGL2, a to okno go nie ma") + (window.mapLibraryError ? " (" + window.mapLibraryError + ")" : "") +
+      T(". Zaktualizuj sterownik karty graficznej albo uruchom program na komputerze z kartą obsługującą WebGL2."));
     return;
   }
   roads = buildRoads();

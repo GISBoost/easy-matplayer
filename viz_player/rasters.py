@@ -16,6 +16,8 @@ from pathlib import Path
 
 from PIL import Image
 
+from viz_player.i18n import t
+
 MAX_PX = 4096
 ORIGIN = 20037508.342789244
 WORLD_EXT = {
@@ -54,7 +56,7 @@ def _world_file(path):
         try:
             a, d, b, e, c, f = (float(line.split()[0]) for line in cand.read_text(encoding="utf-8", errors="ignore").splitlines()[:6])
         except (ValueError, IndexError):
-            raise RasterError(f"Plik świata {cand.name} ma zły format (oczekiwano sześciu liczb).")
+            raise RasterError(t("Plik świata {name} ma zły format (oczekiwano sześciu liczb).").format(name=cand.name))
         return (a, b, c - a / 2 - b / 2, d, e, f - d / 2 - e / 2)
     return None
 
@@ -104,7 +106,7 @@ def read_georef(path):
         return {"affine": aff, "crs": code or _prj_epsg(path), "source": "GeoTIFF"}
     aff = _world_file(path)
     if aff:
-        return {"affine": aff, "crs": _prj_epsg(path), "source": "plik świata"}
+        return {"affine": aff, "crs": _prj_epsg(path), "source": t("plik świata")}
     return None
 
 
@@ -131,14 +133,14 @@ def corners_from_affine(affine, size, crs):
     try:
         to = Transformer.from_crs(int(crs), 4326, always_xy=True)
     except Exception:
-        raise RasterError(f"Nieznany układ EPSG:{crs}.")
+        raise RasterError(t("Nieznany układ EPSG:{crs}.").format(crs=crs))
     return [[float(v) for v in to.transform(x, y)] for x, y in pts]
 
 
 def corners_from_bbox(west, south, east, north, crs=4326):
     """Zakres W, S, E, N jako x/y układu crs (dla stopni: długość, szerokość)."""
     if not (west < east and south < north):
-        raise RasterError("Zakres musi mieć W < E oraz S < N.")
+        raise RasterError(t("Zakres musi mieć W < E oraz S < N."))
     return corners_from_affine((east - west, 0.0, west, 0.0, south - north, north), (1, 1), crs)
 
 
@@ -163,7 +165,7 @@ def store_image(path, dest_dir, ident, max_px=MAX_PX):
         img = Image.open(path)
         img.load()
     except Exception as exc:
-        raise RasterError(f"Nie da się wczytać obrazu {path.name}: {exc}")
+        raise RasterError(t("Nie da się wczytać obrazu {name}: {exc}").format(name=path.name, exc=exc))
     src_size = img.size
     scale = min(1.0, max_px / max(img.size))
     if scale < 1.0:

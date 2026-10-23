@@ -23,7 +23,7 @@ import viz_engine
 import viz_buildings
 import viz_export
 
-from viz_player import curves, site
+from viz_player import curves, i18n, site
 
 STATE = DATA / "viz_player_state.json"
 OSM_STATE = DATA / "viz_player_osm.json"
@@ -46,15 +46,20 @@ def clock(t):
     return f"{hour:02d}:{minute:02d}:{sec:02d}"
 
 
+def _decimal(text):
+    """Przecinek po polsku, kropka po angielsku."""
+    return text.replace(".", ",") if i18n.lang() == "pl" else text
+
+
 def sample_label(value):
     if value is None:
-        return "brak"
-    return f"{float(value):.2f}".rstrip("0").rstrip(".").replace(".", ",")
+        return i18n.t("brak")
+    return _decimal(f"{float(value):.2f}".rstrip("0").rstrip("."))
 
 
 def kmh(mps):
     value = float(mps) * 3.6
-    text = f"{value:.0f}" if abs(value - round(value)) < 0.05 else f"{value:.1f}".replace(".", ",")
+    text = f"{value:.0f}" if abs(value - round(value)) < 0.05 else _decimal(f"{value:.1f}")
     return text + " km/h"
 
 
@@ -65,11 +70,11 @@ def meters(length):
 def auta(n):
     n = int(n)
     if n == 1:
-        return "1 auto"
+        return i18n.t("1 auto")
     digit, hundred = n % 10, n % 100
     if 2 <= digit <= 4 and not 12 <= hundred <= 14:
-        return f"{n} auta"
-    return f"{n} aut"
+        return i18n.t("{n} auta").format(n=n)
+    return i18n.t("{n} aut").format(n=n)
 
 
 def covering(rows, t):
@@ -272,29 +277,31 @@ class Player:
         self.basemap = carto_basemap()
         viz_buildings.USER_PBF = Path(saved_pbf()) if saved_pbf() else None
         if not self.run_dir.is_dir():
-            self.error = f"Brak katalogu runu {self.run_name}."
+            self.error = i18n.t("Brak katalogu runu {run}.").format(run=self.run_name)
             return
         missing = []
         if not (self.run_dir / "output_events.xml.zst").exists():
-            missing.append("eventów")
+            missing.append(i18n.t("eventów"))
         if not (self.run_dir / "output_network.xml.zst").exists():
-            missing.append("sieci")
+            missing.append(i18n.t("sieci"))
         if missing:
-            self.error = "Brak " + " i ".join(missing) + f" w {self.run_name}."
+            self.error = i18n.t("Brak {what} w {run}.").format(what=i18n.t(" i ").join(missing), run=self.run_name)
             return
         try:
             self.index = viz_engine.load(self.run_dir, scaled(progress, 0.0, 0.8))
             if progress:
-                progress("Łamane drogi (OSM)", None)  # skan PBF trwa dziesiątki sekund i nie ma ułamka: pasek bez wartości
+                progress(i18n.t("Łamane drogi (OSM)"), None)  # skan PBF trwa dziesiątki sekund i nie ma ułamka: pasek bez wartości
             self._read_links()
             self.origin = tuple(float(v) for v in self.index.meta["origin"])
             self.crs = self.index.meta.get("crs", "EPSG:2180")
-            self.crs_note = "" if self.index.meta.get("crs_declared", True) else f"Brak układu współrzędnych w output_config.xml: założono {self.crs}. Jeśli mapa jest w złym miejscu, dodaj ten plik do runu."
+            self.crs_note = "" if self.index.meta.get("crs_declared", True) else i18n.t(
+                "Brak układu współrzędnych w output_config.xml: założono {crs}. Jeśli mapa jest w złym miejscu, dodaj ten plik do runu.",
+            ).format(crs=self.crs)
             self.fwd = Transformer.from_crs(self.crs, "EPSG:4326", always_xy=True)
             self.inv = Transformer.from_crs("EPSG:4326", self.crs, always_xy=True)
         except viz_engine.EngineFailed as exc:
             self.index = None
-            self.error = f"Indeks się nie zbudował: {exc}"
+            self.error = i18n.t("Indeks się nie zbudował: {exc}").format(exc=exc)
             return
         try:
             self.curve, msg = curves.load(
@@ -302,10 +309,12 @@ class Player:
             )
         except Exception as exc:
             self.curve = curves.empty(len(self.link_id))
-            msg = f"łamane: {exc}; cięciwy"
+            msg = i18n.t("łamane: {exc}; cięciwy").format(exc=exc)
         self.curve.prepare(self.index.link_xy)
         n_bent = self.curve.n_bent
-        self.curve_note = f"łamane: {n_bent} z {len(self.link_id)}{curves.coverage(self.curve)}" if n_bent else msg
+        self.curve_note = i18n.t("łamane: {n} z {total}{coverage}").format(
+            n=n_bent, total=len(self.link_id), coverage=curves.coverage(self.curve),
+        ) if n_bent else msg
         note(self.run_dir, msg)
         self._setup()
         if remember:
@@ -324,7 +333,7 @@ class Player:
         meta = self.index.meta
         t0, t1 = float(meta["t_min"]), float(meta["t_max"])
         self.t_start = float(START if t0 <= START <= t1 else t0)
-        self.class_name = {row["key"]: row["name"] for row in meta["classes"]}
+        self.class_name = {row["key"]: i18n.t(row["name"]) for row in meta["classes"]}
         types = meta["type_legend"]
         count = max((int(key) for key in types), default=-1) + 1
         self.type_names = [types[str(i)] for i in range(count)]
@@ -386,7 +395,7 @@ class Player:
     def panel(self, t, fr, ident, link):
         """Panel dla klatki z silnika Pythona (wzorzec w testach). Okno woła describe()."""
         if self.index is None:
-            return {"kind": "empty", "lines": [self.error or "Brak runu."], "axis": []}
+            return {"kind": "empty", "lines": [self.error or i18n.t("Brak runu.")], "axis": []}
         if ident is None and link is not None:
             return self._link_panel(link, viz_engine.link_now(fr, link))
         if ident is None:
@@ -443,16 +452,16 @@ class Player:
             lid, _typ, _leng, _free = self.link_bits(int(cover["link"]))
             return {
                 "kind": "activity",
-                "lines": [ident, cover["type"], "link " + lid, "nie jedzie"],
+                "lines": [ident, cover["type"], "link " + lid, i18n.t("nie jedzie")],
                 "axis": axis,
             }
-        return {"kind": "idle", "lines": [ident, "nie jedzie"], "axis": axis}
+        return {"kind": "idle", "lines": [ident, i18n.t("nie jedzie")], "axis": axis}
 
     def _link_panel(self, link_i, now):
         lid, typ, leng, free = self.link_bits(link_i)
-        line = "teraz " + auta(now["n"])
+        line = i18n.t("teraz {cars}").format(cars=auta(now["n"]))
         if now["n"]:
-            line += ", średnia na odcinku " + kmh(now["speed_mean"])
+            line += i18n.t(", średnia na odcinku {speed}").format(speed=kmh(now["speed_mean"]))
         return {
             "kind": "link",
             "lines": [lid, typ, leng, "freespeed " + free, line],
@@ -579,6 +588,7 @@ class Player:
             "tMin": 0, "tMax": 1, "sample": "brak", "basemap": self.basemap,
             "bounds": None, "types": [], "classes": [], "nLinks": 0, "nCurve": 0, "curveNote": "", "data": None,
             "buildings": None, "buildingsNote": "", "crsNote": self.crs_note, "osm": self.osm_info(),
+            "lang": i18n.lang(), "strings": i18n.table(),
         }
         if self.index is None:
             return base
@@ -610,12 +620,13 @@ class Player:
 
     def buildings_note(self):
         if self.buildings is None:
-            return "budynki: brak pliku OSM (wskaż plik .osm.pbf w panelu)"
+            return i18n.t("budynki: brak pliku OSM (wskaż plik .osm.pbf w panelu)")
         if self.buildings["n"] == 0:
-            return "budynki: w pliku OSM nie ma budynków w obszarze sieci (czy plik pokrywa tę sieć?)"
+            return i18n.t("budynki: w pliku OSM nie ma budynków w obszarze sieci (czy plik pokrywa tę sieć?)")
         c = self.buildings["counts"]
-        return (f"budynki {self.buildings['n']}: wysokość z tagu {c['tag']}, z pięter {c['levels']}, "
-                f"założenie wg klasy {c['default']} (piętra i klasa to założenia)")
+        return i18n.t("budynki {n}: wysokość z tagu {tag}, z pięter {levels}, założenie wg klasy {default} (piętra i klasa to założenia)").format(
+            n=self.buildings["n"], tag=c["tag"], levels=c["levels"], default=c["default"],
+        )
 
     def boot_arrays(self):
         if self.index is None:
@@ -655,14 +666,14 @@ class Player:
             if progress:
                 progress(label, frac)
 
-        report("Eksport danych dla okna", 0.0)
+        report(i18n.t("Eksport danych dla okna"), 0.0)
         self.export_key = viz_export.build(self.run_dir, out=Path(dest) / "data")["source_key"]
-        report("Budynki 3D (OSM)", None)
+        report(i18n.t("Budynki 3D (OSM)"), None)
         box, origin = viz_buildings.network_box(self.run_dir)
         self.buildings = self._keep_buildings(Path(dest) / "data", box, origin)
-        report("Zapisuję stronę okna", 0.9)
+        report(i18n.t("Zapisuję stronę okna"), 0.9)
         path = site.write_site(dest, self.boot(), self.boot_arrays())
-        report("Gotowe", 1.0)
+        report(i18n.t("Gotowe"), 1.0)
         return path
 
 

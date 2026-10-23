@@ -10,6 +10,10 @@ Odtwarzacz wyników symulacji [MATSim](https://matsim.org/): ruch samochodów na
 
 Wymagania: Windows 10 22H2 albo 11 (64-bit) i Microsoft Edge WebView2 Runtime (jest w Windows 11 i w większości Windows 10; jeśli go brakuje, program pokaże komunikat z linkiem do instalatora). Karta graficzna z obsługą WebGL; zintegrowana wystarcza.
 
+## Język
+
+Interfejs startuje po angielsku (wersja angielska tej instrukcji: [README.md](README.md)). Przycisk obok „otwórz run…” w panelu przełącza na polski (wtedy opisuje się jako „English”). Wybór zapisuje się w `%LOCALAPPDATA%\easy-matanimation\viz_player_lang.json`. Zmiana języka przeładowuje otwarty run. Nazwy przycisków w tej instrukcji są po polsku i zgadzają się z interfejsem po przełączeniu na polski.
+
 ## Demo
 
 `easy-matanimation-demo-kutno.zip` (ok. 59 MB, osobny plik w tym samym wydaniu) to run Kutna (25% mieszkańców, 100 iteracji, sieć z zakazami skrętu z OSM) z gotowym indeksem. Rozpakuj i wskaż folder `demo-kutno`. Otwiera się w kilka sekund, z budynkami 3D, bez żadnych dodatkowych plików.
@@ -36,7 +40,7 @@ Domyślnie drogi są prostymi odcinkami z sieci runu, a budynków nie ma. Żeby 
 
 ## Gdzie są dane programu
 
-`%LOCALAPPDATA%\easy-matanimation\`: dziennik `easy-matanimation.log` (przy problemach wklej jego koniec w zgłoszeniu), pamięć ostatniego runu i pliku OSM. Odinstalowanie to usunięcie folderu programu i tego folderu. Program nie zapisuje nic w rejestrze.
+`%LOCALAPPDATA%\easy-matanimation\`: dziennik `easy-matanimation.log` (przy problemach wklej jego koniec w zgłoszeniu), pamięć ostatniego runu, pliku OSM i wybranego języka. Odinstalowanie to usunięcie folderu programu i tego folderu. Program nie zapisuje nic w rejestrze.
 
 ## Sieć
 

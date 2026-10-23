@@ -1,7 +1,7 @@
-# Modele pojazdów: Quaternius
+# Car models: Quaternius
 
-`BasicCar.obj` i `CarTexture.png` pochodzą z paczki „LowPoly Car pack” (autor: Quaternius, licencja CC0 / domena publiczna).
-Źródło: https://opengameart.org/content/lowpoly-cars (wersje także na https://quaternius.itch.io/lowpoly-cars).
-Atrybucja nie jest wymagana licencją, ale korzystamy z modeli tego autora i dziękujemy.
+`BasicCar.obj` and `CarTexture.png` come from the "LowPoly Car pack" (author: Quaternius, licence CC0 / public domain).
+Source: https://opengameart.org/content/lowpoly-cars (versions also at https://quaternius.itch.io/lowpoly-cars).
+The licence does not require attribution, but we use this author's models and thank them.
 
-`car_mesh.json` to ten sam model przeliczony skryptem `pipeline/viz_models.py` (osie, skala do 4,5 m, kolory z tekstury).
+`car_mesh.json` is the same model converted by the script `pipeline/viz_models.py` (axes, scaled to 4.5 m, colours from the texture).

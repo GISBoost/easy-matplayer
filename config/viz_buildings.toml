@@ -1,13 +1,13 @@
-# Wysokości budynków w widoku 3D okna odtwarzacza (D26, krok 6, pipeline/viz_buildings.py).
-# Wszystko poniżej to ZAŁOŻENIA wizualne, wartości robocze do potwierdzenia przez właściciela. Nie są pomiarem.
-# Kolejność: tag `height` (dokładnie) > `building:levels` × floor_height_m > H0 klasy `building=*`.
-# Do wysokości wyprowadzonej (piętra, klasa) dochodzi ±spread z hasha id budynku (deterministycznie).
+# Building heights in the 3D view of the player window (D26, step 6, pipeline/viz_buildings.py).
+# Everything below is an ASSUMPTION for visuals: working values to be confirmed by the owner. They are not measurements.
+# Order: tag `height` (exact) > `building:levels` × floor_height_m > H0 of the `building=*` class.
+# The height derived from floors and class gets ±spread from a hash of the building id (deterministic).
 
-variant = "per_class"   # "per_class": H0 wg klasy poniżej; "single": jedna stała single_m dla wszystkich
-floor_height_m = 3.0    # OSM wiki OSM-3D: 3 m na kondygnację
+variant = "per_class"   # "per_class": H0 by class below; "single": one constant single_m for all
+floor_height_m = 3.0    # OSM wiki OSM-3D: 3 m per floor
 spread = 0.15           # ±15%
-single_m = 7.0          # wariant "single"
-default_m = 7.0         # klasa spoza tabeli i `building=yes`
+single_m = 7.0          # the "single" variant
+default_m = 7.0         # class outside the table and `building=yes`
 
 [h0_m]
 house = 7.0
