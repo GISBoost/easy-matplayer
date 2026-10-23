@@ -261,3 +261,8 @@ Wszystkie trzy części (A2a, A2b, A2c) przeszły: 96 testów i smoke w prawdziw
 
 - Demo wróciło do **jednego runu** (`demo-kutno` = `g1r8_25pct_s4711`, zip ok. 59 MB), osobny plik w wydaniu: dane runu leżą w `output/` (poza gitem), więc workflow nie ma ich skąd wziąć i nie da się ich wbudować w zip aplikacji budowany w CI. Zip dema dołącza właściciel (`gh release upload`).
 - `docs/viz/README_pl.md` ma tabelę linków do Berlina v6.4 (CC BY 4.0), Kelheim i Wiednia (oba CC BY-NC, tylko do własnego użytku). Nic z tego nie jest pobierane ani dołączane; użytkownik pobiera sam.
+
+### Test otwarcia runu Wiednia (2026-10-23)
+
+- `--smoke` na `output/vienna_1pct_test` (CRS `epsg:3416`, 375 tys. linków, 56 268 tras, eventy 114 MB): indeks zbudowany w 82 s, okno się otwiera, ale smoke kończy się **FAIL**: pozycje klienta różnią się od Pythona o 1823 m. Przyczyna: transformery są na sztywno z `EPSG:2180` (`viz_index.py:584`, `viz_export.py:105`, `viz_buildings.py:180`, `curves.py:301`, `player.py:256`), a Wiedeń ma `epsg:3416`, więc współrzędne są odczytywane jako polskie i ruch ląduje w złym miejscu. To samo dotyczy Berlina i Kelheim (EPSG:25832).
+- Wniosek: wersja 0.1 działa tylko dla runów w EPSG:2180. Poprawka (czytać `coordinateSystem` z `output_config.xml` runu i przekazać do wszystkich pięciu miejsc) to nowa funkcja, niezrobiona bez zgody właściciela. README poprawione.

@@ -14,9 +14,9 @@ Wymagania: Windows 10 22H2 albo 11 (64-bit) i Microsoft Edge WebView2 Runtime (j
 
 `easy-matanimation-demo-kutno.zip` (ok. 59 MB, osobny plik w tym samym wydaniu) to run Kutna (25% mieszkańców, 100 iteracji, sieć z zakazami skrętu z OSM) z gotowym indeksem. Rozpakuj i wskaż folder `demo-kutno`. Otwiera się w kilka sekund, z budynkami 3D, bez żadnych dodatkowych plików.
 
-## Inne publiczne scenariusze MATSim do własnego sprawdzenia
+## Inne publiczne scenariusze MATSim (na razie niewspierane)
 
-Nie dołączamy ich do wydania (każdy ma własną licencję). Pobierz sam i wskaż folder z wynikami; program wymaga plików `.xml.zst`, więc wyniki w `.xml.gz` trzeba przepakować (patrz niżej). Sprawdzone na ruchu samochodowym, plików OSM nie potrzeba.
+Nie dołączamy ich do wydania (każdy ma własną licencję). Pobierz sam i wskaż folder z wynikami; program wymaga plików `.xml.zst`, więc wyniki w `.xml.gz` trzeba przepakować (patrz niżej). **Uwaga: wersja 0.1 zakłada układ współrzędnych EPSG:2180 (Polska).** Runy w innym układzie (Wiedeń: EPSG:3416) otwierają się, ale ruch jest rysowany w złym miejscu. Obsługa układu z `output_config.xml` jest do zrobienia; do tego czasu poniższe scenariusze służą tylko do własnych prób.
 
 | scenariusz | gdzie | licencja danych |
 |---|---|---|
