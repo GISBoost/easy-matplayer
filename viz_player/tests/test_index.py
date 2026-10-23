@@ -165,11 +165,9 @@ def test_progress_reports_phases_and_file_position(tmp_path):
 
 def test_read_crs(tmp_path):
     cfg = tmp_path / "output_config.xml"
-    assert viz_index.read_crs(tmp_path) == "EPSG:2180"  # brak pliku
+    assert viz_index.read_crs(tmp_path) == "EPSG:3857"  # brak pliku
     cfg.write_text('<param name="coordinateSystem" value="epsg:3416" />', encoding="utf-8")
     assert viz_index.read_crs(tmp_path) == "EPSG:3416"
-    cfg.write_text('<param name="coordinateSystem" value="" />', encoding="utf-8")
-    assert viz_index.read_crs(tmp_path) == "EPSG:2180"
-    cfg.write_text('<param name="coordinateSystem" value="Atlantis" />', encoding="utf-8")
-    with pytest.raises(viz_index.CheckFailed):
-        viz_index.read_crs(tmp_path)
+    for value in ("", "Atlantis", "EPSG:999999"):
+        cfg.write_text(f'<param name="coordinateSystem" value="{value}" />', encoding="utf-8")
+        assert viz_index.read_crs(tmp_path) == "EPSG:3857"

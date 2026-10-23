@@ -16,7 +16,7 @@ Wymagania: Windows 10 22H2 albo 11 (64-bit) i Microsoft Edge WebView2 Runtime (j
 
 ## Inne publiczne scenariusze MATSim
 
-Nie dołączamy ich do wydania (każdy ma własną licencję). Pobierz sam i wskaż folder z wynikami; program wymaga plików `.xml.zst`, więc wyniki w `.xml.gz` trzeba przepakować (patrz niżej). Układ współrzędnych sieci program czyta z `output_config.xml` runu (`coordinateSystem`, kod EPSG); bez tego przyjmuje EPSG:2180 (Polska). Przetestowany jest Wiedeń (EPSG:3416); Berlin i Kelheim (EPSG:25832) nie były otwierane. Budynki i łamane drogi z OSM są liczone dla obszaru sieci, więc przy bardzo dużych sieciach potrzebny jest plik OSM obejmujący ten obszar.
+Nie dołączamy ich do wydania (każdy ma własną licencję). Pobierz sam i wskaż folder z wynikami; program wymaga plików `.xml.zst`, więc wyniki w `.xml.gz` trzeba przepakować (patrz niżej). Układ współrzędnych sieci program czyta z `output_config.xml` runu (`coordinateSystem`, kod EPSG); bez wpisu albo z wartością inną niż kod EPSG (MATSim domyślnie wpisuje `Atlantis`) przyjmuje EPSG:3857 (współrzędne jako metry Web Mercator), więc run się otwiera, ale ruch może leżeć w złym miejscu na mapie. Przetestowany jest Wiedeń (EPSG:3416); Berlin i Kelheim (EPSG:25832) nie były otwierane. Budynki i łamane drogi z OSM są liczone dla obszaru sieci, więc przy bardzo dużych sieciach potrzebny jest plik OSM obejmujący ten obszar.
 
 | scenariusz | gdzie | licencja danych |
 |---|---|---|
