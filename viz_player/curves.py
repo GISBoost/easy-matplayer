@@ -293,12 +293,12 @@ def grab_ways(pbf, wanted):
     return found.ways
 
 
-def project(ways, origin):
+def project(ways, origin, crs="EPSG:2180"):
     from pyproj import Transformer
 
     if not ways:
         return {}
-    tr = Transformer.from_crs("EPSG:4326", "EPSG:2180", always_xy=True)
+    tr = Transformer.from_crs("EPSG:4326", crs, always_xy=True)
     ox, oy = origin
     order, lons, lats = [], [], []
     for wid, (refs, lon, lat) in ways.items():
@@ -395,7 +395,7 @@ def write_cache(cache, curves, origin, pbf=None):
     tmp.replace(cache)
 
 
-def load(run_dir, link_id, link_xy, link_length, origin):
+def load(run_dir, link_id, link_xy, link_length, origin, crs="EPSG:2180"):
     run_dir = Path(run_dir)
     n = len(link_id)
     network = run_dir / "output_network.xml.zst"
@@ -417,7 +417,7 @@ def load(run_dir, link_id, link_xy, link_length, origin):
     print("łamane: czytam OSM…", flush=True)
     started = time.perf_counter()
     ways = grab_ways(pbf, wanted)
-    built = assemble(link_xy, link_length, ends, project(ways, origin))
+    built = assemble(link_xy, link_length, ends, project(ways, origin, crs))
     built.found, built.wanted = len(ways), len(wanted)
     write_cache(cache, built, origin, pbf)
     if not ways:

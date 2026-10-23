@@ -28,6 +28,7 @@ import io
 import json
 import math
 import random
+import re
 import sys
 import time
 from pathlib import Path
@@ -124,8 +125,25 @@ def read_sample_size(run):
     return float(text[i + len(key):j])
 
 
+DEFAULT_CRS = "EPSG:2180"  # scenariusze Kutna; run bez output_config.xml albo bez coordinateSystem
+
+
+def read_crs(run):
+    """Układ współrzędnych sieci z param coordinateSystem w output_config.xml (np. epsg:3416 -> EPSG:3416). Brak: DEFAULT_CRS."""
+    path = run / CONFIG_NAME
+    if not path.exists():
+        return DEFAULT_CRS
+    m = re.search(r'name="coordinateSystem"\s+value="([^"]*)"', path.read_text(encoding="utf-8"))
+    if not m or not m.group(1).strip():
+        return DEFAULT_CRS
+    code = m.group(1).strip()
+    if re.fullmatch(r"(?i)epsg:\d+", code):
+        return "EPSG:" + code.split(":")[1]
+    raise CheckFailed(f"nieobsługiwany coordinateSystem {code!r} w {CONFIG_NAME} (oczekuję kodu EPSG, np. EPSG:2180)")
+
+
 def network_origin(path):
-    """Origin z bbox węzłów sieci (EPSG:2180, E, N). Węzły są w pliku przed linkami."""
+    """Origin z bbox węzłów sieci (we współrzędnych sieci runu, E, N). Węzły są w pliku przed linkami."""
     xs, ys = [], []
     stream = zstandard.ZstdDecompressor().stream_reader(path.open("rb"))
     for _, el in etree.iterparse(stream, tag=("node", "link"), load_dtd=False, no_network=True):
@@ -581,7 +599,7 @@ def write_meta(path, run, ev_sha, net_sha, script_sha, plans_sha, origin, arrays
         "events_bytes": (run / EVENTS_NAME).stat().st_size,
         "network_bytes": (run / NETWORK_NAME).stat().st_size,
         "origin": [origin[0], origin[1]],
-        "crs": "EPSG:2180",
+        "crs": read_crs(run),
         "sample_size": read_sample_size(run),
         "t_min": info["t_min"],
         "t_max": info["t_max"],

@@ -2,6 +2,7 @@ import json
 import math
 
 import numpy as np
+import pytest
 
 import viz_index
 
@@ -160,3 +161,15 @@ def test_progress_reports_phases_and_file_position(tmp_path):
     again = []
     assert viz_index.run(run, lambda label, frac: again.append(frac)) == 0
     assert again[-1] == 1.0 and len(again) <= 3, "ponowne otwarcie (reuse) kończy od razu"
+
+
+def test_read_crs(tmp_path):
+    cfg = tmp_path / "output_config.xml"
+    assert viz_index.read_crs(tmp_path) == "EPSG:2180"  # brak pliku
+    cfg.write_text('<param name="coordinateSystem" value="epsg:3416" />', encoding="utf-8")
+    assert viz_index.read_crs(tmp_path) == "EPSG:3416"
+    cfg.write_text('<param name="coordinateSystem" value="" />', encoding="utf-8")
+    assert viz_index.read_crs(tmp_path) == "EPSG:2180"
+    cfg.write_text('<param name="coordinateSystem" value="Atlantis" />', encoding="utf-8")
+    with pytest.raises(viz_index.CheckFailed):
+        viz_index.read_crs(tmp_path)

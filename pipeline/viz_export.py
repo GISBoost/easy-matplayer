@@ -102,7 +102,7 @@ def build(run_dir, out=None, chunk_sec=CHUNK_SEC):
     with np.load(viz / "index.npz", allow_pickle=False) as z:
         a = {name: np.array(z[name]) for name in z.files}
     ox, oy = meta["origin"]
-    to_ll = Transformer.from_crs("EPSG:2180", "EPSG:4326", always_xy=True)
+    to_ll = Transformer.from_crs(meta.get("crs", "EPSG:2180"), "EPSG:4326", always_xy=True)
     lon0, lat0 = (float(v) for v in to_ll.transform(float(ox), float(oy)))
     lon, lat = to_ll.transform(a["knot_x"].astype(np.float64) + ox, a["knot_y"].astype(np.float64) + oy)
     dlon = (np.asarray(lon) - lon0).astype(np.float32)

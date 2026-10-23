@@ -177,7 +177,7 @@ def network_box(run_dir):
     with np.load(viz / "index.npz", allow_pickle=False) as z:
         xy = np.asarray(z["link_xy"], dtype=np.float64)
     ox, oy = meta["origin"]
-    to_ll = Transformer.from_crs("EPSG:2180", "EPSG:4326", always_xy=True)
+    to_ll = Transformer.from_crs(meta.get("crs", "EPSG:2180"), "EPSG:4326", always_xy=True)
     lon, lat = to_ll.transform(np.concatenate([xy[:, 0], xy[:, 2]]) + ox, np.concatenate([xy[:, 1], xy[:, 3]]) + oy)
     lon0, lat0 = (float(v) for v in to_ll.transform(float(ox), float(oy)))
     box = (float(np.min(lon)) - MARGIN_DEG, float(np.min(lat)) - MARGIN_DEG,

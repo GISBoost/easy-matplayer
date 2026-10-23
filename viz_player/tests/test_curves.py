@@ -99,7 +99,7 @@ def test_load_counts_found_ways(tmp_path, monkeypatch):
     run, _calls = _fake_run(tmp_path, monkeypatch, {5: BEND})
     pbf = tmp_path / "a.osm.pbf"
     pbf.write_bytes(b"1")
-    monkeypatch.setattr(curves, "project", lambda ways, origin: ways)
+    monkeypatch.setattr(curves, "project", lambda ways, origin, crs: ways)
     built, note = _load(run, pbf)
     assert built.n_bent == 1 and "w pliku OSM 1 z 1 dróg sieci" in note
 

@@ -265,4 +265,11 @@ Wszystkie trzy części (A2a, A2b, A2c) przeszły: 96 testów i smoke w prawdziw
 ### Test otwarcia runu Wiednia (2026-10-23)
 
 - `--smoke` na `output/vienna_1pct_test` (CRS `epsg:3416`, 375 tys. linków, 56 268 tras, eventy 114 MB): indeks zbudowany w 82 s, okno się otwiera, ale smoke kończy się **FAIL**: pozycje klienta różnią się od Pythona o 1823 m. Przyczyna: transformery są na sztywno z `EPSG:2180` (`viz_index.py:584`, `viz_export.py:105`, `viz_buildings.py:180`, `curves.py:301`, `player.py:256`), a Wiedeń ma `epsg:3416`, więc współrzędne są odczytywane jako polskie i ruch ląduje w złym miejscu. To samo dotyczy Berlina i Kelheim (EPSG:25832).
-- Wniosek: wersja 0.1 działa tylko dla runów w EPSG:2180. Poprawka (czytać `coordinateSystem` z `output_config.xml` runu i przekazać do wszystkich pięciu miejsc) to nowa funkcja, niezrobiona bez zgody właściciela. README poprawione.
+- Poprawione w następnym wpisie.
+
+### Obsługa coordinateSystem (2026-10-23)
+
+- `viz_index.read_crs(run)` czyta `coordinateSystem` z `output_config.xml` (np. `epsg:3416` -> `EPSG:3416`), bez wpisu domyślnie `EPSG:2180`, wartość inna niż kod EPSG (np. `Atlantis`) kończy się czytelnym błędem. Wynik w `meta["crs"]`; `player.py` (`fwd`/`inv`), `viz_export.py`, `viz_buildings.network_box` i `curves.project/load` używają go zamiast stałej. 104 testy (nowy `test_read_crs`).
+- **Dowód na Wiedniu** (`vienna_1pct_test`, `epsg:3416`): mediana pozycji aut w szczycie to 16,347°E, 48,199°N (Wiedeń), 10–90 percentyl lon 15,72–16,50 i lat 47,85–48,33; przedtem układ czytany jako 2180 dawał pozycje w Polsce. `--smoke` OK: 2 713 aut, klient vs Python 0,18 m. Kutno bez zmian: smoke OK, 729 aut, 0,46 m.
+- Smoke miał założenia z Kutna, które przy Wiedniu zgłaszały fałszywe błędy; poprawione: porównanie pozycji tylko dla aut na linkach < 3 km (łączniki do 300 km różnią się nieliniowością odwzorowania), legenda dróg wymaga tylu pozycji, ile jest typów w sieci (Wiedeń nie ma typów), kolor klasy z zapasowym kolorem jak w aplikacji, oś z odcinkiem trasy > 2 px, „cały obszar” stoi na `minZoom` dla sieci szerszej niż 1000 km.
+- Zastrzeżenia: nie sprawdzone Berlin i Kelheim; plik OSM z Łódzkiego rozciągnięty na sieć Wiednia daje 1,3 mln „budynków” z obszaru sieci (sieć obejmuje pół Europy Środkowej), bez znaczenia dla Wiednia; dane Kutna w demie wymagają przebudowy indeksu (zmienił się skrót `viz_index.py`).

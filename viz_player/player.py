@@ -253,6 +253,7 @@ class Player:
         self.export_key = ""
         self.buildings = None
         self.origin = (0.0, 0.0)
+        self.crs = "EPSG:2180"
         self.fwd = Transformer.from_crs("EPSG:2180", "EPSG:4326", always_xy=True)
         self.inv = Transformer.from_crs("EPSG:4326", "EPSG:2180", always_xy=True)
 
@@ -280,13 +281,16 @@ class Player:
                 progress("Łamane drogi (OSM)", None)  # skan PBF trwa dziesiątki sekund i nie ma ułamka: pasek bez wartości
             self._read_links()
             self.origin = tuple(float(v) for v in self.index.meta["origin"])
+            self.crs = self.index.meta.get("crs", "EPSG:2180")
+            self.fwd = Transformer.from_crs(self.crs, "EPSG:4326", always_xy=True)
+            self.inv = Transformer.from_crs("EPSG:4326", self.crs, always_xy=True)
         except viz_engine.EngineFailed as exc:
             self.index = None
             self.error = f"Indeks się nie zbudował: {exc}"
             return
         try:
             self.curve, msg = curves.load(
-                self.run_dir, self.link_id, self.index.link_xy, self.link_length, self.origin,
+                self.run_dir, self.link_id, self.index.link_xy, self.link_length, self.origin, self.crs,
             )
         except Exception as exc:
             self.curve = curves.empty(len(self.link_id))
