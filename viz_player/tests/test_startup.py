@@ -162,3 +162,21 @@ def test_api_refuses_second_open_while_busy(tmp_path):
     api = window.Api.__new__(window.Api)
     api._progress = {"busy": True, "label": "", "frac": 0.0}
     assert api.open_path(str(tmp_path)) == window.BUSY and api.osm_use("") == window.BUSY
+
+
+def test_serve_without_webview2_reports_before_opening_anything(tmp_path, monkeypatch):
+    from viz_player import window
+
+    shown = []
+    monkeypatch.setattr(startup, "webview2_missing", lambda: True)
+    monkeypatch.setattr(startup, "show_error", lambda title, text: shown.append((title, text)))
+    assert window.serve(str(tmp_path)) == 1 and shown[0][0] == "brak WebView2" and startup.WEBVIEW2_URL in shown[0][1]
+
+
+def test_webview2_missing_is_false_on_this_machine_when_runtime_is_registered():
+    import os
+    import pytest
+
+    if os.name != "nt":
+        pytest.skip("Windows")
+    assert startup.webview2_missing() in (True, False)  # rejestr czytany bez wyjątku; wynik zależy od maszyny

@@ -1,10 +1,12 @@
 """Start aplikacji uruchamianej dwuklikiem (D27): log do pliku zamiast konsoli i okna z komunikatami błędów."""
 import ctypes
 import os
+import struct
 import sys
 import threading
 import time
 import traceback
+from pathlib import Path
 
 from viz_player import APP_NAME, __version__
 from viz_player.paths import DATA, FROZEN
@@ -37,17 +39,37 @@ def show_error(title, text):
     ctypes.windll.user32.MessageBoxW(None, text, f"{APP_NAME}: {title}", 0x10 | 0x1000)
 
 
+def webview2_missing():
+    """True, gdy WebView2 Runtime nie da się znaleźć. Pyta ten sam WebView2Loader.dll, którego używa pywebview: wpis w rejestrze albo katalog
+    Runtime nie wystarczają (w Windows Sandbox są, a okno i tak się nie uruchamia). Bez Runtime pywebview nie zgłasza błędu, tylko zostawia puste
+    okno i działa dalej. Nie da się zapytać (inny system, brak biblioteki): False, niech zadecyduje pywebview."""
+    if os.name != "nt" or struct.calcsize("P") != 8:
+        return False
+    try:
+        import webview
+
+        loader = ctypes.WinDLL(str(Path(webview.__file__).parent / "lib" / "runtimes" / "win-x64" / "native" / "WebView2Loader.dll"))
+        version = ctypes.c_wchar_p()
+        return loader.GetAvailableCoreWebView2BrowserVersionString(None, ctypes.byref(version)) != 0 or not version.value
+    except Exception:  # noqa: BLE001
+        return False
+
+
+def show_webview2_missing():
+    show_error(
+        "brak WebView2",
+        "Aplikacja potrzebuje składnika Microsoft Edge WebView2 Runtime.\nPobierz go z:\n" + WEBVIEW2_URL
+        + "\n\nPotem uruchom aplikację ponownie.",
+    )
+
+
 def crash(exc=None):
     """Nieobsłużony wyjątek: pełny ślad do dziennika, krótki komunikat w oknie. Brak WebView2 dostaje link do instalatora."""
     trace = traceback.format_exc() if exc is None else "".join(traceback.format_exception(exc))
     print(trace, flush=True)
     low = trace.lower()
     if "webview2" in low or "edgechromium" in low or "edge chromium" in low:
-        show_error(
-            "brak WebView2",
-            "Aplikacja potrzebuje składnika Microsoft Edge WebView2 Runtime.\nPobierz go z:\n" + WEBVIEW2_URL
-            + "\n\nPotem uruchom aplikację ponownie.",
-        )
+        show_webview2_missing()
         return
     last = trace.strip().splitlines()[-1] if trace.strip() else "nieznany błąd"
     show_error("błąd", f"{last}\n\nSzczegóły są w pliku:\n{LOG}")

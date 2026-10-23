@@ -829,6 +829,9 @@ def prepare(run, site):
 def serve(run, explicit=False):
     """explicit: run podany w wierszu poleceń (błąd kończy program); inaczej brak runu albo błąd otwiera wybór folderu."""
     import webview
+    if startup.webview2_missing():  # sprawdzenie przed budową indeksu: bez runtime okno byłoby puste, a program nie kończyłby pracy
+        startup.show_webview2_missing()
+        return 1
     site = DATA / "viz_player_site"  # stały katalog strony: „otwórz run” podmienia jego zawartość i przeładowuje stronę
     while True:
         if not run or not Path(run).is_dir():
