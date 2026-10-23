@@ -13,7 +13,7 @@ import zipfile
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
-NEEDED = ("output_events.xml.zst", "output_network.xml.zst", "output_plans.xml.zst")
+NEEDED = ("output_events.xml.zst", "output_network.xml.zst", "output_plans.xml.zst", "output_config.xml")  # config: układ współrzędnych i próbka
 TOP = "easy-matanimation-demo"
 README = """easy-matanimation: runy demo
 
