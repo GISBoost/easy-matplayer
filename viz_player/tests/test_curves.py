@@ -127,3 +127,18 @@ def test_view_bounds_trims_far_outliers():
     s, w = view_bounds(lon, lat, lon, lat)[0]
     n, e = view_bounds(lon, lat, lon, lat)[1]
     assert 47.9 < s < 48.2 and 48.2 < n < 48.5 and 15.5 < w < 16.3 and 16.4 < e < 17  # szeroka: bez skrajnych punktów
+
+
+def test_read_ends_takes_way_id_from_origid_or_osm_way_id(tmp_path):
+    import zstandard
+
+    xml = (
+        '<network><nodes/><links>'
+        '<link id="1" from="1" to="2"><attributes><attribute name="origid" class="java.lang.String">5</attribute></attributes></link>'
+        '<link id="2" from="2" to="3"><attributes><attribute name="osm:way:id" class="java.lang.Long">7</attribute></attributes></link>'
+        '<link id="3" from="3" to="4"><attributes/></link>'
+        '</links></network>'
+    )
+    path = tmp_path / "output_network.xml.zst"
+    path.write_bytes(zstandard.ZstdCompressor().compress(xml.encode()))
+    assert curves.read_ends(path)[3] == ["5", "7", None], "Kutno (origid), Wiedeń (osm:way:id), link bez drogi"

@@ -260,7 +260,7 @@ def read_ends(path):
         to.append(el.get("to"))
         oid = None
         for attr in el.iter("attribute"):
-            if attr.get("name") == "origid" and attr.text:
+            if attr.get("name") in ("origid", "osm:way:id") and attr.text:  # origid: Supersonic (Kutno), osm:way:id: matsim-osm (Wiedeń)
                 oid = attr.text.strip()
                 break
         orig.append(oid)
@@ -412,7 +412,7 @@ def load(run_dir, link_id, link_xy, link_length, origin, crs="EPSG:2180"):
         return empty(n), "łamane: inna kolejność linków; cięciwy"
     wanted = {int(oid) for oid in ends[3] if oid and str(oid).lstrip("-").isdigit()}
     if not wanted or pbf is None:
-        why = "brak origid" if not wanted else "brak PBF"
+        why = "brak origid ani osm:way:id" if not wanted else "brak PBF"
         return empty(n), f"łamane: {why}; cięciwy"
     print("łamane: czytam OSM…", flush=True)
     started = time.perf_counter()
