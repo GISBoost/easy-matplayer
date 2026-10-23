@@ -168,6 +168,17 @@ def build(out, box, origin_lonlat, pbf=None, cfg_path=CONFIG):
     return meta
 
 
+def trimmed_bounds(lon, lat, wide_deg=1.5, trim=1.0):
+    """(w, s, e, n) obwiednia punktów. Gdy jest szersza niż wide_deg (ok. 150 km: model Wiednia ma łączniki do 300 km i sieć sięga pół Europy
+    Środkowej), obwiednia po odcięciu skrajnych trim% punktów z każdej strony, żeby widok i budynki dotyczyły miasta, a nie pustej reszty."""
+    lon, lat = np.asarray(lon), np.asarray(lat)
+    if max(np.ptp(lon), np.ptp(lat)) > wide_deg:
+        w, e = np.percentile(lon, [trim, 100 - trim])
+        s, n = np.percentile(lat, [trim, 100 - trim])
+        return float(w), float(s), float(e), float(n)
+    return float(lon.min()), float(lat.min()), float(lon.max()), float(lat.max())
+
+
 def network_box(run_dir):
     """(w, s, e, n) obwiedni sieci runu z marginesem, w stopniach, i origin_lonlat indeksu."""
     from pyproj import Transformer
@@ -180,8 +191,8 @@ def network_box(run_dir):
     to_ll = Transformer.from_crs(meta.get("crs", "EPSG:2180"), "EPSG:4326", always_xy=True)
     lon, lat = to_ll.transform(np.concatenate([xy[:, 0], xy[:, 2]]) + ox, np.concatenate([xy[:, 1], xy[:, 3]]) + oy)
     lon0, lat0 = (float(v) for v in to_ll.transform(float(ox), float(oy)))
-    box = (float(np.min(lon)) - MARGIN_DEG, float(np.min(lat)) - MARGIN_DEG,
-           float(np.max(lon)) + MARGIN_DEG, float(np.max(lat)) + MARGIN_DEG)
+    w, s, e, n = trimmed_bounds(lon, lat)
+    box = (w - MARGIN_DEG, s - MARGIN_DEG, e + MARGIN_DEG, n + MARGIN_DEG)
     return box, (lon0, lat0)
 
 

@@ -230,6 +230,12 @@ def note(run_dir, message):
         handle.write(message + "\n")
 
 
+def view_bounds(lon1, lat1, lon2, lat2):
+    """[[s, w], [n, e]] widoku „cały obszar sieci” (obwiednia sieci bez skrajnych punktów, gdy sieć jest bardzo szeroka)."""
+    w, s, e, n = viz_buildings.trimmed_bounds(np.concatenate([np.asarray(lon1), np.asarray(lon2)]), np.concatenate([np.asarray(lat1), np.asarray(lat2)]))
+    return [[s, w], [n, e]]
+
+
 class Player:
     """Model okna: indeks, łamane i liczenie klatki.
 
@@ -580,10 +586,7 @@ class Player:
             "tMin": float(self.index.meta["t_min"]),
             "tMax": float(self.index.meta["t_max"]),
             "sample": self.sample,
-            "bounds": [
-                [float(min(lat1.min(), lat2.min())), float(min(lon1.min(), lon2.min()))],
-                [float(max(lat1.max(), lat2.max())), float(max(lon1.max(), lon2.max()))],
-            ],
+            "bounds": view_bounds(lon1, lat1, lon2, lat2),
             "types": self.type_names,
             "classes": [{"key": key, "name": self.class_name[key], "on": True} for key in self.chip_keys],
             "nLinks": int(len(lon1)),

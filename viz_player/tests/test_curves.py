@@ -115,3 +115,15 @@ def test_cache_older_than_network_is_kept_without_pbf_only(tmp_path):
     os.utime(cache, (1_000_000_000, 1_000_000_000))  # rozpakowanie dema potrafi zostawić cache starszy od sieci
     assert curves.read_cache(cache, 1, net, None, (525000.0, 485000.0)) is not None, "bez pliku OSM nie ma czym przeliczyć"
     assert curves.read_cache(cache, 1, net, tmp_path / "nie-ma.pbf", (525000.0, 485000.0)) is not None
+
+
+def test_view_bounds_trims_far_outliers():
+    from viz_player.player import view_bounds
+
+    lon = np.concatenate([np.linspace(16.2, 16.5, 1000), [11.0, 22.0]])
+    lat = np.concatenate([np.linspace(48.1, 48.3, 1000), [45.0, 54.0]])
+    small = view_bounds(lon[:1000], lat[:1000], lon[:1000], lat[:1000])
+    assert small == [[48.1, 16.2], [48.3, 16.5]]  # wąska sieć: cała obwiednia
+    s, w = view_bounds(lon, lat, lon, lat)[0]
+    n, e = view_bounds(lon, lat, lon, lat)[1]
+    assert 47.9 < s < 48.2 and 48.2 < n < 48.5 and 15.5 < w < 16.3 and 16.4 < e < 17  # szeroka: bez skrajnych punktów
