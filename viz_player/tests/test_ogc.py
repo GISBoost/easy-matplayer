@@ -159,3 +159,10 @@ def test_xyz_template_is_recognised_and_formatted(monkeypatch):
     seen = []
     monkeypatch.setattr(ogc, "_fetch", lambda url, timeout=0: (seen.append(url), (b"x", "image/png"))[1])
     assert ogc.tile(spec, 4, 8, 6)[0] == "image/png" and seen == ["https://t.example/4/8/6.png"]
+
+
+def test_epsg_code_forms():
+    assert ogc.epsg("urn:ogc:def:crs:EPSG::3857") == "3857"
+    assert ogc.epsg("urn:ogc:def:crs:EPSG:6.18.3:3857") == "3857"  # basemap.at: wersja bazy EPSG w URN
+    assert ogc.epsg("EPSG:2180") == "2180" and ogc.epsg("epsg:900913") == "900913"
+    assert ogc.epsg("CRS:84") is None

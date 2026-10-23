@@ -282,3 +282,8 @@ Wszystkie trzy części (A2a, A2b, A2c) przeszły: 96 testów i smoke w prawdziw
 - Dowód: zrzut samego okna aplikacji (PrintWindow, nie zrzut ekranu) z całą siecią Wiednia i autami w szczycie: `build_viz/wieden_okno.png` (poza gitem). Okno 1800×1125, 1 307 aut o 06:00, gęsty środek w mieście.
 - Otwarcie runu 5,9 s (indeks z cache); zapis strony 37 s, bo skan pliku OSM z Łódzkiego nic nie znajduje w obszarze Wiednia (komunikat „w pliku OSM nie ma budynków w obszarze sieci”). Z plikiem OSM Wiednia budynki powinny się pojawić (niesprawdzone).
 - Pobrany plik: `data/raw/osm/wien-bbbike-261017.osm.pbf` (BBBike „Wien”, 104 MB, z 2026-10-17, ODbL). Poza gitem (`*.pbf`).
+
+### WMTS basemap.at (2026-10-23)
+
+- Zgłoszenie: `https://mapsneu.wien.gv.at/basemapneu/1.0.0/WMTSCapabilities.xml` pokazywał wszystkie 7 warstw jako „nie ma zestawu kafelków w EPSG:3857; ma: EPSG:6”. Przyczyna: `ogc.epsg()` czytał z URN `urn:ogc:def:crs:EPSG:6.18.3:3857` pierwszą liczbę po `EPSG:` (wersję bazy EPSG, 6), a nie kod. Naprawa: kod to ostatni człon (`EPSG:(?:[\d.]*:)?(\d+)`), test `test_epsg_code_forms` (URN z wersją, bez, `EPSG:2180`, `epsg:900913`, `CRS:84`). 106 testów.
+- Dowód na żywym serwisie: 7 warstw bez błędu; kafelek `geolandbasemap` (image/png) i `bmaporthofoto30cm` (image/jpeg) z z=15 pobrane i rozpoznane jako obrazy. Nie sprawdzone w oknie (dodanie warstwy kliknięciem).

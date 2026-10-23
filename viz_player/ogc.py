@@ -72,8 +72,8 @@ def _find_all(el, name):
 
 
 def epsg(code):
-    """'urn:ogc:def:crs:EPSG::3857', 'EPSG:3857', 'epsg:900913' -> '3857'; inne (CRS:84) -> None."""
-    m = re.search(r"EPSG:+(\d+)", str(code), re.I)
+    """'urn:ogc:def:crs:EPSG::3857', 'urn:ogc:def:crs:EPSG:6.18.3:3857' (wersja bazy w URN, basemap.at), 'EPSG:3857', 'epsg:900913' -> kod; inne (CRS:84) -> None."""
+    m = re.search(r"EPSG:(?:[\d.]*:)?(\d+)", str(code), re.I)
     return m.group(1) if m else None
 
 
