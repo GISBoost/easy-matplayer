@@ -210,3 +210,11 @@ Wszystkie trzy części (A2a, A2b, A2c) przeszły: 96 testów i smoke w prawdziw
 - Dodatkowo: pyosmium w exe czyta PBF (test wyżej); pisanie PBF w exe (`SimpleWriter`) kończy się `UnicodeDecodeError`, ale aplikacja tego nie używa (tylko generator pliku testowego, uruchamiany w trybie deweloperskim).
 - Uwaga: smoke z malutkim PBF zostawia w folderze `viz/site/data` runu budynki z tego pliku (1 budynek). Przy następnym otwarciu z prawdziwym PBF (klucz inny) budynki przeliczają się same.
 - Nie sprawdzone: uruchomienie na innym komputerze / w Windows Sandbox (A4), brak WebView2 (A4), podpis i SmartScreen, rozmiar po instalacji na czystym profilu.
+
+### Audyt M1–M3 (2026-10-23)
+
+- Zakres: przegląd różnic od `9ee1614` (paths, startup, window/player/curves/viz_index/viz_buildings, spec, `viz_build.bat`) i uruchomienie zbudowanego exe ścieżką, której smoke nie obejmuje (`serve`: start z argumentem, bez argumentu, z zapamiętanym runem).
+- Sprawdzone w exe (PATH okrojony, pusty katalog danych): start z runem 25% buduje indeks z oknem postępu i otwiera okno główne; start bez argumentu pokazuje wybór folderu; zapamiętany run z uszkodzonymi plikami pokazuje komunikat (`ZstdError`) zamiast zamknięcia programu.
+- Błędy naprawione: (1) zapamiętany run z uszkodzonym plikiem (wyjątek inny niż `EngineFailed`, albo błąd skanu PBF) kończył start awarią, a przy każdym następnym starcie to samo, bez drogi do wyboru innego runu: `serve` łapie wyjątek i otwiera wybór folderu (run podany w wierszu poleceń nadal kończy się błędem); (2) drugie „otwórz run” albo zmiana pliku OSM w trakcie trwającej operacji uruchamiała równoległy zapis tej samej strony: `Api` odmawia, dopóki poprzednia operacja trwa; (3) awaria okna z paskiem (brak Tk, brak ekranu) zabijała start: pasek jest dodatkiem, praca kończy się mimo to.
+- Testy: 99 (trzy nowe), smoke w trybie deweloperskim OK, exe przebudowane (`viz_build.bat` bez uwag).
+- Znane, nie zmieniane: po błędzie indeksu pasek na chwilę pokazuje 100% (kosmetyka); zapisany plik OSM, który uległ uszkodzeniu, blokuje otwieranie każdego runu aż do ręcznej edycji `viz_player_osm.json` (rzadkie, zapisane jako ryzyko do A4); mtime cache łamanych po rozpakowaniu dema (A5).

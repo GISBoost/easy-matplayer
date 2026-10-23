@@ -100,7 +100,10 @@ def with_progress(title, work, delay=0.6):
     thread.start()
     thread.join(delay)
     if thread.is_alive():
-        _progress_window(title, state, thread)
+        try:
+            _progress_window(title, state, thread)
+        except Exception:  # pasek to dodatek (brak Tk, brak ekranu): praca ma się skończyć mimo to
+            traceback.print_exc()
     thread.join()
     if "error" in out:
         raise out["error"]

@@ -12,6 +12,7 @@ import shutil
 import sys
 import threading
 import time
+import traceback
 import uuid
 from pathlib import Path
 
@@ -27,6 +28,9 @@ RASTERS = DATA / "viz_player_rasters"
 
 # MapLibre 6 to moduły ES; przeglądarka odrzuca je bez typu JavaScript, a rejestr Windows bywa pusty
 mimetypes.add_type("text/javascript", ".mjs")
+
+
+BUSY = {"status": "error", "message": "Poprzednia operacja jeszcze trwa."}
 
 
 class Api:
@@ -238,6 +242,8 @@ class Api:
     def osm_use(self, path):
         """Ustawia plik OSM (path pusty: usuwa wybór) i otwiera bieżący run od nowa, żeby powstały budynki i łamane drogi.
         Błąd przywraca poprzedni wybór."""
+        if self._progress["busy"]:
+            return BUSY
         before = saved_pbf()
         if path:
             problem = _pbf_problem(Path(path))
@@ -263,6 +269,8 @@ class Api:
 
     def open_path(self, path):
         """Otwiera run w nowym Playerze. Błąd zostawia bieżący run; sukces zapisuje stan i strona ma się przeładować."""
+        if self._progress["busy"]:
+            return BUSY
         self._report("Start", 0.0)
         try:
             return self._open_path(path)
@@ -830,10 +838,18 @@ def serve(run, explicit=False):
             run = startup.pick_run(RUNS if RUNS.is_dir() else Path.home())
             if not run:
                 return 0
-        player, index_html = prepare(run, site)
-        if not player.error:
+        try:
+            player, index_html = prepare(run, site)
+        except Exception as exc:  # uszkodzony plik runu albo OSM; zapamiętany run nie może zamykać drogi do wyboru innego
+            if explicit:
+                raise
+            traceback.print_exc()
+            error = f"{type(exc).__name__}: {exc}"
+        else:
+            error = player.error
+        if not error:
             break
-        startup.show_error("Nie da się otworzyć runu", player.error)
+        startup.show_error("Nie da się otworzyć runu", error)
         if explicit:
             return 1
         run = None

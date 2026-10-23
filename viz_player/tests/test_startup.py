@@ -131,3 +131,34 @@ def test_serve_error_in_remembered_run_falls_back_to_picker(tmp_path, monkeypatc
     monkeypatch.setattr(startup, "show_error", lambda title, text: shown.append(text))
     monkeypatch.setattr(window, "DATA", tmp_path)
     assert window.serve(str(empty)) == 0 and shown and picks == [1]
+
+
+def test_serve_corrupt_remembered_run_falls_back_to_picker(tmp_path, monkeypatch):
+    from viz_player import window
+
+    bad = tmp_path / "zepsuty"
+    bad.mkdir()
+    (bad / "output_events.xml.zst").write_bytes(b"to nie jest zstd")
+    (bad / "output_network.xml.zst").write_bytes(b"to nie jest zstd")
+    picks, shown = [], []
+    monkeypatch.setattr(startup, "pick_run", lambda initial: picks.append(1))
+    monkeypatch.setattr(startup, "show_error", lambda title, text: shown.append(text))
+    monkeypatch.setattr(window, "DATA", tmp_path)
+    assert window.serve(str(bad)) == 0 and shown and picks == [1], "uszkodzony run nie zamyka drogi do wyboru innego"
+
+
+def test_with_progress_survives_broken_window(monkeypatch):
+    def broken(title, state, thread):
+        raise RuntimeError("brak ekranu")
+
+    monkeypatch.setattr(startup, "_progress_window", broken)
+    import time
+    assert startup.with_progress("t", lambda progress: (time.sleep(0.3), "ok")[1], delay=0.05) == "ok"
+
+
+def test_api_refuses_second_open_while_busy(tmp_path):
+    from viz_player import window
+
+    api = window.Api.__new__(window.Api)
+    api._progress = {"busy": True, "label": "", "frac": 0.0}
+    assert api.open_path(str(tmp_path)) == window.BUSY and api.osm_use("") == window.BUSY
