@@ -741,6 +741,11 @@ def smoke(run):
                 js(f"map.jumpTo({{zoom: {zoom}}}); 0")
                 time.sleep(0.4)
                 scale.append(js("(document.querySelector('.maplibregl-ctrl-scale')||{}).textContent||''"))
+            overlap = js("(function(){var a=document.querySelector('.maplibregl-ctrl-scale').getBoundingClientRect(),b=document.getElementById('legend').getBoundingClientRect();"
+                         "return !(a.right<=b.left||a.left>=b.right||a.bottom<=b.top||a.top>=b.bottom);})()")
+            if overlap is not False:
+                result["error"] = "skala zasłonięta przez legendę"
+                return
             js("map.jumpTo({zoom: 0}); 0")
             if not all(scale) or scale[0] == scale[1] or js("map.getMinZoom() <= 3 && map.getZoom() <= 3.01") is not True:
                 result["error"] = f"skala lub minZoom: {scale}, zoom {js('map.getZoom()')}"

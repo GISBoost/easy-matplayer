@@ -55,6 +55,7 @@ def test_cache_needs_same_origin(tmp_path):
     curves.write_cache(cache, c, (525000.0, 485000.0))
     assert curves.read_cache(cache, 1, net, None, (525000.0, 485000.0)) is not None
     assert curves.read_cache(cache, 1, net, None, (526000.0, 485000.0)) is None
+    assert curves.read_cache(cache, 1, net, None, (525000.0, 485000.0), "EPSG:3857") is None, "inny układ sieci unieważnia cache"
 
 
 def _fake_run(tmp_path, monkeypatch, ways):

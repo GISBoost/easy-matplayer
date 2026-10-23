@@ -171,3 +171,20 @@ def test_read_crs(tmp_path):
     for value in ("", "Atlantis", "EPSG:999999"):
         cfg.write_text(f'<param name="coordinateSystem" value="{value}" />', encoding="utf-8")
         assert viz_index.read_crs(tmp_path) == "EPSG:3857"
+
+
+def test_crs_info_says_whether_config_declared_it(tmp_path):
+    assert viz_index.crs_info(tmp_path) == ("EPSG:3857", False)
+    (tmp_path / "output_config.xml").write_text('<param name="coordinateSystem" value="epsg:2180" />', encoding="utf-8")
+    assert viz_index.crs_info(tmp_path) == ("EPSG:2180", True)
+
+
+def test_reuse_meta_rejects_index_built_with_other_crs(tmp_path):
+    viz = tmp_path
+    (viz / "index.npz").write_bytes(b"x")
+    base = {"checked": True, "format": viz_index.FORMAT, "events_sha256": "e", "network_sha256": "n", "script_sha256": "s", "plans_sha256": None,
+            "origin": [1.0, 2.0], "crs": "EPSG:3857", "crs_declared": False}
+    (viz / "meta.json").write_text(json.dumps(base), encoding="utf-8")
+    args = (viz, "e", "n", "s", None, (1.0, 2.0))
+    assert viz_index.reuse_meta(*args, ("EPSG:3857", False)) is not None
+    assert viz_index.reuse_meta(*args, ("EPSG:2180", True)) is None, "config dopisany po zbudowaniu indeksu: przebudowa"

@@ -128,24 +128,28 @@ def read_sample_size(run):
 DEFAULT_CRS = "EPSG:3857"  # run bez układu w configu (MATSim domyślnie wpisuje "Atlantis"): współrzędne traktowane jako metry Web Mercator
 
 
-def read_crs(run):
-    """Układ współrzędnych sieci z param coordinateSystem w output_config.xml (np. epsg:3416 -> EPSG:3416).
-    Brak pliku, brak wpisu, wartość niebędąca kodem EPSG znanym pyproj (np. "Atlantis"): DEFAULT_CRS, nigdy wyjątek."""
+def crs_info(run):
+    """(kod EPSG, czy zadeklarowany w configu). Układ z param coordinateSystem w output_config.xml (np. epsg:3416 -> EPSG:3416).
+    Brak pliku, brak wpisu, wartość niebędąca kodem EPSG znanym pyproj (np. "Atlantis"): (DEFAULT_CRS, False), nigdy wyjątek."""
     path = run / CONFIG_NAME
     if not path.exists():
-        return DEFAULT_CRS
+        return DEFAULT_CRS, False
     m = re.search(r'name="coordinateSystem"\s+value="([^"]*)"', path.read_text(encoding="utf-8"))
     code = m.group(1).strip() if m else ""
     if not re.fullmatch(r"(?i)epsg:\d+", code):
-        return DEFAULT_CRS
+        return DEFAULT_CRS, False
     code = "EPSG:" + code.split(":")[1]
     try:
         from pyproj import CRS
 
         CRS.from_user_input(code)
     except Exception:  # noqa: BLE001: nieznany kod EPSG
-        return DEFAULT_CRS
-    return code
+        return DEFAULT_CRS, False
+    return code, True
+
+
+def read_crs(run):
+    return crs_info(run)[0]
 
 
 def network_origin(path):
@@ -605,7 +609,8 @@ def write_meta(path, run, ev_sha, net_sha, script_sha, plans_sha, origin, arrays
         "events_bytes": (run / EVENTS_NAME).stat().st_size,
         "network_bytes": (run / NETWORK_NAME).stat().st_size,
         "origin": [origin[0], origin[1]],
-        "crs": read_crs(run),
+        "crs": crs_info(run)[0],
+        "crs_declared": crs_info(run)[1],
         "sample_size": read_sample_size(run),
         "t_min": info["t_min"],
         "t_max": info["t_max"],
@@ -633,7 +638,7 @@ def write_meta(path, run, ev_sha, net_sha, script_sha, plans_sha, origin, arrays
     path.write_text(json.dumps(meta, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
 
 
-def reuse_meta(viz, ev_sha, net_sha, script_sha, plans_sha, origin):
+def reuse_meta(viz, ev_sha, net_sha, script_sha, plans_sha, origin, crs=None):
     meta_path, index_path = viz / "meta.json", viz / "index.npz"
     if not meta_path.exists() or not index_path.exists():
         return None
@@ -646,6 +651,7 @@ def reuse_meta(viz, ev_sha, net_sha, script_sha, plans_sha, origin):
         and meta.get("script_sha256") == script_sha
         and meta.get("plans_sha256") == plans_sha
         and meta.get("origin") == [origin[0], origin[1]]
+        and (crs is None or [meta.get("crs"), meta.get("crs_declared")] == list(crs))  # config dopisany albo zmieniony po zbudowaniu indeksu
     )
     return meta if same else None
 
@@ -683,7 +689,7 @@ def _run(run_dir):
         log_to(log_path, f"FAIL {exc}")
         return 1
     log_to(log_path, f"origin={origin[0]:.0f},{origin[1]:.0f}")
-    cached = reuse_meta(viz, ev_sha, net_sha, script_sha, plans_sha, origin)
+    cached = reuse_meta(viz, ev_sha, net_sha, script_sha, plans_sha, origin, crs_info(run_dir))
     if cached is not None:
         log_to(log_path, f"reuse tracks={cached['n_tracks']} knots={cached['n_knots']} sec={time.perf_counter() - t0:.1f}")
         return 0

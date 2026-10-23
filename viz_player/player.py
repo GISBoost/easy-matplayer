@@ -260,6 +260,7 @@ class Player:
         self.buildings = None
         self.origin = (0.0, 0.0)
         self.crs = "EPSG:2180"
+        self.crs_note = ""
         self.fwd = Transformer.from_crs("EPSG:2180", "EPSG:4326", always_xy=True)
         self.inv = Transformer.from_crs("EPSG:4326", "EPSG:2180", always_xy=True)
 
@@ -288,6 +289,7 @@ class Player:
             self._read_links()
             self.origin = tuple(float(v) for v in self.index.meta["origin"])
             self.crs = self.index.meta.get("crs", "EPSG:2180")
+            self.crs_note = "" if self.index.meta.get("crs_declared", True) else f"Brak układu współrzędnych w output_config.xml: założono {self.crs}. Jeśli mapa jest w złym miejscu, dodaj ten plik do runu."
             self.fwd = Transformer.from_crs(self.crs, "EPSG:4326", always_xy=True)
             self.inv = Transformer.from_crs("EPSG:4326", self.crs, always_xy=True)
         except viz_engine.EngineFailed as exc:
@@ -576,7 +578,7 @@ class Player:
             "error": self.error, "run": self.run_name, "version": __version__, "t": self.t_start,
             "tMin": 0, "tMax": 1, "sample": "brak", "basemap": self.basemap,
             "bounds": None, "types": [], "classes": [], "nLinks": 0, "nCurve": 0, "curveNote": "", "data": None,
-            "buildings": None, "buildingsNote": "", "osm": self.osm_info(),
+            "buildings": None, "buildingsNote": "", "crsNote": self.crs_note, "osm": self.osm_info(),
         }
         if self.index is None:
             return base

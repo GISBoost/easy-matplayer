@@ -135,6 +135,7 @@ body.panel-off #panel { display: none; }
   <button id="openrun" type="button" class="chip">otwórz run…</button>
   <p id="runmsg" class="muted" hidden></p>
   <progress id="runbar" max="1" value="0" hidden></progress>
+  <p id="crsnote" class="muted" style="color:#f0b35a" hidden></p>
   <p id="osm" class="muted"><span id="osmname"></span> <button id="osm-pick" type="button" class="chip">plik OSM…</button> <button id="osm-clear" type="button" class="chip" hidden>zapomnij plik</button></p>
   <form id="find"><input id="q" type="text" placeholder="id pojazdu" autocomplete="off" spellcheck="false"></form>
   <div id="hits"></div>
@@ -407,6 +408,9 @@ function applyBoot() {
   document.getElementById("osm-clear").hidden = !osm.user;
   document.getElementById("sample").textContent = "próbka " + boot.sample;
   document.getElementById("curves").textContent = boot.curveNote || "";
+  const cn = document.getElementById("crsnote");
+  cn.textContent = boot.crsNote || "";
+  cn.hidden = !boot.crsNote;
   document.getElementById("clock").textContent = clock(t);
   slider.min = tMin;
   slider.max = tMax;
@@ -1288,7 +1292,7 @@ async function bootMap() {
   if (boot.basemap) map.addControl(new maplibregl.AttributionControl({compact: false}));
   map.addControl(new maplibregl.NavigationControl({visualizePitch: true}), "top-left");
   map.addControl(new FitControl(), "top-left");
-  map.addControl(new maplibregl.ScaleControl({maxWidth: 140, unit: "metric"}), "bottom-left");
+  map.addControl(new maplibregl.ScaleControl({maxWidth: 140, unit: "metric"}), "bottom-right");
   overlay = new deck.MapboxOverlay({interleaved: false, layers: []});
   map.addControl(overlay);
   map.on("click", (ev) => {

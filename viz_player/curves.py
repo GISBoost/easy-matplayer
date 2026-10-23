@@ -354,7 +354,7 @@ def coverage(curves):
     return f"; w pliku OSM {curves.found} z {curves.wanted} dróg sieci"
 
 
-def read_cache(cache, n, network, pbf, origin):
+def read_cache(cache, n, network, pbf, origin, crs="EPSG:2180"):
     if not _fresh(cache, network, pbf is not None and pbf.is_file()):
         return None
     with np.load(cache, allow_pickle=False) as blob:
@@ -363,6 +363,8 @@ def read_cache(cache, n, network, pbf, origin):
         if pbf is not None and pbf.is_file():  # bez pliku OSM (demo) cache bierzemy taki, jaki jest; z plikiem tylko zbudowany z tego pliku
             if "pbf" not in blob.files or str(blob["pbf"]) != pbf_stamp(pbf):
                 return None
+        if "crs" not in blob.files or str(blob["crs"]) != crs:  # inny układ sieci (config dopisany po zbudowaniu) daje inne współrzędne
+            return None
         found = int(blob["found"]) if "found" in blob.files and int(blob["found"]) >= 0 else None
         wanted = int(blob["wanted"]) if "wanted" in blob.files and int(blob["wanted"]) >= 0 else None
         if "origin" not in blob.files or [float(v) for v in blob["origin"]] != [float(origin[0]), float(origin[1])]:
@@ -378,7 +380,7 @@ def read_cache(cache, n, network, pbf, origin):
     return out
 
 
-def write_cache(cache, curves, origin, pbf=None):
+def write_cache(cache, curves, origin, pbf=None, crs="EPSG:2180"):
     cache.parent.mkdir(parents=True, exist_ok=True)
     tmp = cache.with_name("curves-partial.npz")
     with tmp.open("wb") as handle:
@@ -389,6 +391,7 @@ def write_cache(cache, curves, origin, pbf=None):
             off=curves.off,
             xy=curves.xy,
             pbf=np.str_(pbf_stamp(pbf) if pbf is not None else ""),
+            crs=np.str_(crs),
             found=np.int32(-1 if curves.found is None else curves.found),
             wanted=np.int32(-1 if curves.wanted is None else curves.wanted),
         )
@@ -401,7 +404,7 @@ def load(run_dir, link_id, link_xy, link_length, origin, crs="EPSG:2180"):
     network = run_dir / "output_network.xml.zst"
     cache = run_dir / "viz" / "curves.npz"
     pbf = find_pbf()
-    cached = read_cache(cache, n, network, pbf, origin)
+    cached = read_cache(cache, n, network, pbf, origin, crs)
     if cached is not None:
         return cached, f"łamane: {cached.n_bent} z {n}, cache{coverage(cached)}"
     try:
@@ -419,7 +422,7 @@ def load(run_dir, link_id, link_xy, link_length, origin, crs="EPSG:2180"):
     ways = grab_ways(pbf, wanted)
     built = assemble(link_xy, link_length, ends, project(ways, origin, crs))
     built.found, built.wanted = len(ways), len(wanted)
-    write_cache(cache, built, origin, pbf)
+    write_cache(cache, built, origin, pbf, crs)
     if not ways:
         return built, f"łamane: plik OSM nie pokrywa tej sieci (0 z {len(wanted)} dróg); cięciwy"
     return built, f"łamane: {built.n_bent} z {n}, skan {time.perf_counter() - started:.1f} s{coverage(built)}"
