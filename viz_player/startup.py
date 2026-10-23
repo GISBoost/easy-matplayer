@@ -15,6 +15,7 @@ LOG = DATA / f"{APP_NAME}.log"
 LOG_MAX = 2_000_000
 WEBVIEW2_URL = "https://developer.microsoft.com/microsoft-edge/webview2/"
 NO_DIALOG = "EASY_MATANIMATION_NO_DIALOG"  # testy: bez okien
+SKIP_WV2_CHECK = "EASY_MATANIMATION_SKIP_WEBVIEW2_CHECK"  # furtka przy fałszywym alarmie sprawdzenia WebView2
 
 
 def setup_logging():
@@ -43,7 +44,7 @@ def webview2_missing():
     """True, gdy WebView2 Runtime nie da się znaleźć. Pyta ten sam WebView2Loader.dll, którego używa pywebview: wpis w rejestrze albo katalog
     Runtime nie wystarczają (w Windows Sandbox są, a okno i tak się nie uruchamia). Bez Runtime pywebview nie zgłasza błędu, tylko zostawia puste
     okno i działa dalej. Nie da się zapytać (inny system, brak biblioteki): False, niech zadecyduje pywebview."""
-    if os.name != "nt" or struct.calcsize("P") != 8:
+    if os.name != "nt" or struct.calcsize("P") != 8 or os.environ.get(SKIP_WV2_CHECK):
         return False
     try:
         import webview
