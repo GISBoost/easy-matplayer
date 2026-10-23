@@ -1,0 +1,77 @@
+name: easy-matanimation - build and release
+
+on:
+  push:
+    tags:
+      - 'viz-v*'  # osobny prefiks: to repo ma też własne tagi projektu MATSim Kutno
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: 'Tag wydania do zbudowania i opublikowania (np. viz-v0.1.0). Wymagany przy ręcznym uruchomieniu: workflow_dispatch nie ma tagu w github.ref_name.'
+        required: true
+
+concurrency:
+  # Klucz to tag: dwa różne tagi mogą się budować naraz, ale ten sam tag nie może ścigać się sam ze sobą
+  # (strażnik idempotencji niżej chroni tylko przed kolejnym uruchomieniem, nie przed dwoma równoległymi).
+  group: viz-release-${{ github.event.inputs.tag || github.ref_name }}
+  cancel-in-progress: false
+
+permissions:
+  contents: write  # gh release create; nic więcej nie jest potrzebne
+
+jobs:
+  build_and_release:
+    runs-on: windows-latest
+    timeout-minutes: 30
+    env:
+      GH_TOKEN: ${{ github.token }}
+      TAG: ${{ github.event.inputs.tag || github.ref_name }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.inputs.tag || github.ref }}
+
+      - name: Check tag matches the app version
+        shell: bash
+        run: |
+          set -euo pipefail
+          version=$(sed -n 's/^__version__ = "\(.*\)"/\1/p' viz_player/__init__.py)
+          if [ "$TAG" != "viz-v$version" ]; then
+            echo "::error::Tag $TAG nie pasuje do wersji w viz_player/__init__.py ($version). Popraw wersję albo tag."
+            exit 1
+          fi
+
+      - name: Check for an existing release (idempotency guard)
+        id: existing_release
+        shell: bash
+        run: |
+          set -uo pipefail
+          if gh release view "$TAG" >/dev/null 2>err.log; then
+            echo "exists=true" >> "$GITHUB_OUTPUT"
+          elif grep -qi "release not found" err.log; then
+            echo "exists=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "::error::gh release view failed unexpectedly (not a plain \"not found\"). Raw error follows:"
+            cat err.log
+            exit 1
+          fi
+
+      - name: Set up uv
+        if: steps.existing_release.outputs.exists != 'true'
+        uses: astral-sh/setup-uv@v6
+
+      # Cała logika budowania (venv, zależności, PyInstaller, sprawdzenie exe, zip, licencje) jest w scripts\viz_build.bat:
+      # to ten sam skrypt, który deweloper uruchamia lokalnie, więc nie ma drugiego miejsca, które mogłoby się rozjechać.
+      - name: Build (PyInstaller)
+        if: steps.existing_release.outputs.exists != 'true'
+        shell: cmd
+        run: call scripts\viz_build.bat
+
+      - name: Publish release
+        if: steps.existing_release.outputs.exists != 'true'
+        shell: bash
+        run: |
+          set -euo pipefail
+          gh release create "$TAG" build_viz/easy-matanimation-windows.zip \
+            --title "easy-matanimation $TAG" \
+            --notes "Odtwarzacz runów MATSim (ruch w 3D) dla Windows. Rozpakuj zip i uruchom easy-matanimation.exe, Python nie jest potrzebny. Wymaga Microsoft Edge WebView2 Runtime (jest w Windows 11 i w większości Windows 10). Plik nie jest podpisany: SmartScreen może poprosić o „Uruchom mimo to”. Run demo jest osobnym plikiem easy-matanimation-demo-kutno.zip. Program: GPL-3.0-or-later; źródła: https://github.com/${{ github.repository }}/tree/${TAG}/viz_player"
