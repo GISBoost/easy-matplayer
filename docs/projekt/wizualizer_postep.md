@@ -42,7 +42,7 @@ Wcześniej zrobione (fundamenty, D24): origin z sieci, `person_id` i klasyfikato
 - [x] A3. Pierwsza paczka PyInstaller onedir, smoke zbudowanego exe z okrojonym PATH.
 - [ ] A4. Test na czystym komputerze / Windows Sandbox.
 - [x] A5. Zip z małym runem demo (59 MB, do potwierdzenia przez właściciela: wybór runu i licencje, patrz log A5).
-- [ ] A6. Licencje, README użytkownika, workflow release (bez pusha), próba w czystym klonie.
+- [x] A6. Licencje, README użytkownika, workflow release (bez pusha), próba w czystym klonie (log A6 niżej; workflow nie był uruchomiony na GitHubie).
 - [ ] A7. Przeniesienie do nowego repo (po sygnale właściciela).
 
 ## Dziennik kroków
@@ -248,3 +248,11 @@ Wszystkie trzy części (A2a, A2b, A2c) przeszły: 96 testów i smoke w prawdziw
 - Licencja wyników: **CC BY 4.0**, potwierdzone w `matsim/README.md` (sekcja Licenses: pliki wejściowe i wyjściowe matsim-example-project) i w `matsim-berlin`/`matsim-kelheim`; dopisane w `LICENSE-DATA.md`. Sieć zachowuje ODbL (OSM).
 - Wiedeń (`ait-energy/matsim-model-vienna`, CC BY-NC 4.0) **nie wchodzi do publicznego dema**: demo jest publiczne i pod GPL/CC BY, a NC zabrania użycia komercyjnego przez odbiorcę; nie mamy prawa udzielić więcej, niż dał autor. Lokalnie jako dane testowe nadal działa.
 - Berlin 1% v6.4 (CC BY 4.0, SVN TU Berlin) jako opcja na później: eventy 274 MB gz + sieć 17 MB, czyli osobny zip 300+ MB. Wymaga zgody właściciela na pobranie.
+
+## A6: licencje, README, workflow release (2026-10-23)
+
+- `.github/workflows/viz_release.yml`: tag `viz-v*` (albo ręcznie z `tag`), kontrola `tag == viz-v<__version__>`, strażnik idempotencji (`gh release view`), concurrency po tagu, `setup-uv`, budowa tym samym `scripts\viz_build.bat`, `gh release create` z `easy-matanimation-windows.zip`. YAML sparsowany (PyYAML), logika kontroli wersji sprawdzona lokalnie (`viz-v0.1.0`). **Nie uruchomiony na GitHubie** (bez pusha); pierwszy prawdziwy test to tag właściciela.
+- `scripts/viz_third_party.py` (wołany z `viz_build.bat`): teksty licencji 19 bibliotek (zależności z `requirements.txt` wraz z tranzytywnymi, z wyliczeniem markerów, bez narzędzi budowy) i Pythona do `THIRD_PARTY/` w paczce.
+- `docs/viz/README_pl.md`: pobranie, SmartScreen, WebView2, demo, własny run (`.xml.zst`), plik OSM, gdzie są dane, sieć, licencje, ograniczenia, budowa.
+- **Próba w czystym klonie** (`git clone` gałęzi do katalogu tymczasowego, bez `build_viz`, bez pliku OSM): `scripts\viz_build.bat` kończy się kodem 0, exe przechodzi `--version`, zip 46,0 MB z `THIRD_PARTY/` (19 pakietów).
+- Uwagi: `Compress-Archive` w Windows PowerShell 5.1 zapisuje w zipie ukośniki odwrotne (rozpakowuje się poprawnie w Windows, `unzip` ostrzega); zip dema dołącza właściciel: `gh release upload viz-v0.1.0 build_viz/easy-matanimation-demo-kutno.zip`.
