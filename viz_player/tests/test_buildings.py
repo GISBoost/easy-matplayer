@@ -89,3 +89,18 @@ def test_saved_buildings_are_used_without_pbf(mini_pbf, tmp_path):
     assert vb.build(tmp_path / "out", box, (19.5, 52.25), pbf=gone) is None
     (tmp_path / "out" / "buildings_h.bin").unlink()
     assert vb.build(tmp_path / "out", box, origin, pbf=gone) is None, "niekompletne pliki to brak budynków"
+
+
+def test_buildings_kept_with_run_and_restored_in_another_site(mini_pbf, tmp_path, monkeypatch):
+    from viz_player.player import Player
+
+    box, origin = (19.39, 52.24, 19.42, 52.26), (19.4, 52.25)
+    player = Player.__new__(Player)
+    player.run_dir = tmp_path / "run"
+    monkeypatch.setattr(vb, "find_pbf", lambda: mini_pbf)
+    built = player._keep_buildings(tmp_path / "site1" / "data", box, origin)
+    assert built["n"] == 3 and (tmp_path / "run" / "viz" / "buildings" / "buildings.json").is_file()
+    monkeypatch.setattr(vb, "find_pbf", lambda: None)  # demo rozpakowane u kogoś bez pliku OSM, strona w innym katalogu
+    restored = player._keep_buildings(tmp_path / "site2" / "data", box, origin)
+    assert restored["n"] == 3 and (tmp_path / "site2" / "data" / "buildings_xy.bin").is_file()
+    assert player._keep_buildings(tmp_path / "site3" / "data", box, (19.5, 52.25)) is None, "inna sieć: bez cudzych budynków"

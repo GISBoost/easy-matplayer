@@ -102,3 +102,16 @@ def test_load_counts_found_ways(tmp_path, monkeypatch):
     monkeypatch.setattr(curves, "project", lambda ways, origin: ways)
     built, note = _load(run, pbf)
     assert built.n_bent == 1 and "w pliku OSM 1 z 1 dróg sieci" in note
+
+
+def test_cache_older_than_network_is_kept_without_pbf_only(tmp_path):
+    import os
+
+    net = tmp_path / "net"
+    net.write_bytes(b"x")
+    c = curves.Curves(np.array([0, 3], dtype=np.int32), _forward())
+    cache = tmp_path / "curves.npz"
+    curves.write_cache(cache, c, (525000.0, 485000.0))
+    os.utime(cache, (1_000_000_000, 1_000_000_000))  # rozpakowanie dema potrafi zostawić cache starszy od sieci
+    assert curves.read_cache(cache, 1, net, None, (525000.0, 485000.0)) is not None, "bez pliku OSM nie ma czym przeliczyć"
+    assert curves.read_cache(cache, 1, net, tmp_path / "nie-ma.pbf", (525000.0, 485000.0)) is not None

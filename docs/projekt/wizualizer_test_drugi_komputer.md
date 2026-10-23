@@ -7,7 +7,8 @@ Wersja: 0.1.0 (zip z gałęzi `claude/viz-fundamenty-e093b2`). Wymagania: Window
 
 1. `build_viz\easy-matanimation-windows.zip` (ok. 44 MB).
 2. Folder `build_viz\run_do_testu` (ok. 45 MB; run Kutno 25%: eventy, sieć, plany; bez indeksu, więc pierwsze otwarcie zbuduje go od zera, ok. 25–60 s).
-3. Opcjonalnie plik `lodzkie-*.osm.pbf` (132 MB, z `data\raw\osm`), do kroku 9.
+3. `build_viz\easy-matanimation-demo-kutno.zip` (59 MB, run demo z gotowym indeksem i budynkami; do kroku 13).
+4. Opcjonalnie plik `lodzkie-*.osm.pbf` (132 MB, z `data\raw\osm`), do kroku 9.
 
 ## Kroki (odhaczaj, przy problemie zapisz co zobaczyłeś i zrób zrzut)
 
@@ -27,3 +28,4 @@ Wersja: 0.1.0 (zip z gałęzi `claude/viz-fundamenty-e093b2`). Wymagania: Window
 ## Co mi przekazać
 
 Dla każdego kroku: przeszło / nie przeszło, a przy „nie” komunikat albo zrzut oraz `easy-matanimation.log`. Plus dane maszyny: wersja Windows, karta graficzna (jest dedykowana, czy tylko zintegrowana), czy WebView2 był zainstalowany wcześniej (Ustawienia → Aplikacje → „Microsoft Edge WebView2 Runtime”), czas z kroku 4.
+13. [ ] Demo: rozpakuj `easy-matanimation-demo-kutno.zip` do innego folderu ze spacją, w aplikacji wskaż rozpakowany `demo-kutno`. Okno ma się pojawić w kilka sekund (bez paska postępu), z budynkami 3D (przycisk 3D) **bez** wskazywania pliku OSM; w panelu „OSM: dane zapisane przy runie”. Zapisz czas.

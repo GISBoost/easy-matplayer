@@ -339,10 +339,12 @@ def pbf_stamp(pbf):
     return f"{Path(pbf).name}:{st.st_size}:{st.st_mtime_ns}"
 
 
-def _fresh(cache, network):
+def _fresh(cache, network, check_age=True):
+    """check_age: cache starszy od sieci jest nieświeży. Bez pliku OSM (demo) nie ma jak go przeliczyć, a kopiowanie i rozpakowanie
+    potrafią przestawić czasy plików, więc wtedy bierzemy cache (liczba linków i origin są sprawdzane dalej)."""
     if not cache.is_file() or not network.is_file():
         return False
-    return cache.stat().st_mtime >= network.stat().st_mtime
+    return not check_age or cache.stat().st_mtime >= network.stat().st_mtime
 
 
 def coverage(curves):
@@ -353,7 +355,7 @@ def coverage(curves):
 
 
 def read_cache(cache, n, network, pbf, origin):
-    if not _fresh(cache, network):
+    if not _fresh(cache, network, pbf is not None and pbf.is_file()):
         return None
     with np.load(cache, allow_pickle=False) as blob:
         if "version" not in blob.files or int(blob["version"]) != VERSION:

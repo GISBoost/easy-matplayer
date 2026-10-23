@@ -41,7 +41,7 @@ Wcześniej zrobione (fundamenty, D24): origin z sieci, `person_id` i klasyfikato
 - [x] A2. Zachowanie po dwukliku: A2a nazwa, wersja, log do pliku, komunikaty błędów; A2b wybór runu bez argumentu i pełny pasek postępu; A2c własny plik OSM.
 - [x] A3. Pierwsza paczka PyInstaller onedir, smoke zbudowanego exe z okrojonym PATH.
 - [ ] A4. Test na czystym komputerze / Windows Sandbox.
-- [ ] A5. Zip z małym runem demo.
+- [x] A5. Zip z małym runem demo (59 MB, do potwierdzenia przez właściciela: wybór runu i licencje, patrz log A5).
 - [ ] A6. Licencje, README użytkownika, workflow release (bez pusha), próba w czystym klonie.
 - [ ] A7. Przeniesienie do nowego repo (po sygnale właściciela).
 
@@ -232,3 +232,12 @@ Wszystkie trzy części (A2a, A2b, A2c) przeszły: 96 testów i smoke w prawdziw
 - Wniosek: sprawdzenie WebView2 nie jest fałszywym alarmem, a Windows Sandbox (Windows 10 19041) nie nadaje się do testu okna aplikacji. Komunikat „brak WebView2” zweryfikowany tam, gdzie brak runtime jest faktem. Dodana furtka `EASY_MATANIMATION_SKIP_WEBVIEW2_CHECK=1` (pominięcie sprawdzenia, gdyby kiedyś dało fałszywy alarm na zwykłym komputerze).
 - Co zostaje do sprawdzenia na zwykłym komputerze (drugi komputer albo czyste konto Windows): pełne okno po starcie z runem, zapamiętany run po restarcie, WMS bez sieci, start bez GPU.
 - Powtórka z GPU hosta (vGPU włączone, w Sandboxie NVIDIA RTX 4070) i z siecią (ping przechodzi): wynik ten sam (komunikat „brak WebView2”, loader `0x80070002`, smoke kod 1). Przyczyna nie leży w braku GPU ani sieci; Sandbox odpada jako środowisko testu okna.
+
+### A5: zip z runem demo (2026-10-23)
+
+- Skrypt `scripts/viz_make_demo.py <run> <zip>`: kopiuje eventy, sieć i plany runu do katalogu tymczasowego, buduje tam indeks, łamane drogi (OSM) i budynki, zostawia `viz/{index.npz, meta.json, curves.npz, buildings/}` + `README-DEMO.txt` (atrybucja GUS CC BY 4.0, OSM ODbL, wysokości to założenia) + `LICENSE-DATA.md`, wyrzuca eksport, stronę, zrzuty i logi robocze. Run źródłowy nie jest zmieniany.
+- Wybrany run: `g5r7b_25pct_s4711` (Kutno 25%, ten sam scenariusz co samodzielny `scenarios/kutno_r7b_25pct/` w repo, który już ma licencję danych opisaną w `docs/research/GH_ACTIONS_run.md`). Wynik: `build_viz/easy-matanimation-demo-kutno.zip` **59,2 MB** (eventy 40,7 MB, plany 5,0 MB, indeks 9,5 MB, budynki 4,5 MB). Mniejszy byłby `g5r7r1_25pct` (eventy 9 MB), ale to inny, starszy wariant populacji (`plans_g5r1k1`), nie ten pokazywany w projekcie.
+- Przegląd licencji: sieć i plany przeszukane pod kątem `tomtom`, `here.com`, `api_key`, `token`, `secret` i ścieżek profilu użytkownika: brak trafień; w pozostałych plikach tylko tablice liczbowe i metadane runu. Do potwierdzenia przez właściciela: (1) wybór runu, (2) że eventy symulacji (wynik MATSim na danych syntetycznych) mogą iść pod CC BY / ODbL tak jak scenariusz w repo.
+- Luki znalezione przy okazji i naprawione: (1) budynki z OSM leżały tylko w katalogu strony aplikacji (wspólnym dla wszystkich runów), więc demo rozpakowane u kogoś bez pliku OSM nie miałoby budynków; teraz `Player._keep_buildings` zapisuje kopię w `<run>/viz/buildings` i przy braku PBF z niej odtwarza; (2) cache łamanych dróg uznawany za nieświeży, gdy rozpakowanie przestawi czasy plików, co przy braku PBF dawało ciche cięciwy; bez PBF cache jest brany bez porównania czasów (liczba linków i origin nadal sprawdzane).
+- **Dowód:** demo rozpakowane do `demo test ż` (spacja, polski znak), zbudowane exe z okrojonym PATH, pusty katalog danych, bez pliku OSM w repo ani w danych: okno po **3 s**, `reuse tracks=24304 ... sec=0.2` (indeks nie liczony od nowa), budynki **83 617**, łamane drogi **4 705 z 10 383** (komunikat „w pliku OSM 3705 z 3705 dróg sieci”), panel „OSM: dane zapisane przy runie”. 103 testy (dwa nowe).
+- Nie sprawdzone: otwarcie dema na innym komputerze (krok 13 w `docs/projekt/wizualizer_test_drugi_komputer.md`), rozdzielenie dema na osobny plik w release (A6).

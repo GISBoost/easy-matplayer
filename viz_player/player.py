@@ -7,6 +7,7 @@ Bez klucza CARTO zostaje sieć na #121418 i zdanie „Podkład wyłączony.”
 """
 import json
 import math
+import shutil
 import sys
 from pathlib import Path
 
@@ -623,6 +624,20 @@ class Player:
             arrays.update({"curve_off": self.curve.off, "curve_lon": np.asarray(lon), "curve_lat": np.asarray(lat)})
         return arrays
 
+    def _keep_buildings(self, data, box, origin):
+        """Budynki z OSM do <data>, a także kopia przy runie (viz/buildings): katalog strony aplikacji jest wspólny dla wszystkich runów,
+        więc bez kopii demo rozpakowane bez pliku OSM nie miałoby budynków. Bez pliku OSM budynki wracają z kopii przy runie."""
+        keep = self.run_dir / "viz" / "buildings"
+        found = viz_buildings.build(data, box, origin)
+        if found is not None:
+            if viz_buildings.cached(keep, box, origin) is None or _key(keep) != found["source_key"]:
+                _copy_buildings(Path(data), keep)
+            return found
+        if viz_buildings.cached(keep, box, origin) is None:
+            return None
+        _copy_buildings(keep, Path(data))
+        return viz_buildings.cached(data, box, origin)
+
     def write_site(self, dest=None, progress=None):
         """progress(etykieta, ułamek 0..1) dla tego etapu; wywołujący przelicza go na swój przedział (scaled)."""
         dest = dest or self.run_dir / "viz" / "site"
@@ -635,11 +650,21 @@ class Player:
         self.export_key = viz_export.build(self.run_dir, out=Path(dest) / "data")["source_key"]
         report("Budynki 3D (OSM)", None)
         box, origin = viz_buildings.network_box(self.run_dir)
-        self.buildings = viz_buildings.build(Path(dest) / "data", box, origin)
+        self.buildings = self._keep_buildings(Path(dest) / "data", box, origin)
         report("Zapisuję stronę okna", 0.9)
         path = site.write_site(dest, self.boot(), self.boot_arrays())
         report("Gotowe", 1.0)
         return path
+
+
+def _key(folder):
+    return json.loads((Path(folder) / "buildings.json").read_text(encoding="utf-8")).get("source_key")
+
+
+def _copy_buildings(src, dst):
+    dst.mkdir(parents=True, exist_ok=True)
+    for name in ("buildings_off.bin", "buildings_xy.bin", "buildings_h.bin", "buildings_src.bin", "buildings.json"):  # json na końcu: jest znacznikiem kompletu
+        shutil.copyfile(src / name, dst / name)
 
 
 def pick_ident(index):
