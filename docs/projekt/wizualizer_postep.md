@@ -256,3 +256,8 @@ Wszystkie trzy części (A2a, A2b, A2c) przeszły: 96 testów i smoke w prawdziw
 - `docs/viz/README_pl.md`: pobranie, SmartScreen, WebView2, demo, własny run (`.xml.zst`), plik OSM, gdzie są dane, sieć, licencje, ograniczenia, budowa.
 - **Próba w czystym klonie** (`git clone` gałęzi do katalogu tymczasowego, bez `build_viz`, bez pliku OSM): `scripts\viz_build.bat` kończy się kodem 0, exe przechodzi `--version`, zip 46,0 MB z `THIRD_PARTY/` (19 pakietów).
 - Uwagi: `Compress-Archive` w Windows PowerShell 5.1 zapisuje w zipie ukośniki odwrotne (rozpakowuje się poprawnie w Windows, `unzip` ostrzega); zip dema dołącza właściciel: `gh release upload viz-v0.1.0 build_viz/easy-matanimation-demo-kutno.zip`.
+
+### A5/A6 (zmiana po decyzji właściciela, 2026-10-23)
+
+- Demo wróciło do **jednego runu** (`demo-kutno` = `g1r8_25pct_s4711`, zip ok. 59 MB), osobny plik w wydaniu: dane runu leżą w `output/` (poza gitem), więc workflow nie ma ich skąd wziąć i nie da się ich wbudować w zip aplikacji budowany w CI. Zip dema dołącza właściciel (`gh release upload`).
+- `docs/viz/README_pl.md` ma tabelę linków do Berlina v6.4 (CC BY 4.0), Kelheim i Wiednia (oba CC BY-NC, tylko do własnego użytku). Nic z tego nie jest pobierane ani dołączane; użytkownik pobiera sam.

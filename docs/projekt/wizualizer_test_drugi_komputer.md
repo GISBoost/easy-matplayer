@@ -7,7 +7,7 @@ Wersja: 0.1.0 (zip z gałęzi `claude/viz-fundamenty-e093b2`). Wymagania: Window
 
 1. `build_viz\easy-matanimation-windows.zip` (ok. 44 MB).
 2. Folder `build_viz\run_do_testu` (ok. 45 MB; run Kutno 25%: eventy, sieć, plany; bez indeksu, więc pierwsze otwarcie zbuduje go od zera, ok. 25–60 s).
-3. `build_viz\easy-matanimation-demo-kutno.zip` (59 MB, run demo z gotowym indeksem i budynkami; do kroku 13).
+3. `build_viz\easy-matanimation-demo-kutno.zip` (59 MB, jeden run demo z gotowym indeksem i budynkami; do kroku 13).
 4. Opcjonalnie plik `lodzkie-*.osm.pbf` (132 MB, z `data\raw\osm`), do kroku 9.
 
 ## Kroki (odhaczaj, przy problemie zapisz co zobaczyłeś i zrób zrzut)

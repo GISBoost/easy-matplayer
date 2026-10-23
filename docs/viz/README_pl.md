@@ -12,7 +12,19 @@ Wymagania: Windows 10 22H2 albo 11 (64-bit) i Microsoft Edge WebView2 Runtime (j
 
 ## Demo
 
-`easy-matanimation-demo-kutno.zip` (ok. 118 MB) to dwa runy Kutna (25% mieszkańców, 100 iteracji) z gotowym indeksem: `kutno-r8-zakazy-skretu` i `kutno-r7b-bez-zakazow` (te same plany, sieć z zakazami skrętu z OSM i bez). Rozpakuj i wskaż jeden z folderów. Otwierają się w kilka sekund, z budynkami 3D, bez żadnych dodatkowych plików.
+`easy-matanimation-demo-kutno.zip` (ok. 59 MB, osobny plik w tym samym wydaniu) to run Kutna (25% mieszkańców, 100 iteracji, sieć z zakazami skrętu z OSM) z gotowym indeksem. Rozpakuj i wskaż folder `demo-kutno`. Otwiera się w kilka sekund, z budynkami 3D, bez żadnych dodatkowych plików.
+
+## Inne publiczne scenariusze MATSim do własnego sprawdzenia
+
+Nie dołączamy ich do wydania (każdy ma własną licencję). Pobierz sam i wskaż folder z wynikami; program wymaga plików `.xml.zst`, więc wyniki w `.xml.gz` trzeba przepakować (patrz niżej). Sprawdzone na ruchu samochodowym, plików OSM nie potrzeba.
+
+| scenariusz | gdzie | licencja danych |
+|---|---|---|
+| Berlin v6.4 (1%, 10%, 25%) | [matsim-berlin](https://github.com/matsim-scenarios/matsim-berlin), wyniki na [serwerze TU Berlin](https://svn.vsp.tu-berlin.de/repos/public-svn/matsim/scenarios/countries/de/berlin/berlin-v6.4/output/) (eventy 1%: ok. 274 MB) | CC BY 4.0 |
+| Kelheim | [matsim-kelheim](https://github.com/matsim-scenarios/matsim-kelheim), wyniki na [serwerze TU Berlin](https://svn.vsp.tu-berlin.de/repos/public-svn/matsim/scenarios/countries/de/kelheim/) | CC BY-NC 4.0 (tylko użytek niekomercyjny) |
+| Wiedeń 2023.2 | [ait-energy/matsim-model-vienna](https://github.com/ait-energy/matsim-model-vienna) (tylko wejścia, wyniki trzeba policzyć samemu) | CC BY-NC 4.0 (tylko użytek niekomercyjny) |
+
+Pliki NC wolno otwierać na własnym komputerze; nie wolno ich dołączać do publicznych paczek z tym programem.
 
 ## Własny run
 
