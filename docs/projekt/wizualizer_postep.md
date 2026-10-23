@@ -288,7 +288,13 @@ Wszystkie trzy części (A2a, A2b, A2c) przeszły: 96 testów i smoke w prawdziw
 - Zgłoszenie: `https://mapsneu.wien.gv.at/basemapneu/1.0.0/WMTSCapabilities.xml` pokazywał wszystkie 7 warstw jako „nie ma zestawu kafelków w EPSG:3857; ma: EPSG:6”. Przyczyna: `ogc.epsg()` czytał z URN `urn:ogc:def:crs:EPSG:6.18.3:3857` pierwszą liczbę po `EPSG:` (wersję bazy EPSG, 6), a nie kod. Naprawa: kod to ostatni człon (`EPSG:(?:[\d.]*:)?(\d+)`), test `test_epsg_code_forms` (URN z wersją, bez, `EPSG:2180`, `epsg:900913`, `CRS:84`). 106 testów.
 - Dowód na żywym serwisie: 7 warstw bez błędu; kafelek `geolandbasemap` (image/png) i `bmaporthofoto30cm` (image/jpeg) z z=15 pobrane i rozpoznane jako obrazy. Nie sprawdzone w oknie (dodanie warstwy kliknięciem).
 
-## Plan kolejnych funkcji (nie robione, na życzenie właściciela 2026-10-23)
+### Łamane drogi w sieci Wiednia (2026-10-23)
 
-- [ ] **Skala mapy:** pasek skali (MapLibre `ScaleControl`, metry/kilometry) w oknie, żeby było widać aktualną skalę.
-- [ ] **Większe oddalenie:** obniżyć `minZoom` (dziś 8 w `viz_player/shell.html`, `new maplibregl.Map`), tak by dało się pokazać całą szeroką sieć (Wiedeń, Berlin) i by „cały obszar sieci” obejmował pełną obwiednię; po zmianie sprawdzić, czy kafelki WMS/WMTS i warstwy deck.gl dobrze się zachowują przy niskim zoomie.
+- Zgłoszenie: po wskazaniu pliku OSM Wiednia drogi się nie zmieniają. Przyczyna: sieć z matsim-osm zapisuje id drogi OSM jako atrybut `osm:way:id`, a program czytał tylko `origid` (Supersonic, Kutno), więc „brak origid” i proste odcinki. Naprawa w `curves.read_ends` (oba atrybuty), test `test_read_ends_takes_way_id_from_origid_or_osm_way_id`.
+- Dowód: `vienna_1pct_test` z `wien-bbbike-261017.osm.pbf`: łamane 39 456 z 374 991 linków (skan 8,5 s), w pliku 66 171 z 132 621 dróg sieci (BBBike obejmuje samo miasto, sieć sięga dalej, reszta zostaje prosta). 107 testów.
+
+## Skala mapy i większe oddalenie (2026-10-23, z planu)
+
+- [x] **Skala mapy:** `ScaleControl` (metry/kilometry) w lewym dolnym rogu okna.
+- [x] **Większe oddalenie:** `minZoom` 8 -> 3, więc „cały obszar sieci” obejmuje pełną obwiednię także szerokich sieci.
+- Dowód: smoke sprawdza, że napis skali istnieje i zmienia się między zoomem 16 i 12 oraz że `getMinZoom() <= 3` i widok schodzi do zoomu 3; smoke OK na runie Kutna (g1r8 25%, WMS 24 kafelki). Na Wiedniu te kroki też przeszły, smoke kończy się tam znanym, kutnowskim testem „budynek z malutkiego pliku”. Do oceny wzrokowej przez właściciela: wygląd skali na ciemnym podkładzie, kafelki WMS/WMTS przy zoomie 3-6 (krok 15 listy testu).

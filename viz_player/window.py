@@ -735,6 +735,16 @@ def smoke(run):
             if not fit_ok:
                 result["error"] = f"cały obszar: widok {js('JSON.stringify([map.getBounds().toArray(), boot.bounds, map.getZoom()])')}"
                 return
+            # skala mapy zmienia się z zoomem, a oddalenie sięga zoomu 3 (cały kraj)
+            scale = []
+            for zoom in (16, 12):
+                js(f"map.jumpTo({{zoom: {zoom}}}); 0")
+                time.sleep(0.4)
+                scale.append(js("(document.querySelector('.maplibregl-ctrl-scale')||{}).textContent||''"))
+            js("map.jumpTo({zoom: 0}); 0")
+            if not all(scale) or scale[0] == scale[1] or js("map.getMinZoom() <= 3 && map.getZoom() <= 3.01") is not True:
+                result["error"] = f"skala lub minZoom: {scale}, zoom {js('map.getZoom()')}"
+                return
             # podkład WMS jak w QGIS: dialog, połączenie, wybór warstwy, kafelki z usługi (lokalna atrapa)
             js("document.getElementById('svc-add').click()")
             js(f"document.getElementById('svc-url').value = {json.dumps(wms_url)}; document.getElementById('svc-form').requestSubmit();")

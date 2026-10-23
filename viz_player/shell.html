@@ -1282,12 +1282,13 @@ async function bootMap() {
   }
   const b = boot.bounds;
   map = new maplibregl.Map({
-    container: "map", style, attributionControl: false, minZoom: 8, maxZoom: 19, maxPitch: 70,
+    container: "map", style, attributionControl: false, minZoom: 3, maxZoom: 19, maxPitch: 70,
     bounds: b ? [[b[0][1], b[0][0]], [b[1][1], b[1][0]]] : undefined, fitBoundsOptions: {padding: 20},
   });
   if (boot.basemap) map.addControl(new maplibregl.AttributionControl({compact: false}));
   map.addControl(new maplibregl.NavigationControl({visualizePitch: true}), "top-left");
   map.addControl(new FitControl(), "top-left");
+  map.addControl(new maplibregl.ScaleControl({maxWidth: 140, unit: "metric"}), "bottom-left");
   overlay = new deck.MapboxOverlay({interleaved: false, layers: []});
   map.addControl(overlay);
   map.on("click", (ev) => {

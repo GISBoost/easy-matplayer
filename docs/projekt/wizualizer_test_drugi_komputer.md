@@ -5,7 +5,10 @@ Wersja: 0.1.0 (zip z gałęzi `claude/viz-fundamenty-e093b2`). Wymagania: Window
 
 ## Co skopiować na drugi komputer
 
-1. `build_viz\easy-matanimation-windows.zip` (ok. 44 MB).
+1. `build_viz\easy-matanimation-windows.zip` (ok. 44 MB). Do kroku 14 przyda się też adres usługi mapowej (wklejasz go w panelu mapy, wybierasz warstwę):
+   - OSM (WMS): `https://ows.terrestris.de/osm/service`, warstwa `OSM-WMS` (cały świat, EPSG:3857)
+   - ortofoto Polska (WMS): `https://mapy.geoportal.gov.pl/wss/service/PZGIK/ORTO/WMS/StandardResolution` (Geoportal; serwer czasem zwraca chwilowe 404, wtedy ponów)
+   - ortofoto Wiedeń (WMTS): `https://mapsneu.wien.gv.at/basemapneu/1.0.0/WMTSCapabilities.xml`, warstwa `bmaporthofoto30cm`
 2. Folder `build_viz\run_do_testu` (ok. 45 MB; run Kutno 25%: eventy, sieć, plany; bez indeksu, więc pierwsze otwarcie zbuduje go od zera, ok. 25–60 s).
 3. `build_viz\easy-matanimation-demo-kutno.zip` (59 MB, jeden run demo z gotowym indeksem i budynkami; do kroku 13).
 4. Opcjonalnie plik `lodzkie-*.osm.pbf` (132 MB, z `data\raw\osm`), do kroku 9.
@@ -29,3 +32,5 @@ Wersja: 0.1.0 (zip z gałęzi `claude/viz-fundamenty-e093b2`). Wymagania: Window
 
 Dla każdego kroku: przeszło / nie przeszło, a przy „nie” komunikat albo zrzut oraz `easy-matanimation.log`. Plus dane maszyny: wersja Windows, karta graficzna (jest dedykowana, czy tylko zintegrowana), czy WebView2 był zainstalowany wcześniej (Ustawienia → Aplikacje → „Microsoft Edge WebView2 Runtime”), czas z kroku 4.
 13. [ ] Demo: rozpakuj `easy-matanimation-demo-kutno.zip` do innego folderu ze spacją, w aplikacji wskaż rozpakowany `demo-kutno`. Okno ma się pojawić w kilka sekund (bez paska postępu), z budynkami 3D (przycisk 3D) **bez** wskazywania pliku OSM; w panelu „OSM: dane zapisane przy runie”. Zapisz czas.
+14. [ ] Podkłady WMS/WMTS (wymaga internetu): w panelu mapy wklej adres OSM z punktu 1 i wybierz `OSM-WMS`, potem ortofoto z drugiego adresu. Kafelki mają się pojawić pod ruchem. Po wpisaniu błędnego adresu ma być komunikat po polsku, a nie awaria.
+15. [ ] Skala i oddalenie: w lewym dolnym rogu mapy jest skala (metry/kilometry), która zmienia się przy przybliżaniu; kółkiem myszy da się oddalić do widoku całego kraju (zoom 3).
