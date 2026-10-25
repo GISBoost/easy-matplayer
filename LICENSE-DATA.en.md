@@ -1,35 +1,45 @@
-# Data and results licences
+# Licences: program, libraries, models, demo data and base maps
 
 > Translation of [LICENSE-DATA.md](LICENSE-DATA.md) (Polish). The Polish text is binding; this translation is for reference only.
 
-The easy-matanimation repository has two licences. The code is under GPL-3.0-or-later (file `LICENSE`). Data, results and reports have the licences described below.
+Applies to the easy-matanimation repository and the release packages (`easy-matanimation-windows.zip`, `easy-matanimation-demo-kutno.zip`). The Polish original of this file is included in the demo zip.
 
-## Code (GPL-3.0-or-later)
+## 1. Program (GPL-3.0-or-later)
 
-Covers the code in `pipeline/`, `matsim/src/`, `blender/`, `docs/research/G4_beeline/` and the scripts in `reports/`. Full text: [LICENSE](LICENSE).
+The player code (`viz_player/`, `pipeline/`, `scripts/`, tests, `config/viz_buildings.toml`, documentation) is under the **GNU GPL, version 3 or later**. Full text: [LICENSE](LICENSE).
 
-The sample MATSim project in `matsim/` has its own licence, GPL-2.0-or-later (`matsim/LICENSE`). GPL-3.0-or-later is compatible with it.
+## 2. Libraries in the repository and in the package
 
-## Output data from GUS (CC BY 4.0)
+| component | licence | where |
+|---|---|---|
+| MapLibre GL JS 6.0.0 | BSD-3-Clause | `viz_player/vendor/maplibre/` (text in `LICENSE`) |
+| deck.gl 9.4.0 | MIT, © vis.gl contributors | `viz_player/vendor/deck.min.js`, text in `viz_player/vendor/deck.LICENSE` |
+| LowPoly Car pack (car model), Quaternius | CC0 (public domain) | `viz_player/vendor/quaternius/`, description in `CREDITS.md` |
+| Python libraries in the package (numpy, pyproj, pywebview, lxml, Pillow, osmium, zstandard and their dependencies) and the Python runtime | each library's own licence | texts in the `THIRD_PARTY/` folder next to the program (created by `scripts/viz_third_party.py` during the build) |
 
-Covers data derived from GUS publications: NSP 2021 tables, BDL (P4507, P4508, TABL. 5), commuting matrices, BREC 2021 geometry and district tables. The author of the source data is the Central Statistical Office of Poland (GUS).
+The BSD and MIT licences require the notice and the licence text to be kept when redistributing. That is why the files in `vendor/` stay in the package together with their licences, and `THIRD_PARTY/` is added to every package.
 
-Results derived from this data (plans, population, matrices, tables, charts) are under the **Creative Commons Attribution 4.0 (CC BY 4.0)** licence. Attribution is required: "Central Statistical Office" and the name of the publication.
+## 3. Data in the demo zip
 
-## Data from OpenStreetMap (ODbL 1.0)
+The demo (`easy-matanimation-demo-kutno.zip`) contains one MATSim simulation run for Kutno (25% of residents) with a ready index, polyline roads and buildings:
 
-Covers the road network, buildings and land use derived from OSM. Source: © OpenStreetMap contributors. Data from OSM is under the **Open Database License 1.0 (ODbL)**.
+- **Simulation results** (events, output plans): **CC BY 4.0**, like the input and output files of the sample MATSim project (`matsim-example-project`, section Licenses of its README).
+- **Population and travel plans**: synthetic data derived from publications of the Central Statistical Office of Poland (GUS: NSP 2021, BDL, commuting matrix). Licence **CC BY 4.0**; attribution is required: "Central Statistical Office (Główny Urząd Statystyczny)" and the name of the publication.
+- **Road network, buildings and polyline roads** (in the run and in the `viz/` folder): © OpenStreetMap contributors (https://www.openstreetmap.org/copyright), **Open Database License 1.0 (ODbL)**. A database derived from OSM that we publish stays under the ODbL with attribution.
+- The demo contains no commercial data and no data under non-commercial licences (CC BY-NC).
 
-Under the ODbL, every public, derived database that contains OSM data must be made available under the same licence (ODbL) with attribution. This covers, among others, `scenarios/kutno/network*.xml.gz` and the OSM files in `scenarios/kutno/osm/`, if they are published.
+The licence split in the demo (CC BY for results and plans, ODbL for OSM data) describes the project author's current understanding. Before a public release the owner confirms it in `docs/projekt/wizualizer_postep.md` (entry A5, in Polish).
 
-## Data that must not be published
+## 4. Runs by other authors
 
-Data from TomTom (variant A, D22) and other commercial APIs is not in the repository. The exception is aggregated metrics and reports. They are not under CC BY or ODbL.
+The program opens any MATSim run saved as `.xml.zst`. Runs and scenarios by other authors have their own licences (for example Kelheim and Vienna 2023.2: CC BY-NC 4.0, non-commercial use only; Berlin: CC BY 4.0). **We do not include them in releases or in this repository.** You may open them on your own computer according to their licence. List and links: [docs/viz/README.md](docs/viz/README.md).
 
-Simulation results (events, network and output plans in the demo runs) are under **CC BY 4.0**, like the input and output files of `matsim-example-project` (`matsim/README.md`, section Licenses). Because they were produced on a network from OSM, the network in them keeps the ODbL.
+## 5. Base maps
 
-Data from Senozon AG (proprietary licence) is not used in this project.
+The program contains no map tiles. By default the background is plain. The user can add a WMS, WMTS or XYZ service or an own image (map panel). The terms of use, attribution and any cost of each service belong to its provider and to the user. The program shows a service's attribution where the service provides one. Tile requests reveal the viewed map area to the service provider.
 
-## Sources
+The optional CARTO base map (dark map without labels, data © OpenStreetMap contributors © CARTO) works only with a key entered locally in `config/viz_basemap.local.toml`. The key is not in the repository or in the packages.
 
-Each source has a description, status and licence in [docs/ZRODLA.md](docs/ZRODLA.md) (Polish).
+## 6. What is not in the repository
+
+It contains no GUS or OSM source data, no large OSM files (`*.pbf`, except the small test file `viz_player/selftest/kutno_tiny.osm.pbf`, which is an OSM extract: © OpenStreetMap contributors, ODbL 1.0), no MATSim runs and no access keys. The program opens OSM files chosen by the user and sends no data about the run.
