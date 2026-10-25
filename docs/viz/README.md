@@ -42,7 +42,7 @@ By default the roads are straight segments from the run's network, and there are
 
 ## Where the program keeps its data
 
-`%LOCALAPPDATA%\easy-matanimation\`: the log `easy-matanimation.log` (when you report a problem, paste its last lines), the memory of the last run and the OSM file, and the saved language. Uninstalling means deleting the program folder and this folder. The program writes nothing to the registry.
+The log `easy-matanimation.log` sits next to `easy-matanimation.exe` (when you report a problem, send it; if the program folder is write-protected it goes to `%LOCALAPPDATA%\easy-matanimation\`). In `%LOCALAPPDATA%\easy-matanimation\` live the memory of the last run and the OSM file, and the saved language. Uninstalling means deleting the program folder and this folder. The program writes nothing to the registry.
 
 ## Network
 

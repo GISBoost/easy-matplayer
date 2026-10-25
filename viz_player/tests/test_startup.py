@@ -26,6 +26,17 @@ def test_log_is_rotated(tmp_path, monkeypatch):
     assert (tmp_path / "app.log.1").stat().st_size == startup.LOG_MAX + 1 and log.stat().st_size < 200
 
 
+def test_log_falls_back_to_data_when_folder_not_writable(tmp_path, monkeypatch):
+    blocker = tmp_path / "plik"
+    blocker.write_text("x", encoding="utf-8")  # katalog nadrzędny jest plikiem: mkdir rzuca OSError
+    monkeypatch.setattr(startup, "LOG", blocker / "app.log")
+    monkeypatch.setattr(startup, "DATA", tmp_path / "data")
+    monkeypatch.setattr(sys, "stdout", None)
+    monkeypatch.setattr(sys, "stderr", None)
+    startup.setup_logging().close()
+    assert (tmp_path / "data" / "app.log").is_file() and startup.LOG == tmp_path / "data" / "app.log"
+
+
 def test_console_in_repo_is_left_alone():
     assert startup.setup_logging() is None
 

@@ -5,7 +5,7 @@ Wersja: 0.1.0 (zip z gałęzi `claude/viz-fundamenty-e093b2`). Wymagania: Window
 
 ## Co skopiować na drugi komputer
 
-1. `build_viz\easy-matanimation-windows.zip` (ok. 44 MB). Do kroku 14 przyda się też adres usługi mapowej (wklejasz go w panelu mapy, wybierasz warstwę):
+1. `build_viz\easy-matanimation-test.zip` (105 MB: aplikacja, `README.txt` i `demo-kutno`; składa go `scripts\viz_pack_test.py`, więc krok 13 nie wymaga osobnego zipa dema). Do kroku 14 przyda się też adres usługi mapowej (wklejasz go w panelu mapy, wybierasz warstwę):
    - OSM (WMS): `https://ows.terrestris.de/osm/service`, warstwa `OSM-WMS` (cały świat, EPSG:3857)
    - ortofoto Polska (WMS): `https://mapy.geoportal.gov.pl/wss/service/PZGIK/ORTO/WMS/StandardResolution` (Geoportal; serwer czasem zwraca chwilowe 404, wtedy ponów)
    - ortofoto Wiedeń (WMTS): `https://mapsneu.wien.gv.at/basemapneu/1.0.0/WMTSCapabilities.xml`, warstwa `bmaporthofoto30cm`
@@ -24,7 +24,7 @@ Wersja: 0.1.0 (zip z gałęzi `claude/viz-fundamenty-e093b2`). Wymagania: Window
 7. [ ] Uruchom ponownie dwuklikiem: powinien od razu otworzyć ten sam run (bez pytania o folder, szybko, bo indeks jest gotowy).
 8. [ ] Wyłącz Wi-Fi/Ethernet (tryb samolotowy), uruchom aplikację. Podkład mapy może się nie wczytać (to oczekiwane), ale okno, ruch i sterowanie mają działać. Włącz sieć z powrotem.
 9. [ ] (Opcjonalnie) Panel po prawej: „plik OSM…” → wskaż `lodzkie-*.osm.pbf`. Pasek postępu, potem budynki 3D i drogi łamane (wpis w panelu „łamane: ... z ...”, przycisk 3D działa). „zapomnij plik” wraca do prostych odcinków.
-10. [ ] Plik dziennika: `%LOCALAPPDATA%\easy-matanimation\easy-matanimation.log` (wklej w Eksploratorze). Czy jest, czy kończy się wierszem `okno run=...`.
+10. [ ] Plik dziennika `easy-matanimation.log` leży obok `easy-matanimation.exe`. Czy jest, czy kończy się wierszem `okno run=...`.
 11. [ ] Błędny run: uruchom aplikację i wskaż folder bez plików `output_events.xml.zst`. Pojawia się komunikat po polsku, a nie awaria.
 12. [ ] Odinstalowanie: usuń folder aplikacji i `%LOCALAPPDATA%\easy-matanimation`. Nic poza tym nie powinno zostać (nie ma instalatora ani wpisów w rejestrze poza WebView2).
 

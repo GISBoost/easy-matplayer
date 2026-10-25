@@ -47,6 +47,8 @@ set "EASY_MATANIMATION_DATA="
 REM Licence texts of the bundled libraries go into the folder that gets zipped (BSD/MIT require them with redistribution).
 build_viz\venv\Scripts\python.exe scripts\viz_third_party.py build_viz\dist\easy-matanimation || exit /b 1
 
+copy /y docs\viz\README_paczka.txt build_viz\dist\easy-matanimation\README.txt >nul || exit /b 1
+
 if exist build_viz\easy-matanimation-windows.zip del build_viz\easy-matanimation-windows.zip
 powershell -NoProfile -Command "Compress-Archive -Path 'build_viz\dist\easy-matanimation' -DestinationPath 'build_viz\easy-matanimation-windows.zip'"
 if errorlevel 1 exit /b 1

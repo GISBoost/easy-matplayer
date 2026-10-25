@@ -330,3 +330,11 @@ Wszystkie trzy części (A2a, A2b, A2c) przeszły: 96 testów i smoke w prawdziw
 - Licencje bibliotek sprawdzone w plikach `vendor/` (MapLibre: nagłówek `@license 3-Clause BSD` w `maplibre-gl.mjs` i tekst BSD w `LICENSE`; deck.gl: tekst MIT w `deck.LICENSE`).
 - **Do potwierdzenia przez właściciela przed publicznym wydaniem:** podział licencji w demo (CC BY dla wyników i planów, ODbL dla danych z OSM) i licencja wyników symulacji (CC BY 4.0, wzięta z `matsim/README.md` z `matsim-kutno`, nie sprawdzona ponownie). Tekst o tym jest w sekcji 3 obu plików.
 - Dowód: wszystkie ścieżki wskazane w plikach istnieją, 115 testów zielone. Zip demo wymaga przebudowy (`scripts/viz_make_demo.py`), żeby zawierał nowy `LICENSE-DATA.md`.
+
+## Paczka do testów na innym komputerze: README, demo w zipie, dziennik obok exe (2026-10-25)
+
+- Dziennik: w paczce `easy-matanimation.log` leży **obok exe** (`startup.LOG`), nie w `%LOCALAPPDATA%`. Wyjątki: `EASY_MATANIMATION_DATA` (testy, `viz_build.bat` czyta stamtąd) i folder bez prawa zapisu (np. Program Files): wtedy zapasowo `DATA`, a `LOG` jest przestawiony, więc komunikat błędu wskazuje prawdziwy plik. Reszta danych (stan, język, profil WebView2) zostaje w `DATA`.
+- `docs/viz/README_paczka.txt` (kroki uruchomienia, wymagania, co wysłać przy awarii) `viz_build.bat` kopiuje do paczki jako `README.txt`, więc jest też w wydaniu.
+- `scripts/viz_pack_test.py <demo.zip>` składa `build_viz/easy-matanimation-test.zip`: aplikacja + `demo-kutno/` + `LICENSE-DATA.md` obok exe (separatory `/`). Wydanie nadal ma demo osobno.
+- Dowód: 116 testów (nowy: zapasowy dziennik), smoke na `g1r8_25pct_s4711` `smoke OK n=729 klient_vs_python_max=0.46 m budynki3D=83617 wms_kafelki=24`. Demo przebudowane, paczka 105,2 MB. Zip rozpakowany do `...\emt Mój żółć`, exe z PATH tylko `C:\Windows\System32;C:\Windows` i `LOCALAPPDATA` w pustym katalogu: okno otworzyło `demo-kutno` (`okno run=demo-kutno`, indeks z cache, żyje po 20 s), `easy-matanimation.log` powstał obok exe, w `LOCALAPPDATA` tylko `viz_player_state.json` i profil WebView2.
+- Nie sprawdzone: A4 (drugi komputer) dalej otwarte. `--smoke` z exe nie działa przy PATH bez PowerShella (`grab.py` go woła), to dotyczy tylko smoke, nie programu.

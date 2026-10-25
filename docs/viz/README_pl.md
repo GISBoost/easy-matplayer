@@ -40,7 +40,7 @@ Domyślnie drogi są prostymi odcinkami z sieci runu, a budynków nie ma. Żeby 
 
 ## Gdzie są dane programu
 
-`%LOCALAPPDATA%\easy-matanimation\`: dziennik `easy-matanimation.log` (przy problemach wklej jego koniec w zgłoszeniu), pamięć ostatniego runu, pliku OSM i wybranego języka. Odinstalowanie to usunięcie folderu programu i tego folderu. Program nie zapisuje nic w rejestrze.
+Dziennik `easy-matanimation.log` leży obok `easy-matanimation.exe` (przy problemach wyślij go; gdy folder programu jest chroniony przed zapisem, trafia do `%LOCALAPPDATA%\easy-matanimation\`). W `%LOCALAPPDATA%\easy-matanimation\` są: pamięć ostatniego runu, pliku OSM i wybranego języka. Odinstalowanie to usunięcie folderu programu i tego folderu. Program nie zapisuje nic w rejestrze.
 
 ## Sieć
 

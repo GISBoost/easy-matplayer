@@ -10,13 +10,21 @@ from pathlib import Path
 
 from viz_player import APP_NAME, __version__
 from viz_player.i18n import t
-from viz_player.paths import DATA, FROZEN
+from viz_player.paths import DATA, ENV_DATA, FROZEN
 
-LOG = DATA / f"{APP_NAME}.log"
+# W paczce dziennik leży obok exe (łatwo go znaleźć i odesłać); EASY_MATANIMATION_DATA albo folder bez prawa zapisu: DATA.
+LOG = (Path(sys.executable).parent if FROZEN and not os.environ.get(ENV_DATA) else DATA) / f"{APP_NAME}.log"
 LOG_MAX = 2_000_000
 WEBVIEW2_URL = "https://developer.microsoft.com/microsoft-edge/webview2/"
 NO_DIALOG = "EASY_MATANIMATION_NO_DIALOG"  # testy: bez okien
 SKIP_WV2_CHECK = "EASY_MATANIMATION_SKIP_WEBVIEW2_CHECK"  # furtka przy fałszywym alarmie sprawdzenia WebView2
+
+
+def _open_log():
+    LOG.parent.mkdir(parents=True, exist_ok=True)
+    if LOG.exists() and LOG.stat().st_size > LOG_MAX:
+        os.replace(LOG, LOG.with_name(LOG.name + ".1"))
+    return open(LOG, "a", encoding="utf-8", buffering=1)
 
 
 def setup_logging():
@@ -24,10 +32,12 @@ def setup_logging():
     Wtedy, a także w paczce, wszystko idzie do pliku z dziennikiem. W repo z konsolą nic się nie zmienia."""
     if not FROZEN and sys.stdout is not None and sys.stderr is not None:
         return None
-    LOG.parent.mkdir(parents=True, exist_ok=True)
-    if LOG.exists() and LOG.stat().st_size > LOG_MAX:
-        os.replace(LOG, LOG.with_name(LOG.name + ".1"))
-    fh = open(LOG, "a", encoding="utf-8", buffering=1)
+    global LOG
+    try:
+        fh = _open_log()
+    except OSError:  # np. paczka rozpakowana do Program Files
+        LOG = DATA / LOG.name
+        fh = _open_log()
     fh.write(f"\n--- {time.strftime('%Y-%m-%dT%H:%M:%S')} {APP_NAME} {__version__} ---\n")
     sys.stdout = sys.stderr = fh
     return fh
