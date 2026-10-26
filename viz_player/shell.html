@@ -101,6 +101,10 @@ body { display: grid; grid-template-columns: 1fr 320px; grid-template-rows: 1fr 
 #weblinks { display: none; margin: 0 0 8px; font-size: 12px; }
 #weblinks a { color: #9aa3b2; }
 body.web #weblinks { display: block; }
+#webbase { display: none; margin: 10px 0; }
+body.web #webbase { display: block; }
+.wbrow { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-top: 4px; font-size: 13px; }
+.wbrow input[type=range] { width: 90px; }
 body.web #openrun, body.web #osm, body.web #svc { display: none; }
 #hint { margin-top: 18px; color: #9aa3b2; font-size: 12px; line-height: 1.4; }
 #bar { display: flex; align-items: center; gap: 8px; padding: 0 12px; background: #1b1f27; min-width: 0;
@@ -149,6 +153,11 @@ body.panel-off #panel { display: none; }
     <label><input type="checkbox" id="osmroads"> kolor dróg OSM</label>
     <label><input type="checkbox" id="models"> modele 3D pojazdów</label>
     <button id="carcolor" type="button" class="chip">kolor auta: prędkość</button>
+  </div>
+  <div id="webbase">
+    <div class="muted">Podkłady</div>
+    <div class="wbrow"><label><input type="checkbox" id="wb-osm" checked> OpenStreetMap</label><input type="range" id="wb-osm-op" min="0" max="100" value="60" title="krycie"></div>
+    <div class="wbrow"><label><input type="checkbox" id="wb-orto"> Ortofotomapa (GUGiK)</label><input type="range" id="wb-orto-op" min="0" max="100" value="100" title="krycie"></div>
   </div>
   <div id="svc">
     <div class="muted">Podkłady: WMS, WMTS, XYZ, obrazy</div>
@@ -450,7 +459,7 @@ function applyBoot() {
   slider.max = tMax;
   slider.step = "1";
   slider.value = String(t);
-  if (boot.basemap) document.getElementById("base").hidden = true;
+  if (boot.basemap || WEB) document.getElementById("base").hidden = true;
   (boot.classes || []).forEach((c) => {
     const b = document.createElement("button");
     b.type = "button";
@@ -1333,6 +1342,31 @@ class FitControl {
   }
   onRemove() { this.el.remove(); }
 }
+// Web: dwa podkłady pobierane wprost przez przeglądarkę (obie usługi wysyłają Access-Control-Allow-Origin: *), pod warstwą aut.
+// WMS GUGiK: GetMap w EPSG:3857 z szablonem {bbox-epsg-3857} (MapLibre podstawia zakres kafelka).
+const WEB_BASE = [
+  {id: "osm", tiles: ["https://tile.openstreetmap.org/{z}/{x}/{y}.png"], attr: "© OpenStreetMap contributors", on: true, op: 0.6},
+  {id: "orto", tileSize: 256, attr: "© GUGiK (Geoportal.gov.pl)", on: false, op: 1, tiles: [
+    "https://mapy.geoportal.gov.pl/wss/service/PZGIK/ORTO/WMS/StandardResolution?SERVICE=WMS&VERSION=1.3.0&REQUEST=GetMap&LAYERS=Raster&STYLES=&FORMAT=image/jpeg&CRS=EPSG:3857&WIDTH=256&HEIGHT=256&BBOX={bbox-epsg-3857}"]},
+];
+function addWebBasemaps(style) {
+  WEB_BASE.forEach((b) => {
+    style.sources["wb-" + b.id] = {type: "raster", tiles: b.tiles, tileSize: 256, maxzoom: 19, attribution: b.attr};
+    style.layers.push({
+      id: "wb-" + b.id, type: "raster", source: "wb-" + b.id,
+      layout: {visibility: b.on ? "visible" : "none"}, paint: {"raster-opacity": b.op},
+    });
+  });
+}
+function bindWebBasemaps() {
+  WEB_BASE.forEach((b) => {
+    const on = document.getElementById("wb-" + b.id), op = document.getElementById("wb-" + b.id + "-op");
+    on.checked = b.on;
+    op.value = String(Math.round(b.op * 100));
+    on.addEventListener("change", () => { map.setLayoutProperty("wb-" + b.id, "visibility", on.checked ? "visible" : "none"); });
+    op.addEventListener("input", () => { map.setPaintProperty("wb-" + b.id, "raster-opacity", +op.value / 100); });
+  });
+}
 async function bootMap() {
   if (boot.error) {
     showPanel({kind: "empty", lines: [boot.error]});
@@ -1356,12 +1390,14 @@ async function bootMap() {
     };
     style.layers.push({id: "carto", type: "raster", source: "carto"});
   }
+  if (WEB) addWebBasemaps(style);
   const b = boot.bounds;
   map = new maplibregl.Map({
     container: "map", style, attributionControl: false, minZoom: 3, maxZoom: 19, maxPitch: 70,
     bounds: b ? [[b[0][1], b[0][0]], [b[1][1], b[1][0]]] : undefined, fitBoundsOptions: {padding: 20},
   });
-  if (boot.basemap) map.addControl(new maplibregl.AttributionControl({compact: false}));
+  if (boot.basemap || WEB) map.addControl(new maplibregl.AttributionControl({compact: false}));
+  if (WEB) bindWebBasemaps();
   map.addControl(new maplibregl.NavigationControl({visualizePitch: true}), "top-left");
   map.addControl(new FitControl(), "top-left");
   map.addControl(new maplibregl.ScaleControl({maxWidth: 140, unit: "metric"}), "bottom-right");

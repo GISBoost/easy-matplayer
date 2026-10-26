@@ -212,7 +212,8 @@ def test_site_files(player, tmp_path):
     manifest = json.loads((site_dir / name).read_text(encoding="utf-8"))
     assert query == manifest["source_key"][:12] != "", "adres z kluczem eksportu omija stary cache przeglądarki"
     assert manifest["format"] == 1 and (site_dir / "data" / manifest["chunks"][0]["file"]).is_file()
-    assert "tile.openstreetmap.org" not in index.read_text(encoding="utf-8")
+    # Aplikacja nie dostarcza kafelków. Adres OSM jest w jednym miejscu (WEB_BASE), używanym tylko w trybie web (?run=).
+    assert index.read_text(encoding="utf-8").count("tile.openstreetmap.org") == 1 and boot["basemap"] is None
 
 
 def test_site_curves(player, tmp_path):
