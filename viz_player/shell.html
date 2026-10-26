@@ -98,6 +98,9 @@ body { display: grid; grid-template-columns: 1fr 320px; grid-template-rows: 1fr 
 .muted { color: #9aa3b2; }
 #runbar { width: 100%; height: 6px; accent-color: #4f9cf9; }
 #credit { margin: 14px 0 0; font-size: 12px; }
+#weblinks { display: none; margin: 0 0 8px; font-size: 12px; }
+#weblinks a { color: #9aa3b2; }
+body.web #weblinks { display: block; }
 body.web #openrun, body.web #osm, body.web #svc { display: none; }
 #hint { margin-top: 18px; color: #9aa3b2; font-size: 12px; line-height: 1.4; }
 #bar { display: flex; align-items: center; gap: 8px; padding: 0 12px; background: #1b1f27; min-width: 0;
@@ -132,6 +135,7 @@ body.panel-off #panel { display: none; }
 </div>
 <aside id="panel">
   <h1>easy-matplayer <small id="ver"></small></h1>
+  <p id="weblinks"><a href="../">← scenariusze</a> · <a href="https://gisboost.github.io/mapy-analizy/">GISBoost · analizy mapowe</a></p>
   <p class="run" id="run"></p>
   <button id="openrun" type="button" class="chip">otwórz run…</button> <button id="lang" type="button" class="chip">English</button>
   <p id="runmsg" class="muted" hidden></p>
@@ -222,8 +226,8 @@ let boot = {};
 const WEB = new URLSearchParams(location.search).get("run");
 const BASE = WEB ? "../s/" + encodeURIComponent(WEB) + "/" : "";
 function webLang() {
-  try { const v = localStorage.getItem("easyMatplayerLang"); if (v === "pl" || v === "en") return v; } catch (e) { /* tryb prywatny */ }
-  return (navigator.language || "").toLowerCase().startsWith("pl") ? "pl" : "en";
+  // Ten sam klucz co w hubie mapy-analizy (ta sama domena gisboost.github.io), tam bez wyboru jest polski.
+  try { return localStorage.getItem("mapyAnalizyLang") === "en" ? "en" : "pl"; } catch (e) { return "pl"; }
 }
 if (WEB) document.body.classList.add("web");
 // Teksty: klucz to polski tekst z kodu. Tabela przychodzi w boot.json (po angielsku), po polsku jest pusta i zostaje tekst z kodu.
@@ -934,7 +938,7 @@ window.useOsm = (path) => runBusy((a) => a.osm_use(path), T("Czytam plik OSM…"
 // Przełącznik języka: Python zapisuje wybór, przeładowuje run (nazwy klas i komunikaty powstają przy otwarciu), strona się przeładowuje.
 document.getElementById("lang").addEventListener("click", () => {
   if (WEB) {
-    try { localStorage.setItem("easyMatplayerLang", boot.lang === "en" ? "pl" : "en"); } catch (e) { /* bez zapisu: wybór tylko na teraz */ }
+    try { localStorage.setItem("mapyAnalizyLang", boot.lang === "en" ? "pl" : "en"); } catch (e) { /* bez zapisu: wybór tylko na teraz */ }
     location.reload();
     return;
   }

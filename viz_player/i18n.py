@@ -171,6 +171,8 @@ EN = {
     "dodaj WMS / WMTS / XYZ…": "add WMS / WMTS / XYZ…",
     "dodaj obraz…": "add image…",
     "Kliknij auto albo drogę.": "Click a car or a road.",
+    "← scenariusze": "← scenarios",
+    "GISBoost · analizy mapowe": "GISBoost · map analyses",
     "postoje ściśnięte": "stops compressed",
     "Modele aut: Quaternius (CC0).": "Car models: Quaternius (CC0).",
     "Spacja: start. Strzałki: ±1 min. F: śledź. Esc: wyczyść. Prawy przycisk myszy: obrót i pochylenie mapy.":
