@@ -42,7 +42,7 @@ Adres odtwarzacza: `player/?run=<id>`. Bez `?run` klient działa jak w aplikacji
 - [x] W2. `scripts/web_build.py`: z runów buduje `web/` (strona, scenariusze, `scenarios.json`), bez okna. Test na demo Kutno, otwarcie w przeglądarce z serwera statycznego.
 - [ ] W3. (osobno, nie teraz) Panel zaznaczenia w JS: eksport czynności osób i oś czasu.
 - [x] W4. (napisany, nie uruchomiony na GitHubie) Workflow `web_pages.yml` (GitHub Pages): ręczny start, pobiera zip demo z wydania, buduje `web/`, publikuje. **Włączenie Pages w ustawieniach repo i push robi właściciel.**
-- [ ] W5. Karta w `mapy-analizy` (index, README, i18n) z linkiem na `gisboost.github.io/easy-matplayer/`.
+- [x] W5. Karta w `mapy-analizy` (index, README, i18n) z linkiem na `gisboost.github.io/easy-matplayer/`.
 
 ## Ograniczenia i ryzyka
 
