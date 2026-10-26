@@ -14,7 +14,7 @@ def test_repo_mode_keeps_output_dir():
 def test_frozen_mode_separates_resources_and_data(tmp_path):
     res, data, runs = paths.locate(True, {"LOCALAPPDATA": str(tmp_path / "local")}, meipass=str(tmp_path / "app"))
     assert res == tmp_path / "app"
-    assert data == tmp_path / "local" / "easy-matanimation" and not str(data).startswith(str(res))
+    assert data == tmp_path / "local" / "easy-matplayer" and not str(data).startswith(str(res))
     assert runs == Path.home()
 
 

@@ -2,7 +2,7 @@
 
 > Translation of [LICENSE-DATA.md](LICENSE-DATA.md) (Polish). The Polish text is binding; this translation is for reference only.
 
-Applies to the easy-matanimation repository and the release packages (`easy-matanimation-windows.zip`, `easy-matanimation-demo-kutno.zip`). The Polish original of this file is included in the demo zip.
+Applies to the easy-matplayer repository and the release packages (`easy-matplayer-windows.zip`, `easy-matplayer-demo-kutno.zip`). The Polish original of this file is included in the demo zip.
 
 ## 1. Program (GPL-3.0-or-later)
 
@@ -21,7 +21,7 @@ The BSD and MIT licences require the notice and the licence text to be kept when
 
 ## 3. Data in the demo zip
 
-The demo (`easy-matanimation-demo-kutno.zip`) contains one MATSim simulation run for Kutno (25% of residents) with a ready index, polyline roads and buildings:
+The demo (`easy-matplayer-demo-kutno.zip`) contains one MATSim simulation run for Kutno (25% of residents) with a ready index, polyline roads and buildings:
 
 - **Simulation results** (events, output plans): **CC BY 4.0**, like the input and output files of the sample MATSim project (`matsim-example-project`, section Licenses of its README).
 - **Population and travel plans**: synthetic data derived from publications of the Central Statistical Office of Poland (GUS: NSP 2021, BDL, commuting matrix). Licence **CC BY 4.0**; attribution is required: "Central Statistical Office (Główny Urząd Statystyczny)" and the name of the publication.

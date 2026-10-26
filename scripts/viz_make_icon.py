@@ -1,4 +1,4 @@
-"""Generuje viz_player/icon.ico: tymczasowa ikona easy-matanimation (ciemny kwadrat, niebieska trasa i żółty znacznik auta).
+"""Generuje viz_player/icon.ico: tymczasowa ikona easy-matplayer (ciemny kwadrat, niebieska trasa i żółty znacznik auta).
 Uruchomienie: uv run --group viz python scripts/viz_make_icon.py. Plik .ico jest w repo; skrypt służy do zmian wyglądu."""
 from pathlib import Path
 

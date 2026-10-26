@@ -79,7 +79,7 @@ def source_key(pbf, cfg_path, box, origin_lonlat):
     parts = [
         str(FORMAT), f"{pbf.name}:{st.st_size}:{st.st_mtime_ns}",
         hashlib.sha256(Path(cfg_path).read_bytes()).hexdigest(), json.dumps(box), json.dumps(origin_lonlat),
-        hashlib.sha256(Path(__file__).with_suffix(".py").read_bytes()).hexdigest(),  # w paczce PyInstaller __file__ wskazuje nieistniejący .pyc; źródła .py leżą obok jako dane (viz_player/easy-matanimation.spec)
+        hashlib.sha256(Path(__file__).with_suffix(".py").read_bytes()).hexdigest(),  # w paczce PyInstaller __file__ wskazuje nieistniejący .pyc; źródła .py leżą obok jako dane (viz_player/easy-matplayer.spec)
     ]
     return hashlib.sha256("|".join(parts).encode()).hexdigest()
 

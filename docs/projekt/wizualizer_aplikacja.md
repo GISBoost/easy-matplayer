@@ -106,7 +106,7 @@ Osobne zlecenie po założeniu repo: lista plików do przeniesienia (`viz_player
 
 ## Ustalenia z M1 (2026-10-22)
 
-- Nazwa aplikacji: **easy-matanimation** (ścieżka danych `%LOCALAPPDATA%\easy-matanimation`, plik `easy-matanimation.exe`, zip `easy-matanimation-windows.zip`). Tytuły okien i `user_agent` zmieniam w M2.
+- Nazwa aplikacji: **easy-matplayer** (ścieżka danych `%LOCALAPPDATA%\easy-matplayer`, plik `easy-matplayer.exe`, zip `easy-matplayer-windows.zip`). Tytuły okien i `user_agent` zmieniam w M2.
 - **Źródło OSM (decyzja właściciela 2026-10-22):** domyślnie sieć z `network` runu (proste odcinki, bez budynków), opcjonalnie własny `.osm.pbf` wskazany przyciskiem (drogi zakręcone i budynki 3D, wynik w cache przy runie, ok. 5 MB). Demo niesie gotowe cache. Bez pobierania z Overpass/Geofabrik. Poprawka `build` bez PBF: zrobiona (A1b).
 
 ## Pytania do właściciela w trakcie (nie blokują M1)
@@ -115,4 +115,4 @@ Osobne zlecenie po założeniu repo: lista plików do przeniesienia (`viz_player
 2. Pasek postępu indeksu (M2): sam napis z licznikiem czy pełny pasek?
 3. Windows Sandbox (M4): czy mogę poprosić o włączenie funkcji (restart), czy masz drugi komputer?
 4. Który run jako demo (M5), po sprawdzeniu rozmiarów.
-5. Nazwa aplikacji i pliku: `easy-matviz` (taka jest dziś w tytule okna) czy `easy-matanimation` (nazwa projektu w D26)?
+5. Nazwa aplikacji i pliku: `easy-matviz` (taka jest dziś w tytule okna) czy `easy-matplayer` (nazwa projektu w D26)?

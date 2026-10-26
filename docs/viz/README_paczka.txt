@@ -1,11 +1,11 @@
-easy-matanimation: odtwarzacz wyników symulacji MATSim (Windows 10/11, 64-bit)
+easy-matplayer: odtwarzacz wyników symulacji MATSim (Windows 10/11, 64-bit)
 
 Bez instalacji i bez Pythona. Nic nie zapisuje w rejestrze.
 
 JAK URUCHOMIĆ
 1. Rozpakuj cały zip w dowolne miejsce, najlepiej do folderu, do którego masz prawo zapisu
    (Pulpit, Dokumenty). Ścieżka może mieć spacje i polskie znaki. Nie uruchamiaj exe z wnętrza zipa.
-2. Uruchom easy-matanimation.exe (dwuklik).
+2. Uruchom easy-matplayer.exe (dwuklik).
    Jeśli Windows pokaże "Chroniony komputer" (SmartScreen): "Więcej informacji", potem "Uruchom mimo to".
    Plik nie jest podpisany certyfikatem.
 3. Pojawi się okno wyboru folderu. Wskaż folder runu MATSim. Do próby jest gotowy run w tej paczce:
@@ -22,19 +22,19 @@ WYMAGANIA
   brakuje tylko podkładu.
 
 JEŚLI COŚ NIE DZIAŁA
-Dziennik programu to plik easy-matanimation.log w TYM SAMYM folderze co easy-matanimation.exe.
-(Jeśli folder jest chroniony przed zapisem, dziennik trafia do %LOCALAPPDATA%\easy-matanimation\.)
-Wyślij ten plik (i easy-matanimation.log.1, jeśli jest) razem z opisem:
+Dziennik programu to plik easy-matplayer.log w TYM SAMYM folderze co easy-matplayer.exe.
+(Jeśli folder jest chroniony przed zapisem, dziennik trafia do %LOCALAPPDATA%\easy-matplayer\.)
+Wyślij ten plik (i easy-matplayer.log.1, jeśli jest) razem z opisem:
 - co kliknąłeś i co zobaczyłeś (najlepiej zrzut ekranu),
 - wersja Windows, karta graficzna, czy WebView2 był zainstalowany wcześniej
   (Ustawienia > Aplikacje > "Microsoft Edge WebView2 Runtime"),
 - ile sekund trwało otwarcie demo.
 
-Przy testach sprawdź też: czy po zamknięciu okna krzyżykiem nie zostaje proces easy-matanimation.exe
+Przy testach sprawdź też: czy po zamknięciu okna krzyżykiem nie zostaje proces easy-matplayer.exe
 ani msedgewebview2.exe w Menedżerze zadań, i czy drugie uruchomienie otwiera ten sam run od razu.
 
 GDZIE SĄ DANE PROGRAMU
-%LOCALAPPDATA%\easy-matanimation\: pamięć ostatniego runu, pliku OSM i języka, profil okna.
+%LOCALAPPDATA%\easy-matplayer\: pamięć ostatniego runu, pliku OSM i języka, profil okna.
 Odinstalowanie: usuń folder programu i ten folder.
 
 DEMO I LICENCJE

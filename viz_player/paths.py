@@ -1,15 +1,15 @@
 """Ścieżki aplikacji (D27): zasoby tylko do odczytu osobno od danych użytkownika.
 
 W repo (uruchomienie z kodu): RES = katalog repo, DATA = RES/output, jak dotąd.
-W paczce PyInstaller (sys.frozen): RES = katalog rozpakowanej paczki, DATA = katalog easy-matanimation w %LOCALAPPDATA%.
-EASY_MATANIMATION_DATA nadpisuje DATA w obu trybach (testy, przenośne kopie).
+W paczce PyInstaller (sys.frozen): RES = katalog rozpakowanej paczki, DATA = katalog easy-matplayer w %LOCALAPPDATA%.
+EASY_MATPLAYER_DATA nadpisuje DATA w obu trybach (testy, przenośne kopie).
 """
 import os
 import sys
 from pathlib import Path
 
-APP = "easy-matanimation"
-ENV_DATA = "EASY_MATANIMATION_DATA"
+APP = "easy-matplayer"
+ENV_DATA = "EASY_MATPLAYER_DATA"
 
 
 def locate(frozen, env, meipass=None, here=None):

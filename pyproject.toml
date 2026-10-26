@@ -1,5 +1,5 @@
 [project]
-name = "easy-matanimation"
+name = "easy-matplayer"
 version = "0.1.0"
 description = "Player for MATSim simulation results: car traffic on a 2D/3D map (desktop app for Windows)"
 requires-python = ">=3.12"

@@ -1,22 +1,22 @@
-# easy-matanimation
+# easy-matplayer
 
 Odtwarzacz wyników symulacji [MATSim](https://matsim.org/): ruch samochodów na mapie, w 2D i 3D, z budynkami. Działa lokalnie na Windowsie, bez instalacji i bez Pythona.
 
 ## Pobranie i uruchomienie
 
-1. Z [Releases](../../../../releases) pobierz `easy-matanimation-windows.zip` (ok. 46 MB) i rozpakuj w dowolne miejsce (ścieżka może mieć spacje i polskie znaki).
-2. Uruchom `easy-matanimation.exe`. Jeśli Windows pokaże „Chroniony komputer” (SmartScreen), kliknij „Więcej informacji”, potem „Uruchom mimo to”. Plik nie jest podpisany certyfikatem.
+1. Z [Releases](../../../../releases) pobierz `easy-matplayer-windows.zip` (ok. 46 MB) i rozpakuj w dowolne miejsce (ścieżka może mieć spacje i polskie znaki).
+2. Uruchom `easy-matplayer.exe`. Jeśli Windows pokaże „Chroniony komputer” (SmartScreen), kliknij „Więcej informacji”, potem „Uruchom mimo to”. Plik nie jest podpisany certyfikatem.
 3. Wskaż folder runu MATSim. Przy pierwszym otwarciu program buduje indeks (od kilkunastu sekund do minuty, widać pasek postępu). Potem ten sam run otwiera się od razu, a program pamięta ostatni run.
 
 Wymagania: Windows 10 22H2 albo 11 (64-bit) i Microsoft Edge WebView2 Runtime (jest w Windows 11 i w większości Windows 10; jeśli go brakuje, program pokaże komunikat z linkiem do instalatora). Karta graficzna z obsługą WebGL; zintegrowana wystarcza.
 
 ## Język
 
-Interfejs startuje po angielsku (wersja angielska tej instrukcji: [README.md](README.md)). Przycisk obok „otwórz run…” w panelu przełącza na polski (wtedy opisuje się jako „English”). Wybór zapisuje się w `%LOCALAPPDATA%\easy-matanimation\viz_player_lang.json`. Zmiana języka przeładowuje otwarty run. Nazwy przycisków w tej instrukcji są po polsku i zgadzają się z interfejsem po przełączeniu na polski.
+Interfejs startuje po angielsku (wersja angielska tej instrukcji: [README.md](README.md)). Przycisk obok „otwórz run…” w panelu przełącza na polski (wtedy opisuje się jako „English”). Wybór zapisuje się w `%LOCALAPPDATA%\easy-matplayer\viz_player_lang.json`. Zmiana języka przeładowuje otwarty run. Nazwy przycisków w tej instrukcji są po polsku i zgadzają się z interfejsem po przełączeniu na polski.
 
 ## Demo
 
-`easy-matanimation-demo-kutno.zip` (ok. 59 MB, osobny plik w tym samym wydaniu) to run Kutna (25% mieszkańców, 100 iteracji, sieć z zakazami skrętu z OSM) z gotowym indeksem. Rozpakuj i wskaż folder `demo-kutno`. Otwiera się w kilka sekund, z budynkami 3D, bez żadnych dodatkowych plików.
+`easy-matplayer-demo-kutno.zip` (ok. 59 MB, osobny plik w tym samym wydaniu) to run Kutna (25% mieszkańców, 100 iteracji, sieć z zakazami skrętu z OSM) z gotowym indeksem. Rozpakuj i wskaż folder `demo-kutno`. Otwiera się w kilka sekund, z budynkami 3D, bez żadnych dodatkowych plików.
 
 ## Inne publiczne scenariusze MATSim
 
@@ -40,7 +40,7 @@ Domyślnie drogi są prostymi odcinkami z sieci runu, a budynków nie ma. Żeby 
 
 ## Gdzie są dane programu
 
-Dziennik `easy-matanimation.log` leży obok `easy-matanimation.exe` (przy problemach wyślij go; gdy folder programu jest chroniony przed zapisem, trafia do `%LOCALAPPDATA%\easy-matanimation\`). W `%LOCALAPPDATA%\easy-matanimation\` są: pamięć ostatniego runu, pliku OSM i wybranego języka. Odinstalowanie to usunięcie folderu programu i tego folderu. Program nie zapisuje nic w rejestrze.
+Dziennik `easy-matplayer.log` leży obok `easy-matplayer.exe` (przy problemach wyślij go; gdy folder programu jest chroniony przed zapisem, trafia do `%LOCALAPPDATA%\easy-matplayer\`). W `%LOCALAPPDATA%\easy-matplayer\` są: pamięć ostatniego runu, pliku OSM i wybranego języka. Odinstalowanie to usunięcie folderu programu i tego folderu. Program nie zapisuje nic w rejestrze.
 
 ## Sieć
 

@@ -1,4 +1,4 @@
-"""Eksport v2 indeksu runu dla klienta okna (D26, krok 3 planu easy-matanimation).
+"""Eksport v2 indeksu runu dla klienta okna (D26, krok 3 planu easy-matplayer).
 
 Z viz/index.npz robi katalog viz/export/: manifest.json, persons.json, tracks.bin
 i porcje chunk_NNN.bin z trajektoriami rzadkimi (węzły na wejściach na linki).
@@ -72,7 +72,7 @@ def source_key(meta, chunk_sec=CHUNK_SEC):
     parts = [
         meta["events_sha256"], meta["network_sha256"], meta["script_sha256"],
         str(meta["plans_sha256"]), str(meta["format"]), json.dumps(meta["origin"]), str(FORMAT), str(chunk_sec),
-        hashlib.sha256(Path(__file__).with_suffix(".py").read_bytes()).hexdigest(),  # w paczce PyInstaller __file__ wskazuje nieistniejący .pyc; źródła .py leżą obok jako dane (viz_player/easy-matanimation.spec)
+        hashlib.sha256(Path(__file__).with_suffix(".py").read_bytes()).hexdigest(),  # w paczce PyInstaller __file__ wskazuje nieistniejący .pyc; źródła .py leżą obok jako dane (viz_player/easy-matplayer.spec)
     ]
     return hashlib.sha256("|".join(parts).encode()).hexdigest()
 

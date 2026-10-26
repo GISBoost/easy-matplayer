@@ -1,4 +1,4 @@
-# easy-matanimation
+# easy-matplayer
 
 A player for [MATSim](https://matsim.org/) simulation results: car traffic on a map, in 2D and 3D, with buildings. A desktop app for Windows, with no installation and no Python needed.
 

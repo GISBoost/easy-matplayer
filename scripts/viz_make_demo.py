@@ -1,4 +1,4 @@
-"""Buduje zip z runami demo dla easy-matanimation: pliki runów, gotowe indeksy, łamane drogi i budynki (bez pliku OSM u odbiorcy).
+"""Buduje zip z runami demo dla easy-matplayer: pliki runów, gotowe indeksy, łamane drogi i budynki (bez pliku OSM u odbiorcy).
 
 Użycie: uv run --group viz python scripts/viz_make_demo.py <zip> <nazwa>=<katalog runu> [<nazwa>=<katalog runu> ...]
 Wymaga pliku OSM (data/raw/osm/lodzkie-*.osm.pbf), z którego liczy łamane drogi i budynki. Indeks zależy od skrótu skryptów pipeline,
@@ -14,14 +14,14 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 NEEDED = ("output_events.xml.zst", "output_network.xml.zst", "output_plans.xml.zst", "output_config.xml")  # config: układ współrzędnych i próbka
-TOP = "easy-matanimation-demo"
-README = """easy-matanimation: runy demo
+TOP = "easy-matplayer-demo"
+README = """easy-matplayer: runy demo
 
 Ruch samochodów w Kutnie (symulacja MATSim, próbka 25% mieszkańców), z gotowymi indeksami, więc otwierają się od razu.
 Runy w tym folderze:
 {runs}
 
-Jak otworzyć: uruchom easy-matanimation.exe, w oknie wyboru folderu wskaż jeden z folderów runu (np. {first}).
+Jak otworzyć: uruchom easy-matplayer.exe, w oknie wyboru folderu wskaż jeden z folderów runu (np. {first}).
 Pliki .zst to dane wejściowe MATSim, folder viz/ to indeks i dane pomocnicze (można go usunąć, program zbuduje go od nowa).
 
 Dane i licencje:
@@ -62,7 +62,7 @@ def main():
     if any(len(p) != 2 for p in pairs):
         sys.exit("runy podaj jako nazwa=katalog")
     work = Path(tempfile.mkdtemp(prefix="viz_demo_"))
-    os.environ["EASY_MATANIMATION_DATA"] = str(work / "data")  # żadnych śladów w profilu użytkownika
+    os.environ["EASY_MATPLAYER_DATA"] = str(work / "data")  # żadnych śladów w profilu użytkownika
     sys.path[:0] = [str(ROOT), str(ROOT / "pipeline")]
     from viz_player.player import Player
 

@@ -12,12 +12,12 @@ from viz_player import APP_NAME, __version__
 from viz_player.i18n import t
 from viz_player.paths import DATA, ENV_DATA, FROZEN
 
-# W paczce dziennik leży obok exe (łatwo go znaleźć i odesłać); EASY_MATANIMATION_DATA albo folder bez prawa zapisu: DATA.
+# W paczce dziennik leży obok exe (łatwo go znaleźć i odesłać); EASY_MATPLAYER_DATA albo folder bez prawa zapisu: DATA.
 LOG = (Path(sys.executable).parent if FROZEN and not os.environ.get(ENV_DATA) else DATA) / f"{APP_NAME}.log"
 LOG_MAX = 2_000_000
 WEBVIEW2_URL = "https://developer.microsoft.com/microsoft-edge/webview2/"
-NO_DIALOG = "EASY_MATANIMATION_NO_DIALOG"  # testy: bez okien
-SKIP_WV2_CHECK = "EASY_MATANIMATION_SKIP_WEBVIEW2_CHECK"  # furtka przy fałszywym alarmie sprawdzenia WebView2
+NO_DIALOG = "EASY_MATPLAYER_NO_DIALOG"  # testy: bez okien
+SKIP_WV2_CHECK = "EASY_MATPLAYER_SKIP_WEBVIEW2_CHECK"  # furtka przy fałszywym alarmie sprawdzenia WebView2
 
 
 def _open_log():

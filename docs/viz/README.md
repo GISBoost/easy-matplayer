@@ -1,4 +1,4 @@
-# easy-matanimation
+# easy-matplayer
 
 A player for results of a [MATSim](https://matsim.org/) simulation: car traffic on a map, in 2D and 3D, with buildings. It runs locally on Windows, needs no installation and no Python.
 
@@ -6,19 +6,19 @@ The Polish version of this manual is [README_pl.md](README_pl.md).
 
 ## Download and start
 
-1. From [Releases](../../../../releases) download `easy-matanimation-windows.zip` (about 46 MB) and unpack it anywhere (the path may contain spaces and non-ASCII characters).
-2. Run `easy-matanimation.exe`. If Windows shows "Windows protected your PC" (SmartScreen), click "More info", then "Run anyway". The file is not signed with a certificate.
+1. From [Releases](../../../../releases) download `easy-matplayer-windows.zip` (about 46 MB) and unpack it anywhere (the path may contain spaces and non-ASCII characters).
+2. Run `easy-matplayer.exe`. If Windows shows "Windows protected your PC" (SmartScreen), click "More info", then "Run anyway". The file is not signed with a certificate.
 3. Select a MATSim run folder. The first time you open a run, the program builds an index (from a dozen seconds to a minute; a progress bar shows). After that the same run opens at once, and the program remembers the last run.
 
 Requirements: Windows 10 22H2 or 11 (64-bit) and the Microsoft Edge WebView2 Runtime (it is in Windows 11 and most Windows 10 installations; if it is missing, the program shows a message with a link to the installer). A graphics card with WebGL support; integrated graphics is enough.
 
 ## Language
 
-The interface starts in English. The button next to "open run…" in the panel switches it to Polish (its label then reads "English"). The choice is saved in `%LOCALAPPDATA%\easy-matanimation\viz_player_lang.json`. Changing the language reloads the open run.
+The interface starts in English. The button next to "open run…" in the panel switches it to Polish (its label then reads "English"). The choice is saved in `%LOCALAPPDATA%\easy-matplayer\viz_player_lang.json`. Changing the language reloads the open run.
 
 ## Demo
 
-`easy-matanimation-demo-kutno.zip` (about 59 MB, a separate file in the same release) is a run of Kutno (25% of residents, 100 iterations, a network with turn restrictions from OSM) with a ready index. Unpack it and select the `demo-kutno` folder. It opens in a few seconds, with 3D buildings, and needs no extra files.
+`easy-matplayer-demo-kutno.zip` (about 59 MB, a separate file in the same release) is a run of Kutno (25% of residents, 100 iterations, a network with turn restrictions from OSM) with a ready index. Unpack it and select the `demo-kutno` folder. It opens in a few seconds, with 3D buildings, and needs no extra files.
 
 ## Other public MATSim scenarios
 
@@ -42,7 +42,7 @@ By default the roads are straight segments from the run's network, and there are
 
 ## Where the program keeps its data
 
-The log `easy-matanimation.log` sits next to `easy-matanimation.exe` (when you report a problem, send it; if the program folder is write-protected it goes to `%LOCALAPPDATA%\easy-matanimation\`). In `%LOCALAPPDATA%\easy-matanimation\` live the memory of the last run and the OSM file, and the saved language. Uninstalling means deleting the program folder and this folder. The program writes nothing to the registry.
+The log `easy-matplayer.log` sits next to `easy-matplayer.exe` (when you report a problem, send it; if the program folder is write-protected it goes to `%LOCALAPPDATA%\easy-matplayer\`). In `%LOCALAPPDATA%\easy-matplayer\` live the memory of the last run and the OSM file, and the saved language. Uninstalling means deleting the program folder and this folder. The program writes nothing to the registry.
 
 ## Network
 

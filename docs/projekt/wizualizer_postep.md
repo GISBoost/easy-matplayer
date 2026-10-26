@@ -160,9 +160,9 @@ Wcześniej zrobione (fundamenty, D24): origin z sieci, `person_id` i klasyfikato
 
 ### A1: ścieżki (2026-10-22)
 
-- `viz_player/paths.py`: `locate(frozen, env, meipass, here)` daje `RES` (zasoby do odczytu), `DATA` (zapisy) i `RUNS` (od czego zaczyna się wybór runu). Repo: `RES` = katalog repo, `DATA` = `output/` (bez zmiany dla właściciela). Paczka: `RES` = katalog rozpakowania, `DATA` = `%LOCALAPPDATA%\easy-matanimation`. `EASY_MATANIMATION_DATA` nadpisuje `DATA`.
+- `viz_player/paths.py`: `locate(frozen, env, meipass, here)` daje `RES` (zasoby do odczytu), `DATA` (zapisy) i `RUNS` (od czego zaczyna się wybór runu). Repo: `RES` = katalog repo, `DATA` = `output/` (bez zmiany dla właściciela). Paczka: `RES` = katalog rozpakowania, `DATA` = `%LOCALAPPDATA%\easy-matanimation`. `EASY_MATPLAYER_DATA` nadpisuje `DATA`.
 - Przeniesione na `DATA`: stan (`viz_player_state.json`), usługi WMS i obrazy, profil WebView2, katalog strony, klucz podkładu (`DATA/viz_basemap.local.toml` ma pierwszeństwo przed `config/`). Zapamiętany run względny jest rozwiązywany względem `RES`, nie katalogu roboczego.
-- Dowód: 77 testów (5 nowych w `test_paths.py`: tryb repo, tryb zamrożony, nadpisanie zmienną, run względny i bezwzględny, klucz podkładu). Smoke z `EASY_MATANIMATION_DATA` w pustym katalogu tymczasowym przeszedł (`smoke OK n=728`, budynki 3D 83617), a po nim w tym katalogu są tylko `viz_player_state.json` i `viz_player_webview`, czyli zapisy poszły tam, a nie do `output/`.
+- Dowód: 77 testów (5 nowych w `test_paths.py`: tryb repo, tryb zamrożony, nadpisanie zmienną, run względny i bezwzględny, klucz podkładu). Smoke z `EASY_MATPLAYER_DATA` w pustym katalogu tymczasowym przeszedł (`smoke OK n=728`, budynki 3D 83617), a po nim w tym katalogu są tylko `viz_player_state.json` i `viz_player_webview`, czyli zapisy poszły tam, a nie do `output/`.
 - Odkryte przy okazji (do M2, M3, M5): (1) budynki 3D i łamane drogi czytają `data/raw/osm/lodzkie-*.osm.pbf` (132 MB, poza gitem, przez `osmium`), a `viz_buildings.build` bez PBF zwraca `None`, nawet gdy cache jest; paczka tego pliku nie ma. (2) `viz_buildings`, `viz_export` i `viz_index` liczą skrót z własnego pliku `.py` (`Path(__file__).read_bytes()`), a w zamrożonej paczce tego pliku nie ma; musi wyjść w smoke exe (M3). (3) `viz_buildings.CONFIG` (`config/viz_buildings.toml`) w paczce wymaga `datas` w `.spec`. Pytanie do właściciela o źródło OSM w aplikacji: `wizualizer_aplikacja.md`.
 
 ### A1b: budynki i łamane drogi bez pliku OSM (2026-10-22)
@@ -177,7 +177,7 @@ Wcześniej zrobione (fundamenty, D24): origin z sieci, `person_id` i klasyfikato
 
 - Nazwa **easy-matanimation** w tytule okna, nagłówku panelu (z wersją `v0.1.0` z `viz_player/__init__.py`), `user_agent`, zrzutach i smoke; `--version` drukuje nazwę i wersję.
 - `viz_player/startup.py`: `setup_logging` (bez konsoli albo w paczce `stdout` i `stderr` idą do `DATA/easy-matanimation.log`, rotacja po 2 MB; w repo z konsolą bez zmian), `show_error` (okno systemowe, zawsze też do dziennika), `crash` (ślad do dziennika, krótki komunikat; brak WebView2 dostaje link do instalatora Microsoftu). `main` opakowuje start w `crash`.
-- Dowód: 84 testy (6 nowych w `test_startup.py`); `pythonw -m viz_player --version` uruchomiony przez `Start-Process` (prawdziwie bez konsoli) zapisał nagłówek i wersję do dziennika w `EASY_MATANIMATION_DATA`; smoke w oknie sprawdza teraz `document.title` i wersję w panelu (`smoke OK`). Zrzut okna przy tym uruchomieniu złapał przeglądarkę zasłaniającą ekran, więc dowodem jest odczyt z DOM, nie obraz.
+- Dowód: 84 testy (6 nowych w `test_startup.py`); `pythonw -m viz_player --version` uruchomiony przez `Start-Process` (prawdziwie bez konsoli) zapisał nagłówek i wersję do dziennika w `EASY_MATPLAYER_DATA`; smoke w oknie sprawdza teraz `document.title` i wersję w panelu (`smoke OK`). Zrzut okna przy tym uruchomieniu złapał przeglądarkę zasłaniającą ekran, więc dowodem jest odczyt z DOM, nie obraz.
 - Nie sprawdzone: komunikat o braku WebView2 na maszynie bez tego składnika (test jednostkowy tylko z atrapą wyjątku; prawdziwa próba w A4).
 
 ### A2b: start bez runu i pełny pasek postępu (2026-10-22)
@@ -229,7 +229,7 @@ Wszystkie trzy części (A2a, A2b, A2c) przeszły: 96 testów i smoke w prawdziw
 ### A4 (dopisek): Sandbox nie uruchamia WebView2 nawet po instalacji (2026-10-23)
 
 - Pobrany instalator Evergreen Runtime ze strony Microsoftu (`go.microsoft.com/fwlink/?linkid=2099617`, podpis Microsoft Corporation, wersja instalatora 1.3.299.15, 191 MB, zapisany tylko w katalogu tymczasowym sesji, nie w repo) i zainstalowany w Sandboxie (kod 0, runtime 156.0.4314.42, wpis w rejestrze HKLM i `msedgewebview2.exe` są). Mimo to `WebView2Loader.dll` zwraca w Sandboxie `0x80070002` (wołany także z PowerShella, więc to nie wina paczki), a po wyłączeniu mojego sprawdzenia pywebview kończy się tym samym wyjątkiem `InitCoreWebView2Async` i puste okno. Na hoście to samo sprawdzenie działa poprawnie.
-- Wniosek: sprawdzenie WebView2 nie jest fałszywym alarmem, a Windows Sandbox (Windows 10 19041) nie nadaje się do testu okna aplikacji. Komunikat „brak WebView2” zweryfikowany tam, gdzie brak runtime jest faktem. Dodana furtka `EASY_MATANIMATION_SKIP_WEBVIEW2_CHECK=1` (pominięcie sprawdzenia, gdyby kiedyś dało fałszywy alarm na zwykłym komputerze).
+- Wniosek: sprawdzenie WebView2 nie jest fałszywym alarmem, a Windows Sandbox (Windows 10 19041) nie nadaje się do testu okna aplikacji. Komunikat „brak WebView2” zweryfikowany tam, gdzie brak runtime jest faktem. Dodana furtka `EASY_MATPLAYER_SKIP_WEBVIEW2_CHECK=1` (pominięcie sprawdzenia, gdyby kiedyś dało fałszywy alarm na zwykłym komputerze).
 - Co zostaje do sprawdzenia na zwykłym komputerze (drugi komputer albo czyste konto Windows): pełne okno po starcie z runem, zapamiętany run po restarcie, WMS bez sieci, start bez GPU.
 - Powtórka z GPU hosta (vGPU włączone, w Sandboxie NVIDIA RTX 4070) i z siecią (ping przechodzi): wynik ten sam (komunikat „brak WebView2”, loader `0x80070002`, smoke kod 1). Przyczyna nie leży w braku GPU ani sieci; Sandbox odpada jako środowisko testu okna.
 
@@ -333,8 +333,13 @@ Wszystkie trzy części (A2a, A2b, A2c) przeszły: 96 testów i smoke w prawdziw
 
 ## Paczka do testów na innym komputerze: README, demo w zipie, dziennik obok exe (2026-10-25)
 
-- Dziennik: w paczce `easy-matanimation.log` leży **obok exe** (`startup.LOG`), nie w `%LOCALAPPDATA%`. Wyjątki: `EASY_MATANIMATION_DATA` (testy, `viz_build.bat` czyta stamtąd) i folder bez prawa zapisu (np. Program Files): wtedy zapasowo `DATA`, a `LOG` jest przestawiony, więc komunikat błędu wskazuje prawdziwy plik. Reszta danych (stan, język, profil WebView2) zostaje w `DATA`.
+- Dziennik: w paczce `easy-matanimation.log` leży **obok exe** (`startup.LOG`), nie w `%LOCALAPPDATA%`. Wyjątki: `EASY_MATPLAYER_DATA` (testy, `viz_build.bat` czyta stamtąd) i folder bez prawa zapisu (np. Program Files): wtedy zapasowo `DATA`, a `LOG` jest przestawiony, więc komunikat błędu wskazuje prawdziwy plik. Reszta danych (stan, język, profil WebView2) zostaje w `DATA`.
 - `docs/viz/README_paczka.txt` (kroki uruchomienia, wymagania, co wysłać przy awarii) `viz_build.bat` kopiuje do paczki jako `README.txt`, więc jest też w wydaniu.
 - `scripts/viz_pack_test.py <demo.zip>` składa `build_viz/easy-matanimation-test.zip`: aplikacja + `demo-kutno/` + `LICENSE-DATA.md` obok exe (separatory `/`). Wydanie nadal ma demo osobno.
 - Dowód: 116 testów (nowy: zapasowy dziennik), smoke na `g1r8_25pct_s4711` `smoke OK n=729 klient_vs_python_max=0.46 m budynki3D=83617 wms_kafelki=24`. Demo przebudowane, paczka 105,2 MB. Zip rozpakowany do `...\emt Mój żółć`, exe z PATH tylko `C:\Windows\System32;C:\Windows` i `LOCALAPPDATA` w pustym katalogu: okno otworzyło `demo-kutno` (`okno run=demo-kutno`, indeks z cache, żyje po 20 s), `easy-matanimation.log` powstał obok exe, w `LOCALAPPDATA` tylko `viz_player_state.json` i profil WebView2.
 - Nie sprawdzone: A4 (drugi komputer) dalej otwarte. `--smoke` z exe nie działa przy PATH bez PowerShella (`grab.py` go woła), to dotyczy tylko smoke, nie programu.
+
+## Zmiana nazwy na easy-matplayer (2026-10-26)
+
+- Decyzja właściciela: aplikacja, exe, zipy, folder danych i zmienne środowiskowe nazywają się jak repo `GISBoost/easy-matplayer`: `easy-matplayer.exe`, `easy-matplayer-windows.zip`, `easy-matplayer-test.zip`, `%LOCALAPPDATA%\easy-matplayer`, `EASY_MATPLAYER_DATA` (i `_NO_DIALOG`, `_SKIP_WEBVIEW2_CHECK`), `viz_player/easy-matplayer.spec`. Wcześniejsze wpisy w tym pliku zostają ze starą nazwą `easy-matanimation` (historia). Nazwa pakietu Python (`pyproject.toml`) też `easy-matplayer`; katalog `viz_player/` bez zmian.
+- Skutek: stan zapisany pod starą nazwą (`%LOCALAPPDATA%\easy-matanimation`) nie jest widoczny dla nowej wersji (nikt poza właścicielem go nie ma).

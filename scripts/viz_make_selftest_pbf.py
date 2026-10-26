@@ -1,5 +1,5 @@
 """Generuje viz_player/selftest/kutno_tiny.osm.pbf: jeden budynek w centrum Kutna (do smoke zbudowanego exe, krok „plik OSM”).
-Uruchomienie: uv run --group viz python scripts/viz_make_selftest_pbf.py. Plik trafia do paczki jako dane (viz_player/easy-matanimation.spec)."""
+Uruchomienie: uv run --group viz python scripts/viz_make_selftest_pbf.py. Plik trafia do paczki jako dane (viz_player/easy-matplayer.spec)."""
 from pathlib import Path
 
 import osmium

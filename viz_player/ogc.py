@@ -15,7 +15,7 @@ import xml.etree.ElementTree as ET
 
 from viz_player.i18n import t
 
-UA ="easy-matanimation"
+UA ="easy-matplayer"
 ORIGIN = 20037508.342789244  # połowa obwodu Ziemi w EPSG:3857, m
 SCALE0 = 559082264.0287178  # mianownik skali kafelka 256 px przy z=0 (piksel 0,28 mm)
 WEBMERC = {"3857", "900913", "102100", "102113", "3785"}

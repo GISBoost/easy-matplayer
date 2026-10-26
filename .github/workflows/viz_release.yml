@@ -1,4 +1,4 @@
-name: easy-matanimation - build and release
+name: easy-matplayer - build and release
 
 on:
   push:
@@ -72,6 +72,6 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          gh release create "$TAG" build_viz/easy-matanimation-windows.zip \
-            --title "easy-matanimation $TAG" \
-            --notes "Odtwarzacz runów MATSim (ruch w 3D) dla Windows. Rozpakuj zip i uruchom easy-matanimation.exe, Python nie jest potrzebny. Wymaga Microsoft Edge WebView2 Runtime (jest w Windows 11 i w większości Windows 10). Plik nie jest podpisany: SmartScreen może poprosić o „Uruchom mimo to”. Run demo jest osobnym plikiem easy-matanimation-demo-kutno.zip. Program: GPL-3.0-or-later; źródła: https://github.com/${{ github.repository }}/tree/${TAG}/viz_player"
+          gh release create "$TAG" build_viz/easy-matplayer-windows.zip \
+            --title "easy-matplayer $TAG" \
+            --notes "Odtwarzacz runów MATSim (ruch w 3D) dla Windows. Rozpakuj zip i uruchom easy-matplayer.exe, Python nie jest potrzebny. Wymaga Microsoft Edge WebView2 Runtime (jest w Windows 11 i w większości Windows 10). Plik nie jest podpisany: SmartScreen może poprosić o „Uruchom mimo to”. Run demo jest osobnym plikiem easy-matplayer-demo-kutno.zip. Program: GPL-3.0-or-later; źródła: https://github.com/${{ github.repository }}/tree/${TAG}/viz_player"

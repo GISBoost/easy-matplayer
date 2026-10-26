@@ -52,7 +52,7 @@ def main():
         (out / "python").mkdir(parents=True, exist_ok=True)
         shutil.copy2(py, out / "python" / "LICENSE.txt")
     (out / "README.md").write_text(
-        "# Biblioteki w paczce\n\nTeksty licencji bibliotek spakowanych razem z easy-matanimation (Python, Tcl/Tk i WebView2Loader.dll "
+        "# Biblioteki w paczce\n\nTeksty licencji bibliotek spakowanych razem z easy-matplayer (Python, Tcl/Tk i WebView2Loader.dll "
         "w pywebview też). Skrypty JS i modele w `_internal/viz_player/vendor/` mają licencje obok plików. Program: GPL-3.0-or-later (`LICENSE`).\n\n"
         "| pakiet | wersja | licencja | plików licencji |\n|---|---|---|---|\n" + "\n".join(rows) + "\n", encoding="utf-8")
     print(f"THIRD_PARTY: {len(rows)} pakietów, python={'tak' if py else 'brak'}")

@@ -1,7 +1,7 @@
-# PyInstaller: easy-matanimation (folder z easy-matanimation.exe). Budowa: scripts\viz_build.bat (jedyne źródło prawdy, lokalnie i w CI).
+# PyInstaller: easy-matplayer (folder z easy-matplayer.exe). Budowa: scripts\viz_build.bat (jedyne źródło prawdy, lokalnie i w CI).
 #
 # onedir, nie onefile: onefile rozpakowuje ok. 100 MB do katalogu tymczasowego przy każdym starcie (kilka do kilkunastu sekund)
-# i częściej łapie go antywirus. console=False: okno bez czarnej konsoli; komunikaty idą do easy-matanimation.log (viz_player/startup.py).
+# i częściej łapie go antywirus. console=False: okno bez czarnej konsoli; komunikaty idą do easy-matplayer.log (viz_player/startup.py).
 #
 # pathex musi zawierać pipeline/: viz_player/player.py dopisuje go do sys.path dopiero w czasie działania, a PyInstaller czyta tylko
 # instrukcje import, więc bez pathex build przechodzi, a gotowy program kończy się ModuleNotFoundError (ta sama pułapka co w chart_lab).
@@ -45,12 +45,12 @@ version_info = VSVersionInfo(
     kids=[
         StringFileInfo([StringTable("040904B0", [
             StringStruct("CompanyName", "GISBoost"),
-            StringStruct("FileDescription", "easy-matanimation: MATSim run player"),
+            StringStruct("FileDescription", "easy-matplayer: MATSim run player"),
             StringStruct("FileVersion", VERSION),
-            StringStruct("InternalName", "easy-matanimation"),
+            StringStruct("InternalName", "easy-matplayer"),
             StringStruct("LegalCopyright", "GPL-3.0-or-later"),
-            StringStruct("OriginalFilename", "easy-matanimation.exe"),
-            StringStruct("ProductName", "easy-matanimation"),
+            StringStruct("OriginalFilename", "easy-matplayer.exe"),
+            StringStruct("ProductName", "easy-matplayer"),
             StringStruct("ProductVersion", VERSION),
         ])]),
         VarFileInfo([VarStruct("Translation", [1033, 1200])]),
@@ -62,7 +62,7 @@ exe = EXE(
     a.scripts,
     [],
     exclude_binaries=True,
-    name="easy-matanimation",
+    name="easy-matplayer",
     debug=False,
     bootloader_ignore_signals=False,
     strip=False,
@@ -71,4 +71,4 @@ exe = EXE(
     icon=str(HERE / "icon.ico"),
     version=version_info,
 )
-coll = COLLECT(exe, a.binaries, a.datas, strip=False, upx=False, name="easy-matanimation")
+coll = COLLECT(exe, a.binaries, a.datas, strip=False, upx=False, name="easy-matplayer")

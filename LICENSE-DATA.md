@@ -1,6 +1,6 @@
 # Licencje: program, biblioteki, modele, dane demo i podkłady mapowe
 
-Dotyczy repozytorium easy-matanimation i paczek z wydania (`easy-matanimation-windows.zip`, `easy-matanimation-demo-kutno.zip`). Ten plik jest dołączany do zipa demo. Wersja angielska: [LICENSE-DATA.en.md](LICENSE-DATA.en.md) (tłumaczenie pomocnicze, wiążący jest tekst polski).
+Dotyczy repozytorium easy-matplayer i paczek z wydania (`easy-matplayer-windows.zip`, `easy-matplayer-demo-kutno.zip`). Ten plik jest dołączany do zipa demo. Wersja angielska: [LICENSE-DATA.en.md](LICENSE-DATA.en.md) (tłumaczenie pomocnicze, wiążący jest tekst polski).
 
 ## 1. Program (GPL-3.0-or-later)
 
@@ -19,7 +19,7 @@ Licencje BSD i MIT wymagają zachowania noty i tekstu licencji przy redystrybucj
 
 ## 3. Dane w zipie demo
 
-Demo (`easy-matanimation-demo-kutno.zip`) zawiera jeden run symulacji MATSim dla Kutna (25% mieszkańców) z gotowym indeksem, drogami łamanymi i budynkami:
+Demo (`easy-matplayer-demo-kutno.zip`) zawiera jeden run symulacji MATSim dla Kutna (25% mieszkańców) z gotowym indeksem, drogami łamanymi i budynkami:
 
 - **Wyniki symulacji** (eventy, plany wynikowe): **CC BY 4.0**, jak pliki wejściowe i wyjściowe przykładowego projektu MATSim (`matsim-example-project`, sekcja Licenses jego README).
 - **Populacja i plany podróży**: dane syntetyczne pochodne publikacji Głównego Urzędu Statystycznego (GUS: NSP 2021, BDL, macierz dojazdów do pracy). Licencja **CC BY 4.0**, wymagane jest podanie źródła: „Główny Urząd Statystyczny” i nazwa publikacji.

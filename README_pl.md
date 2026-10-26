@@ -1,4 +1,4 @@
-# easy-matanimation
+# easy-matplayer
 
 Odtwarzacz wyników symulacji [MATSim](https://matsim.org/): ruch samochodów na mapie w 2D i 3D, z budynkami. Aplikacja okienkowa na Windows, bez instalacji i bez Pythona.
 

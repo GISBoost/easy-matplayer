@@ -58,7 +58,7 @@ def test_show_error_silent_without_dialog(monkeypatch, capsys):
 
 
 def test_app_name():
-    assert APP_NAME == "easy-matanimation"
+    assert APP_NAME == "easy-matplayer"
 
 
 def test_with_progress_returns_value_without_window():
