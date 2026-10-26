@@ -1,0 +1,11 @@
+[
+  {
+    "id": "demo-kutno",
+    "title": {"pl": "Kutno, 25% mieszkańców", "en": "Kutno, 25% of residents"},
+    "desc": {
+      "pl": "Jedna doba ruchu samochodów w Kutnie (symulacja MATSim): 24 tys. przejazdów, drogi z OSM, budynki 3D.",
+      "en": "One day of car traffic in Kutno (MATSim simulation): 24k trips, OSM roads, 3D buildings."
+    },
+    "license": "CC BY 4.0 (wyniki, plany GUS), ODbL 1.0 (OpenStreetMap)"
+  }
+]

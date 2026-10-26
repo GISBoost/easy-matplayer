@@ -343,3 +343,12 @@ Wszystkie trzy części (A2a, A2b, A2c) przeszły: 96 testów i smoke w prawdziw
 
 - Decyzja właściciela: aplikacja, exe, zipy, folder danych i zmienne środowiskowe nazywają się jak repo `GISBoost/easy-matplayer`: `easy-matplayer.exe`, `easy-matplayer-windows.zip`, `easy-matplayer-test.zip`, `%LOCALAPPDATA%\easy-matplayer`, `EASY_MATPLAYER_DATA` (i `_NO_DIALOG`, `_SKIP_WEBVIEW2_CHECK`), `viz_player/easy-matplayer.spec`. Wcześniejsze wpisy w tym pliku zostają ze starą nazwą `easy-matanimation` (historia). Nazwa pakietu Python (`pyproject.toml`) też `easy-matplayer`; katalog `viz_player/` bez zmian.
 - Skutek: stan zapisany pod starą nazwą (`%LOCALAPPDATA%\easy-matanimation`) nie jest widoczny dla nowej wersji (nikt poza właścicielem go nie ma).
+
+## Wersja przeglądarkowa (W1, plan: `wizualizer_web.md`, 2026-10-26)
+
+- Decyzje właściciela: priorytet przeglądarka na komputerze (nie telefon), wspólny kod z aplikacją, hosting GitHub Pages, karta w `mapy-analizy`.
+- **W1 klient wspólny** (`viz_player/shell.html`): `?run=<id>` włącza tryb web (dane z `../s/<id>/`, bez mostu Pythona). Ukryte: otwórz run, plik OSM, podkłady WMS/XYZ/obraz. Język po stronie klienta (`boot.en.json` / `boot.pl.json`, wybór z `localStorage` albo języka przeglądarki). Panel zaznaczenia z danych klienta (id, klasa, prędkość, typ drogi; dla linku liczba aut i średnia). Brak harmonogramu osoby (krok W3, osobno).
+- **W2** `scripts/web_build.py` + `web/index.html` (lista scenariuszy) + `web/scenarios.json`. Z demo Kutno 25%: 77 MB na scenariusz (dwa pliki boot), układ `index.html`, `player/`, `s/demo-kutno/`.
+- **W4** `.github/workflows/web_pages.yml`: napisany, nie uruchomiony na GitHubie. Włączenie Pages (źródło „GitHub Actions”), push i uruchomienie robi właściciel.
+- Dowody: pytest 121 passed (4 nowe w `test_web.py`: układ, oba języki, spójność `boot` z manifestem, błąd bez runów); `--smoke` desktopu na demo OK (n=729, klient vs Python 0,46 m, budynki 83 617); strona z lokalnego serwera plików otwarta w przeglądarce: lista scenariuszy, klik w kartę, mapa i 277 aut o 06:00, odtwarzanie 2× przesuwa zegar, po polsku, kontrolki desktopowe ukryte, panel linku „tertiary / teraz 0 aut”, wyszukanie id działa.
+- Nie sprawdzone: wdrożenie na GitHub Pages (kompresja `.bin`, czas ładowania), Firefox/Safari, płynność na słabszym GPU, build na Linuksie w CI.

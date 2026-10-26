@@ -98,6 +98,7 @@ body { display: grid; grid-template-columns: 1fr 320px; grid-template-rows: 1fr 
 .muted { color: #9aa3b2; }
 #runbar { width: 100%; height: 6px; accent-color: #4f9cf9; }
 #credit { margin: 14px 0 0; font-size: 12px; }
+body.web #openrun, body.web #osm, body.web #svc { display: none; }
 #hint { margin-top: 18px; color: #9aa3b2; font-size: 12px; line-height: 1.4; }
 #bar { display: flex; align-items: center; gap: 8px; padding: 0 12px; background: #1b1f27; min-width: 0;
   grid-column: 1 / -1; grid-row: 2; }
@@ -217,6 +218,14 @@ window.mapLibrary = import("./vendor/maplibre/maplibre-gl.mjs").then((m) => { wi
 <script src="engine.js"></script>
 <script>
 let boot = {};
+// Tryb web: ta sama strona bez mostu Pythona. Scenariusz z ?run=<id> leży w ../s/<id>/ (patrz scripts/web_build.py).
+const WEB = new URLSearchParams(location.search).get("run");
+const BASE = WEB ? "../s/" + encodeURIComponent(WEB) + "/" : "";
+function webLang() {
+  try { const v = localStorage.getItem("easyMatplayerLang"); if (v === "pl" || v === "en") return v; } catch (e) { /* tryb prywatny */ }
+  return (navigator.language || "").toLowerCase().startsWith("pl") ? "pl" : "en";
+}
+if (WEB) document.body.classList.add("web");
 // Teksty: klucz to polski tekst z kodu. Tabela przychodzi w boot.json (po angielsku), po polsku jest pusta i zostaje tekst z kodu.
 let STR = {};
 const T = (text) => STR[text] || text;
@@ -461,11 +470,11 @@ function applyBoot() {
 async function loadBoot() {
   const get = async (name, kind) => {
     // no-store: serwer okna nie wysyła Cache-Control, a po „otwórz run” albo zmianie pliku OSM strona ma wziąć świeże boot.json i tablice
-    const res = await fetch(name, {cache: "no-store"});
-    if (!res.ok) throw new Error(name + " " + res.status);
+    const res = await fetch(BASE + name, {cache: "no-store"});
+    if (!res.ok) throw new Error(BASE + name + " " + res.status);
     return kind === "json" ? res.json() : new kind(await res.arrayBuffer());
   };
-  boot = await get("boot.json", "json");
+  boot = await get(WEB ? "boot." + webLang() + ".json" : "boot.json", "json");
   STR = boot.strings || {};
   document.documentElement.lang = boot.lang || "en";
   document.getElementById("lang").textContent = boot.lang === "en" ? "Polski" : "English";
@@ -492,7 +501,7 @@ async function loadBoot() {
     if (!res.ok) throw new Error(name + " " + res.status);
     return kind === "json" ? res.json() : res.arrayBuffer();
   };
-  engine = await Engine.load("data/", getData, curves, boot.linkLL, boot.data.split("/").pop());
+  engine = await Engine.load(BASE + "data/", getData, curves, boot.linkLL, boot.data.split("/").pop());
   await engine.want(boot.t);
 }
 
@@ -796,6 +805,26 @@ function render() {
   }
 }
 
+// Web: panel z tego, co zna klient (bez harmonogramu osoby, który liczy indeks w Pythonie).
+const autaJs = (n) => n === 1 ? T("1 auto") : (n % 10 >= 2 && n % 10 <= 4 && !(n % 100 >= 12 && n % 100 <= 14) ? F("{n} auta", {n}) : F("{n} aut", {n}));
+const kmhJs = (mps) => (mps * 3.6).toFixed(0) + " km/h";
+function webPanel(fr) {
+  if (!panelForce && performance.now() - panelAt < 250) return;
+  panelAt = performance.now();
+  panelForce = false;
+  if (selected.link != null && !selected.id) {
+    const now = engine.linkNow(fr, selected.link);
+    let line = F("teraz {cars}", {cars: autaJs(now.n)});
+    if (now.n) line += F(", średnia na odcinku {speed}", {speed: kmhJs(now.speed_mean)});
+    showPanel({kind: "link", lines: [boot.types[boot.linkType[selected.link]] || "", line], axis: []});
+  } else if (lastSel) {
+    const cls = (boot.classes || []).find((c) => c.key === lastSel.cls);
+    showPanel({kind: "vehicle", lines: [selected.id, cls ? cls.name : lastSel.cls, kmhJs(lastSel.speed), boot.types[boot.linkType[lastSel.link]] || ""], axis: []});
+  } else {
+    showPanel({kind: "vehicle", lines: [selected.id], axis: []});
+  }
+}
+
 // Opis zaznaczenia (lista czynności, linki) zna tylko indeks w Pythonie, więc pytamy go rzadko.
 function refreshPanel(fr) {
   const api = window.pywebview && window.pywebview.api;
@@ -803,6 +832,7 @@ function refreshPanel(fr) {
     if (panelForce) { showPanel({kind: "empty"}); anchor = null; panelForce = false; }
     return;
   }
+  if (WEB) { webPanel(fr); return; }
   if (!api || !api.describe) return;
   const now = performance.now();
   if (!panelForce && now - panelAt < 250) return;
@@ -903,6 +933,11 @@ document.getElementById("osm-clear").addEventListener("click", () => runBusy((a)
 window.useOsm = (path) => runBusy((a) => a.osm_use(path), T("Czytam plik OSM…"));
 // Przełącznik języka: Python zapisuje wybór, przeładowuje run (nazwy klas i komunikaty powstają przy otwarciu), strona się przeładowuje.
 document.getElementById("lang").addEventListener("click", () => {
+  if (WEB) {
+    try { localStorage.setItem("easyMatplayerLang", boot.lang === "en" ? "pl" : "en"); } catch (e) { /* bez zapisu: wybór tylko na teraz */ }
+    location.reload();
+    return;
+  }
   const api = window.pywebview && window.pywebview.api;
   if (!api) return;
   runBusy((a) => a.set_language(boot.lang === "en" ? "pl" : "en"), T("Run się otwiera…"));

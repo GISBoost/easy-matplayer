@@ -1,0 +1,74 @@
+<!doctype html>
+<html lang="pl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>easy-matplayer</title>
+<style>
+  :root { color-scheme: dark; --bg: #121418; --card: #1b1f27; --line: #2a3140; --fg: #e7e9ee; --mut: #9aa3b2; --acc: #5aa9f0; }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--fg); font: 15px/1.5 system-ui, "Segoe UI", sans-serif; }
+  main { max-width: 860px; margin: 0 auto; padding: 48px 24px; }
+  h1 { margin: 0 0 4px; font-size: 28px; }
+  .sub { color: var(--mut); margin: 0 0 32px; }
+  #lang { float: right; font: inherit; cursor: pointer; background: none; color: var(--mut); border: 1px solid var(--line); border-radius: 14px; padding: 2px 12px; }
+  .cards { display: grid; gap: 16px; grid-template-columns: repeat(auto-fill, minmax(360px, 1fr)); }
+  a.card { display: block; background: var(--card); border: 1px solid var(--line); border-radius: 8px; padding: 18px 20px; color: inherit; text-decoration: none; }
+  a.card:hover, a.card:focus-visible { border-color: var(--acc); }
+  a.card h2 { margin: 0 0 6px; font-size: 18px; }
+  a.card p { margin: 0 0 8px; }
+  .meta { color: var(--mut); font-size: 12px; }
+  .note { margin-top: 32px; color: var(--mut); font-size: 13px; }
+  .note a { color: var(--acc); }
+</style>
+</head>
+<body>
+<main>
+  <button id="lang" type="button">English</button>
+  <h1>easy-matplayer</h1>
+  <p class="sub"></p>
+  <div class="cards" id="cards"></div>
+  <p class="note" id="note"></p>
+</main>
+<script>
+const TXT = {
+  pl: {sub: "Odtwarzacz wyników symulacji ruchu MATSim w przeglądarce. Wybierz scenariusz.", size: "dane", lic: "licencja danych",
+       note: "Wymaga przeglądarki na komputerze z WebGL2 (Chrome, Edge, Firefox). Pobierane są tylko oglądane fragmenty doby. Wersja na Windows z własnymi runami: ", app: "easy-matplayer na GitHubie", other: "English"},
+  en: {sub: "A browser player for MATSim traffic simulation results. Pick a scenario.", size: "data", lic: "data licence",
+       note: "Needs a desktop browser with WebGL2 (Chrome, Edge, Firefox). Only the parts of the day you watch are downloaded. Windows app for your own runs: ", app: "easy-matplayer on GitHub", other: "Polski"},
+};
+let lang = "en";
+try { lang = localStorage.getItem("easyMatplayerLang") || ((navigator.language || "").toLowerCase().startsWith("pl") ? "pl" : "en"); } catch (e) { /* bez zapisu */ }
+let list = [];
+function render() {
+  const t = TXT[lang];
+  document.documentElement.lang = lang;
+  document.querySelector(".sub").textContent = t.sub;
+  document.getElementById("lang").textContent = t.other;
+  const box = document.getElementById("cards");
+  box.replaceChildren();
+  list.forEach((s) => {
+    const a = document.createElement("a");
+    a.className = "card";
+    a.href = "player/?run=" + encodeURIComponent(s.id);
+    const h = document.createElement("h2"); h.textContent = s.title[lang] || s.title.en;
+    const p = document.createElement("p"); p.textContent = s.desc[lang] || s.desc.en;
+    const m = document.createElement("div"); m.className = "meta";
+    m.textContent = t.size + ": " + (s.size_mb ? s.size_mb + " MB · " : "") + t.lic + ": " + s.license;
+    a.append(h, p, m);
+    box.appendChild(a);
+  });
+  const note = document.getElementById("note");
+  note.replaceChildren(document.createTextNode(t.note));
+  const l = document.createElement("a"); l.href = "https://github.com/GISBoost/easy-matplayer"; l.textContent = t.app;
+  note.appendChild(l);
+}
+document.getElementById("lang").addEventListener("click", () => {
+  lang = lang === "pl" ? "en" : "pl";
+  try { localStorage.setItem("easyMatplayerLang", lang); } catch (e) { /* bez zapisu */ }
+  render();
+});
+fetch("scenarios.json").then((r) => r.json()).then((j) => { list = j; render(); });
+</script>
+</body>
+</html>

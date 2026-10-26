@@ -21,6 +21,14 @@ scripts\viz_build.bat
 
 Release: a tag `viz-v<version>` starts `.github/workflows/viz_release.yml`.
 
+## Browser version
+
+```
+uv run --group viz python scripts/web_build.py <folder with runs> _site
+```
+
+Builds a static site (scenario list, the same client as the app, data per scenario) for GitHub Pages; workflow `.github/workflows/web_pages.yml`. Plan: [docs/projekt/wizualizer_web.md](docs/projekt/wizualizer_web.md) (Polish).
+
 ## Licences
 
 Code: GPL-3.0-or-later ([LICENSE](LICENSE)). Data: [LICENSE-DATA.en.md](LICENSE-DATA.en.md) (English translation of [LICENSE-DATA.md](LICENSE-DATA.md), which is binding).
