@@ -42,13 +42,18 @@ def build_scenario(run, dest, work):
             shutil.copytree(tmp / "data", dest / "data", dirs_exist_ok=True)
 
 
+GOATCOUNTER = '<script data-goatcounter="https://gisboostgithub.goatcounter.com/count" async src="//gc.zgo.at/count.js"></script>'
+
+
 def main(runs, out):
     runs, out = Path(runs), Path(out)
     scenarios = json.loads((ROOT / "web" / "scenarios.json").read_text(encoding="utf-8"))
     if out.exists():
         shutil.rmtree(out)
     (out / "player").mkdir(parents=True)
-    shutil.copy(ROOT / "viz_player" / "shell.html", out / "player" / "index.html")
+    # GoatCounter only on the website copy of the player; the desktop app sends nothing.
+    shell = (ROOT / "viz_player" / "shell.html").read_text(encoding="utf-8")
+    (out / "player" / "index.html").write_text(shell.replace("</head>", GOATCOUNTER + "</head>", 1), encoding="utf-8")
     shutil.copy(ROOT / "viz_player" / "engine.js", out / "player" / "engine.js")
     shutil.copytree(ROOT / "viz_player" / "vendor", out / "player" / "vendor")
     shutil.copy(ROOT / "web" / "index.html", out / "index.html")
