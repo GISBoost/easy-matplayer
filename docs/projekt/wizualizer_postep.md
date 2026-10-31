@@ -482,3 +482,12 @@ Otwarte, w kolejności:
 - Zmiana (`viz_player/shell.html`): usunięte przyciski `data-go` i `goSec`; `#panel` `right: 16px; top: 148px; bottom: 16px`; `--bo = --pw + 32px`; test `test_desktop_rail_and_island_geometry` pilnuje nowego układu.
 - Dowody: `pytest` 132 passed; przeglądarka 1440×900 (panel otwarty): pastylka 1382–1424 × 16–138, panel 1064–1424 × 148–884, kapsuła 164–884 × 778–884, legenda 16,16. Nie uruchomiono `--smoke` po tej zmianie.
 - Zostaje do polerki: animacja kapsuły przy wysuwaniu panelu, okno prawie kwadratowe i 701–800 px, exe.
+
+### Polerka i zamknięcie designu desktopu (2026-10-31)
+
+- Zrobione: kapsuła odtwarzacza animuje `right` i `width` razem z wysuwaniem panelu (`.32s`, ta sama krzywa); smoke znał skalę jako osobny element, więc po przeniesieniu jej do legendy zgłaszał FAIL „skala zasłonięta przez legendę” — sprawdzenie uwzględnia teraz skalę w legendzie (na telefonie nadal osobno).
+- Dowody: `pytest` 132 passed; `--smoke` z kodu na `g1r8_25pct_s4711`: `smoke OK n=729 ... mapa=1426x863 klient_vs_python_max=0.46 m budynki3D=83617 blyski=215/4 linki_z_ruchem=2911`. Okno 760 px z otwartym panelem (przeglądarka, bez przejść): kapsuła 16–412, panel 444–744, bez nakładania. Paczka lokalna `scripts\viz_build.bat` zbudowana; exe z PATH `System32;Windows;...\WindowsPowerShell\v1.0` i pustym `EASY_MATPLAYER_DATA`: `smoke OK` (te same liczby), exit 0.
+- Uwaga: pierwsza próba exe z PATH bez katalogu PowerShella dała FAIL — zrzut smoke (`grab.py`) woła `powershell` z PATH. To dotyczy tylko zrzutu w trybie smoke, nie zwykłego uruchomienia (nie sprawdzone osobno).
+- Nie zmierzone: koszt szkła (`backdrop-filter`) nad WebGL w klatkach, kontrast na ortofotomapie, `prefers-reduced-transparency` w WebView2, tablet na prawdziwym urządzeniu; kliknięcie ikon pastylki w WebView2 poza przeglądarką.
+- Poza zakresem (tylko zapisane): telefon, `#attrfull` bez `order` (pełna atrybucja u góry arkusza); `grab.window_png` może złapać cudze okno o tym samym tytule i smoke zapisuje `smoke.png` w folderze runu.
+- Push, `web_pages.yml` i wydanie robi właściciel.
