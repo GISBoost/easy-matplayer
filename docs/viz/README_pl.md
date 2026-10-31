@@ -84,7 +84,7 @@ Panel „Widok” ma trzy ustawienia: `auta` (domyślnie, drogi w zwykłych kolo
 
 ## Komputer: pływające wyspy (aplikacja okienkowa i strona, od 701 px)
 
-Ten sam wygląd co na telefonie (ciemny, szkło, zaokrąglenia), w układzie na szeroki ekran. Aplikacja i strona w przeglądarce są jednym plikiem, więc wyglądają tak samo; różnią się tylko funkcje (WMS, obrazy, otwieranie runów i plik OSM są w aplikacji).
+Ten sam wygląd co na telefonie (ciemny, szkło, zaokrąglenia), w układzie na szeroki ekran. Aplikacja i strona w przeglądarce są jednym plikiem, więc wyglądają tak samo; różnią się tylko funkcje (własne usługi WMS/WMTS/XYZ, obrazy, otwieranie runów i plik OSM są tylko w aplikacji; strona ma dwa gotowe podkłady: OpenStreetMap i ortofotomapę GUGiK, obie z suwakiem krycia). Własnych usług nie ma na stronie, bo nie każdy serwer map pozwala przeglądarce pobierać z nich kafelków (brak nagłówka CORS), a aplikacja pobiera je przez Pythona.
 
 - Mapa jest na cały ekran. Po prawej u góry szklana pastylka z trzema przyciskami: 3D, pokaż cały obszar i ustawienia. Ustawienia otwierają panel, który wysuwa się pod pastylką do dołu okna; sekcje panelu zwija się nagłówkami. Legenda i skala są w jednym polu w lewym górnym rogu. Kółko myszy i przeciąganie jak dotąd; prawy przycisk myszy: obrót i pochylenie.
 - Na dole pośrodku kapsuła odtwarzacza (do 720 px): zegar bez sekund i liczba aut, start/pauza, suwak, mnożnik. Kliknięcie mnożnika rozwija rząd ◀ 1× 10× 60× 300× ▶. Pod spodem próbka, uwagi o runie, „© OpenStreetMap” i skróty klawiszowe: spacja (start), strzałki (±1 min), F (śledź), Esc (wyczyść).
@@ -101,7 +101,7 @@ Przy szerokości okna do 700 px (telefon w pionie) strona przełącza się na uk
 - Na dole pływająca karta odtwarzacza: start/pauza, suwak czasu i mnożnik. Dotknięcie „60×” rozwija rząd ◀ 1× 10× 60× 300× ▶ (◀ ▶ zmieniają mnożnik o 1, jak na komputerze). Pod spodem próbka, uwagi o runie (np. pokrycie OSM) i skrót „© OpenStreetMap” (pełny tekst na dole arkusza). Zegar w pigułce pokazuje godziny i minuty.
 - Panel boczny to arkusz nad odtwarzaczem o trzech wysokościach: zamknięty, środek, wysoko. Przeciągasz go za uchwyt u góry (albo dotykasz uchwytu: środek ↔ wysoko), przycisk ustawień otwiera i zamyka. Dotknięcie auta lub drogi otwiera arkusz ze szczegółami. Dotknięcie pustej mapy zamyka arkusz, a przy zamkniętym kasuje zaznaczenie. Mapa zostaje widoczna nad arkuszem.
 - W arkuszu: szczegóły, widok (auta, tylko drogi, auta + drogi), klasy aut, przełączniki (kolor dróg OSM, modele 3D, błyski), wyszukiwarka, podkłady.
-- Granice: tylko układ pionowy (poziomo telefon dostaje układ komputerowy), arkusz przeciąga się tylko za uchwyt, skróty klawiszowe nie dotyczą telefonu, a WMS, obrazy i otwieranie runów są tylko w aplikacji.
+- Granice: tylko układ pionowy (poziomo telefon dostaje układ komputerowy), arkusz przeciąga się tylko za uchwyt, skróty klawiszowe nie dotyczą telefonu, a własne WMS/WMTS/XYZ, obrazy i otwieranie runów są tylko w aplikacji.
 
 ## Znane ograniczenia
 

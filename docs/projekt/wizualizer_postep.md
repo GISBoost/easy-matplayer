@@ -357,7 +357,7 @@ Wszystkie trzy części (A2a, A2b, A2c) przeszły: 96 testów i smoke w prawdziw
 - Nie sprawdzone: wdrożenie na GitHub Pages (kompresja `.bin`, czas ładowania), Firefox/Safari, płynność na słabszym GPU, build na Linuksie w CI.
 - **W5** karta w `mapy-analizy` (commit lokalny w tamtym repo: index.html, i18n.js pl/en, README), link `https://gisboost.github.io/easy-matplayer/` zadziała po włączeniu Pages i wdrożeniu.
 - 2026-10-26: strona listy dostała belkę GISBoost z hubu (wspólny `gisboost-1.css`, linki do analiz), a odtwarzacz linki powrotne (do listy i do hubu). Język wspólny z hubem (klucz `mapyAnalizyLang`, ta sama domena). Zgłosił właściciel po wdrożeniu.
-- 2026-10-26: web: panel podkładów (OpenStreetMap, ortofotomapa GUGiK przez WMS GetMap, oba z CORS `*`) z włącznikiem i suwakiem krycia; własnych obrazów i WMS użytkownika w web nie ma (decyzja właściciela). Domyślnie OSM włączony (krycie 60%), ortofoto wyłączone.
+- 2026-10-26: web: panel podkładów (OpenStreetMap, ortofotomapa GUGiK, oba z CORS `*`; od 2026-10-31 ortofoto idzie przez WMTS, patrz niżej) z włącznikiem i suwakiem krycia; własnych obrazów i WMS użytkownika w web nie ma (decyzja właściciela). Domyślnie OSM włączony (krycie 60%), ortofoto wyłączone.
 
 ## Plan: błysk aktywności i obciążenie linków (2026-10-31)
 
@@ -491,3 +491,11 @@ Otwarte, w kolejności:
 - Nie zmierzone: koszt szkła (`backdrop-filter`) nad WebGL w klatkach, kontrast na ortofotomapie, `prefers-reduced-transparency` w WebView2, tablet na prawdziwym urządzeniu; kliknięcie ikon pastylki w WebView2 poza przeglądarką.
 - Poza zakresem (tylko zapisane): telefon, `#attrfull` bez `order` (pełna atrybucja u góry arkusza); `grab.window_png` może złapać cudze okno o tym samym tytule i smoke zapisuje `smoke.png` w folderze runu.
 - Push, `web_pages.yml` i wydanie robi właściciel.
+
+## Ortofoto GUGiK przez WMTS i własne usługi w web (2026-10-31)
+
+- Objaw (zgłoszenie właściciela): ortofotomapa ładuje się wolno. Przyczyna: warstwa używała dynamicznego WMS GetMap (`WMS/StandardResolution`), który renderuje każdy kafelek na żądanie.
+- Pomiar curlem, okolice Kutna: WMS HighResolution 0,2–0,65 s na kafelek, a przy 12 kafelkach po 6 równolegle dwa trwały 3,4 s i 4,5 s (razem 4,7 s). Adres WMS StandardResolution zwrócił wtedy 404 (zapis w `wizualizer_test_drugi_komputer.md`: serwer bywa chwilowo niedostępny). WMTS StandardResolution, kafelki gotowe: 40–110 ms na zoomach 10, 14, 17 i 19, `Cache-Control: max-age=2592000`, `Access-Control-Allow-Origin: *`.
+- Zmiana: `WEB_BASE` w `shell.html` bierze kafelki z `PZGIK/ORTO/WMTS/StandardResolution` (KVP, `TILEMATRIXSET=EPSG:3857`, warstwa `ORTOFOTOMAPA`, wiersz = `{y}` jak w XYZ). Testy: `pytest` 132 passed (żaden nie dotyka tego adresu). **Nie sprawdzone w oknie ani w smoke**: warstwy nie otworzyłem w aplikacji ani na stronie, zmierzone są tylko odpowiedzi serwera.
+- Własne WMS/WMTS/XYZ w web nadal nie ma (decyzja właściciela z 2026-10-26). Przeszkody techniczne zapisane w `wizualizer_web.md`; żadna nie jest nie do ominięcia, ale CORS zależy od cudzego serwera.
+- Ścieżka ręczna (okno „dodaj WMS”) nadal pobiera kafelki dynamicznym WMS, jeśli użytkownik wpisze adres WMS; WMTS jest szybszy.

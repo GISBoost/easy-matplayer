@@ -31,10 +31,10 @@ Adres odtwarzacza: `player/?run=<id>`. Bez `?run` klient działa jak w aplikacji
 
 ## Różnice web / desktop (jedna baza kodu, przełącznik po `window.pywebview`)
 
-- Ukryte w web: „otwórz run”, plik OSM, WMS / WMTS / XYZ / obraz (wszystko wymaga Pythona).
+- Ukryte w web: „otwórz run”, plik OSM, własne WMS / WMTS / XYZ / obraz (decyzja właściciela 2026-10-26). Przeszkody: (1) CORS — aplikacja pobiera kafelki i GetCapabilities przez Pythona, a przeglądarka może tylko z serwerów wysyłających `Access-Control-Allow-Origin`, czego nie da się obejść bez pośredniczącego serwera (strona jest statyczna); (2) usługi w innym układzie niż EPSG:3857 (np. 2180) Python przelicza przez pyproj + Pillow, w przeglądarce trzeba by proj4js i canvas; (3) strona na https nie pobierze usługi tylko na http; (4) obrazy z plikiem świata wymagają wyboru pliku i przeliczenia układu. Usługi w EPSG:3857 z CORS (np. WMTS GUGiK, XYZ) dałyby się dodać bez Pythona, bo MapLibre bierze szablon URL kafelka wprost.
 - Język: przełącznik działa po stronie klienta (`boot.en.json` / `boot.pl.json`, wybór z `localStorage` albo języka przeglądarki).
 - Zaznaczone auto: panel z tym, co zna klient (id, klasa, prędkość, typ drogi). Harmonogram osoby (oś czasu) wymaga danych czynności w eksporcie, więc to krok W3.
-- Podkład: jednolity z drogami. Dostawca kafelków wymaga osobnej decyzji (warunki użycia, klucz).
+- Podkład: OpenStreetMap (krycie 60%) i ortofotomapa GUGiK (WMTS od 2026-10-31), z włącznikiem i suwakiem krycia.
 
 ## Kroki
 
