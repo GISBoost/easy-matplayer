@@ -355,3 +355,9 @@ Wszystkie trzy części (A2a, A2b, A2c) przeszły: 96 testów i smoke w prawdziw
 - **W5** karta w `mapy-analizy` (commit lokalny w tamtym repo: index.html, i18n.js pl/en, README), link `https://gisboost.github.io/easy-matplayer/` zadziała po włączeniu Pages i wdrożeniu.
 - 2026-10-26: strona listy dostała belkę GISBoost z hubu (wspólny `gisboost-1.css`, linki do analiz), a odtwarzacz linki powrotne (do listy i do hubu). Język wspólny z hubem (klucz `mapyAnalizyLang`, ta sama domena). Zgłosił właściciel po wdrożeniu.
 - 2026-10-26: web: panel podkładów (OpenStreetMap, ortofotomapa GUGiK przez WMS GetMap, oba z CORS `*`) z włącznikiem i suwakiem krycia; własnych obrazów i WMS użytkownika w web nie ma (decyzja właściciela). Domyślnie OSM włączony (krycie 60%), ortofoto wyłączone.
+
+## Plan: błysk aktywności i obciążenie linków (2026-10-31)
+
+- Plan w `docs/projekt/wizualizer_efekty.md`: **A** błysk przy starcie aktywności (eksport format 2, `Engine.flashes`, warstwa deck.gl), **B** kolor dróg wg prędkości względem swobodnej albo natężenia względem przepustowości (atrybuty sieci w indeksie, `link_attr.bin`, `Engine.linkStats`). Kolejność A, potem B.
+- Zmierzone na demo Kutno 25%: 24 304 starty aktywności (typy `home`, `work`, techniczne `tlo_start`/`tlo_end`), szczyt 57 na minutę; zdarzenia są już w `index.npz`, brak ich w eksporcie klienta; w indeksie brak `capacity`, pasów i `capperiod`; `flowCapacityFactor` 0,25 jest w `output_config.xml`.
+- Nic z planu nie jest zaimplementowane. Do potwierdzenia: D1–D5 w dokumencie (domyślnie: tylko starty, `tlo_*` wyłączone na stronie demo, kolor wg typu, prędkość jako domyślny tryb obciążenia).
