@@ -82,9 +82,19 @@ Panel „Widok” ma trzy ustawienia: `auta` (domyślnie, drogi w zwykłych kolo
 - Statystyki z próbki 25% są szumne na pojedynczych linkach (kilka aut w oknie): dłuższe okno wygładza. W widoku `auta + drogi` auta są kolorowane klasą (po powrocie do `auta` wraca poprzedni wybór), żeby nie zlewały się z drogą. Kolor dróg liczy cały ruch: przyciski klas aut ukrywają auta, ale nie zmieniają koloru dróg.
 - Panel zaznaczonego linku ma dodatkowy wiersz z wartościami z okna, np. „ostatnie 5 min: 13 km/h (swobodna 42 km/h), 156 poj/h (104% przepustowości, w skali próbki)”.
 
+## Komputer: pływające wyspy (aplikacja okienkowa i strona, od 701 px)
+
+Ten sam wygląd co na telefonie (ciemny, szkło, zaokrąglenia), w układzie na szeroki ekran. Aplikacja i strona w przeglądarce są jednym plikiem, więc wyglądają tak samo; różnią się tylko funkcje (WMS, obrazy, otwieranie runów i plik OSM są w aplikacji).
+
+- Mapa jest na cały ekran. Po prawej u góry szklany stos przycisków: 3D, pokaż cały obszar, ustawienia. Kółko myszy i przeciąganie jak dotąd; prawy przycisk myszy: obrót i pochylenie.
+- Na dole pośrodku kapsuła odtwarzacza (do 720 px): zegar bez sekund i liczba aut, start/pauza, suwak, mnożnik. Kliknięcie mnożnika rozwija rząd ◀ 1× 10× 60× 300× ▶. Pod spodem próbka, uwagi o runie, „© OpenStreetMap” i skróty klawiszowe: spacja (start), strzałki (±1 min), F (śledź), Esc (wyczyść).
+- Ustawienia to szklana wyspa pod stosem. Przycisk ustawień ją wysuwa i zwija; kliknięcie auta lub drogi też ją otwiera. W oknie do 1024 px kliknięcie pustej mapy ją zamyka. Na górze szczegóły zaznaczenia i ostrzeżenia o runie, niżej sekcje rozwijane nagłówkiem: Widok, Klasy, Warstwy, Szukaj, Podkłady (strona), Zaawansowane (aplikacja: WMS/WMTS/XYZ, obrazy, otwórz run, plik OSM; domyślnie zwinięte).
+- Szerokość wyspy i kapsuły zależy od okna: do 1024 px 300 i 560, do 1439 px 340 i 640, od 1440 px 360 i 720.
+- Bez rozmycia tła (stara przeglądarka), przy wyłączonych w Windows efektach przezroczystości i przy wysokim kontraście tło szkła ma być jednolite (reguły CSS są dodane; działanie w WebView2 nie było jeszcze sprawdzone).
+
 ## Telefon (strona w przeglądarce)
 
-Przy szerokości okna do 700 px (telefon w pionie) strona przełącza się na układ dotykowy. Na komputerze i w aplikacji okienkowej nic się nie zmienia.
+Przy szerokości okna do 700 px (telefon w pionie) strona przełącza się na układ dotykowy. Od 701 px w górę (komputer, aplikacja okienkowa, poziomy tablet) działa układ pływających wysp, opisany niżej.
 
 - Mapa jest na cały ekran. Dwa palce: obrót i pochylenie.
 - U góry po lewej pigułka z czasem i liczbą aut, po prawej szklany stos przycisków: 3D, pokaż cały obszar, ustawienia.

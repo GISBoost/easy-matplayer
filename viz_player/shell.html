@@ -141,7 +141,7 @@ body.panel-off #panel { display: none; }
 .maplibregl-ctrl-attrib a { color: #7eb6ff; }
 /* Telefon (≤ 700 px): mapa na cały ekran, pływający odtwarzacz ze szkła, pigułka zegara, stos przycisków i panel jako arkusz.
    Desktop: te elementy są ukryte, a wrappery #mspeeds i #binfo nic nie zmieniają. */
-#mpill, #mstack, #grab, #mhint { display: none; }
+#mpill, #mstack, #grab, #mhint, #dclk, #dkeys, .sechd { display: none; }
 #mspeeds, #binfo { display: contents; }
 @media (max-width: 700px) {
   :root { --dock: 110px; --glass: rgba(44, 44, 46, .72); }
@@ -248,6 +248,124 @@ body.panel-off #panel { display: none; }
   #panel input[type=checkbox]:checked { background: #30d158; }
   #panel input[type=checkbox]:checked::after { left: 20px; }
 }
+
+/* Komputer (≥ 701 px): ten sam język co telefon, w układzie pływających wysp. Mapa na cały ekran; stos przycisków i panel (wyspa ze szkła,
+   zwijana przyciskiem ustawień) po prawej; odtwarzacz z zegarem (bez sekund) jako kapsuła na dole pośrodku. Pigułka #mpill zostaje ukryta:
+   zegar jest w kapsule. Szkło ma tylko to, co małe i stałe; legenda i panel też, z jednolitym tłem, gdy przeglądarka nie robi rozmycia. */
+@media (min-width: 701px) {
+  :root { --dock: 110px; --pw: 340px; --cw: 640px; --glass: rgba(44, 44, 46, .72); --glassp: rgba(38, 38, 40, .76); --edge: .5px solid rgba(255, 255, 255, .14); }
+  html, body { height: 100dvh; }
+  body { display: block; font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", Roboto, system-ui, sans-serif; }
+  #stage { position: fixed; inset: 0; }
+  /* nie chowaj kontenera: deck.gl montuje w nim kanwę (patrz telefon) */
+  .maplibregl-ctrl-top-left .maplibregl-ctrl-group { display: none; }
+  .maplibregl-ctrl-bottom-right { bottom: var(--dock); }
+  .maplibregl-ctrl-attrib { display: none; }  /* atrybucja jest w kapsule (#mattr), pełna na dole panelu (#attrfull) */
+  #bar #mattr { display: inline; }
+  #attrfull { display: block; font-size: 12px; }
+  #legend { left: 16px; bottom: calc(var(--dock) + 4px); padding: 8px 12px; border-radius: 14px; background: var(--glass);
+    -webkit-backdrop-filter: blur(24px) saturate(1.8); backdrop-filter: blur(24px) saturate(1.8); border: var(--edge); }
+  .maplibregl-ctrl-scale { background: rgba(18, 20, 24, .75); color: #9aa3b2; border-color: #9aa3b2; }
+  :is(button, input, #grab):focus-visible { outline: 2px solid #0a84ff; outline-offset: 2px; }
+
+  /* stos przycisków: 3D, dopasuj, ustawienia (ten sam co na telefonie, 40 px pod wskaźnik) */
+  #mstack { display: flex; flex-direction: column; position: fixed; z-index: 500; right: 16px; top: 16px; border-radius: 20px; overflow: hidden;
+    background: var(--glass); -webkit-backdrop-filter: blur(24px) saturate(1.8); backdrop-filter: blur(24px) saturate(1.8); border: var(--edge); }
+  #mstack button { display: grid; place-items: center; width: 40px; height: 40px; padding: 0; border: 0; background: none; color: #fff; cursor: pointer; }
+  #mstack button + button { border-top: var(--edge); }
+  #mstack button:hover { background: rgba(255, 255, 255, .1); }
+  #mstack button.on { color: #0a84ff; }
+  #mstack svg { width: 22px; height: 22px; stroke: currentColor; fill: none; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+
+  /* odtwarzacz: kapsuła [zegar | start | suwak | mnożnik]; drugi rząd po kliknięciu mnożnika; trzeci: próbka, uwagi o runie, skróty */
+  #bar { position: fixed; z-index: 700; left: 0; right: 0; margin: 0 auto; bottom: 16px; width: min(var(--cw), calc(100vw - 32px)); box-sizing: border-box;
+    display: grid; grid-template-columns: auto 48px 1fr auto; gap: 8px 14px; align-items: center; padding: 12px 18px; border-radius: 30px;
+    background: var(--glass); -webkit-backdrop-filter: blur(24px) saturate(1.8); backdrop-filter: blur(24px) saturate(1.8); border: var(--edge); }
+  #bar #mdn, #bar #mup, #bar #clock, #bar #count, #bar #three, #bar #hide { display: none; }
+  #dclk { display: block; grid-column: 1; grid-row: 1; min-width: 88px; line-height: 1.15; }
+  #dtime { display: block; font-size: 24px; font-weight: 700; letter-spacing: -.01em; font-variant-numeric: tabular-nums; }
+  #dcount { display: block; font-size: 12px; color: rgba(235, 235, 245, .6); }
+  #bar #play { grid-column: 2; grid-row: 1; width: 48px; height: 48px; padding: 0; border: 0; border-radius: 50%; background: #0a84ff; font-size: 0; position: relative; }
+  #bar #play:hover { background: #2b95ff; }
+  #bar #play::before { content: ""; position: absolute; inset: 0; background: center / 24px no-repeat url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'><path d='M8 5.5v13l11-6.5z' fill='white'/></svg>"); }
+  #bar #play.on::before { background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'><path d='M7 5h3.5v14H7zM13.5 5H17v14h-3.5z' fill='white'/></svg>"); }
+  #bar #slider { grid-column: 3; grid-row: 1; width: 100%; min-width: 0; margin: 0; }
+  #bar #mval { grid-column: 4; grid-row: 1; display: block; min-width: 60px; line-height: 36px; border-radius: 18px; background: rgba(118, 118, 128, .28);
+    font-weight: 600; font-size: 16px; text-align: center; cursor: pointer; }
+  #bar #mval:hover { background: rgba(118, 118, 128, .45); }
+  #mspeeds { grid-column: 3; grid-row: 2; display: none; gap: 6px; }
+  #bar.spd #mspeeds { display: flex; }
+  #bar.spd #mdn, #bar.spd #mup { display: block; grid-row: 2; min-height: 34px; padding: 0; border: 0; border-radius: 12px; background: rgba(118, 118, 128, .24); font-size: 15px; color: inherit; }
+  #bar.spd #mdn { grid-column: 2; }
+  #bar.spd #mup { grid-column: 4; padding: 0 16px; }
+  #mspeeds button { flex: 1; min-height: 34px; border: 0; border-radius: 12px; background: rgba(118, 118, 128, .24); font-size: 15px; color: inherit; }
+  #mspeeds button:hover, #bar.spd #mdn:hover, #bar.spd #mup:hover { background: rgba(118, 118, 128, .45); }
+  #mspeeds button.on { background: #636366; color: #fff; }
+  #binfo { grid-column: 1 / -1; grid-row: 3; display: flex; flex-wrap: wrap; gap: 2px 14px; font-size: 12px; }
+  #binfo span { white-space: normal; }
+  #dkeys { display: inline; margin-left: auto; color: rgba(235, 235, 245, .6); }
+
+  /* panel: wyspa ze szkła pod stosem, wysuwana z prawej; sekcje zwijane nagłówkami (.sechd), ostrzeżenia o runie i szczegóły zawsze na górze */
+  #panel { position: fixed; z-index: 600; right: 16px; top: 160px; width: var(--pw); box-sizing: border-box; max-height: calc(100dvh - 160px - var(--dock) - 44px);
+    display: flex; flex-direction: column; gap: 10px; padding: 16px; border-radius: 24px; font-size: 14px; overflow: auto; overscroll-behavior: contain;
+    background: var(--glassp); -webkit-backdrop-filter: blur(30px) saturate(1.8); backdrop-filter: blur(30px) saturate(1.8); border: var(--edge);
+    transform: translateX(calc(100% + 24px)); visibility: hidden; pointer-events: none;
+    transition: transform .32s cubic-bezier(.2, .8, .2, 1), visibility 0s linear .32s; }
+  #panel.open { transform: none; visibility: visible; pointer-events: auto; transition: transform .32s cubic-bezier(.2, .8, .2, 1); }
+  body.panel-off #panel { display: flex; }
+  #panel > * { flex: none; margin: 0 !important; }
+  #panel h1 { order: -4; font-size: 16px; }
+  #weblinks { order: -3; }
+  #run { order: -2; }
+  #lang { order: -1; align-self: flex-start; }
+  #crsnote, #runmsg, #runbar { order: 1; }
+  #detail { order: 2; font-size: 14px; }
+  #axis { order: 3; }
+  .sechd { display: flex; align-items: center; justify-content: space-between; width: 100%; padding: 12px 0 2px; border: 0; background: none; cursor: pointer;
+    font: inherit; font-size: 11px; font-weight: 700; letter-spacing: .07em; text-transform: uppercase; color: rgba(235, 235, 245, .6); }
+  .sechd::after { content: ""; width: 7px; height: 7px; border: solid currentColor; border-width: 0 1.8px 1.8px 0; transform: rotate(45deg); transition: transform .2s; }
+  .sechd.shut::after { transform: rotate(-45deg); }
+  .sechd:hover { color: #fff; }
+  .sec-off { display: none !important; }
+  .sechd[data-sec=view] { order: 20; } #loadbox { order: 21; }
+  .sechd[data-sec=cls] { order: 30; } #chips { order: 31; }
+  .sechd[data-sec=lay] { order: 40; } #opts { order: 41; }
+  .sechd[data-sec=find] { order: 50; } #find { order: 51; } #hits { order: 52; }
+  .sechd[data-sec=base] { order: 60; } #webbase { order: 61; }
+  .sechd[data-sec=adv] { order: 70; } #svc { order: 71; } #osm { order: 72; } #openrun { order: 73; align-self: flex-start; }
+  body:not(.web) .sechd[data-sec=base], body.web .sechd[data-sec=adv] { display: none; }
+  #loadbox > .muted:first-child, #webbase > .muted:first-child { display: none; }  /* tytuł grupy jest już w nagłówku */
+  #credit { order: 90; }
+  #attrfull { order: 91; }
+  #hint { display: block; order: 92; margin: 0; }
+  #panel .chip { min-height: 32px; padding: 4px 12px; font-size: 13px; color: rgba(235, 235, 245, .8); border-color: rgba(255, 255, 255, .18); cursor: pointer; }
+  #panel .chip:hover { background: rgba(255, 255, 255, .1); }
+  #panel .chip.on { color: #fff; border-color: #0a84ff; background: rgba(10, 132, 255, .22); }
+  #loadbox .seg:not(#loadwin) { flex-wrap: nowrap; gap: 2px; padding: 2px; border-radius: 10px; background: rgba(118, 118, 128, .24); }
+  #loadbox .seg:not(#loadwin) .chip { flex: 1; min-height: 30px; padding: 0 4px; border: 0; border-radius: 8px; background: none; font-size: 13px; white-space: nowrap; }
+  #loadbox .seg:not(#loadwin) .chip.on { background: #636366; color: #fff; }
+  #find input { min-height: 36px; border: 0; border-radius: 10px; background: rgba(118, 118, 128, .24); font-size: 14px; }
+  #hits button { min-height: 34px; }
+  #opts label, #flash-kinds label, #flash-types label, .wbrow label { display: flex; flex-direction: row-reverse; align-items: center;
+    justify-content: space-between; gap: 10px; min-height: 34px; font-size: 14px; color: rgba(235, 235, 245, .85); }
+  #flash-types label { flex-direction: row; justify-content: flex-start; }
+  #flash-types label i { order: -1; }
+  #flash-types label input[type=checkbox] { order: 1; margin-left: auto; }
+  .wbrow label { flex: 1; }
+  #flash-kinds, #flash-types { margin-left: 0; padding-left: 12px; }
+  #panel input[type=checkbox] { -webkit-appearance: none; appearance: none; position: relative; flex: none; width: 40px; height: 24px; margin: 0; cursor: pointer;
+    border-radius: 12px; background: #39393d; transition: background .2s; }
+  #panel input[type=checkbox]::after { content: ""; position: absolute; left: 2px; top: 2px; width: 20px; height: 20px; border-radius: 50%;
+    background: #fff; box-shadow: 0 2px 4px rgba(0, 0, 0, .4); transition: left .2s; }
+  #panel input[type=checkbox]:checked { background: #30d158; }
+  #panel input[type=checkbox]:checked::after { left: 18px; }
+}
+@media (min-width: 701px) and (max-width: 1024px) { :root { --pw: 300px; --cw: 560px; } }
+@media (min-width: 1440px) { :root { --pw: 360px; --cw: 720px; } }
+/* bez rozmycia (stara przeglądarka) albo przy „zmniejsz przezroczystość” w systemie: lite tło, ten sam układ */
+@supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) { :root { --glass: #2c2c2e; --glassp: #1c1c1e; } }
+@media (prefers-reduced-transparency: reduce) { :root { --glass: #2c2c2e; --glassp: #1c1c1e; } }
+@media (prefers-contrast: more) { :root { --glass: #2c2c2e; --glassp: #1c1c1e; --edge: 1px solid rgba(255, 255, 255, .5); } }
 </style>
 </head>
 <body>
@@ -273,15 +391,19 @@ body.panel-off #panel { display: none; }
   <h1>easy-matplayer <small id="ver"></small></h1>
   <p id="weblinks"><a href="../">← scenariusze</a> · <a href="https://gisboost.github.io/mapy-analizy/">GISBoost · analizy mapowe</a></p>
   <p class="run" id="run"></p>
-  <button id="openrun" type="button" class="chip">otwórz run…</button> <button id="lang" type="button" class="chip">English</button>
+  <button id="openrun" type="button" class="chip" data-sec="adv">otwórz run…</button>
+  <button id="lang" type="button" class="chip">English</button>
   <p id="runmsg" class="muted" hidden></p>
   <progress id="runbar" max="1" value="0" hidden></progress>
   <p id="crsnote" class="muted" style="color:#f0b35a" hidden></p>
-  <p id="osm" class="muted"><span id="osmname"></span> <button id="osm-pick" type="button" class="chip">plik OSM…</button> <button id="osm-clear" type="button" class="chip" hidden>zapomnij plik</button></p>
-  <form id="find"><input id="q" type="text" placeholder="id pojazdu" autocomplete="off" spellcheck="false"></form>
-  <div id="hits"></div>
-  <div id="chips"></div>
-  <div id="opts">
+  <p id="osm" class="muted" data-sec="adv"><span id="osmname"></span> <button id="osm-pick" type="button" class="chip">plik OSM…</button> <button id="osm-clear" type="button" class="chip" hidden>zapomnij plik</button></p>
+  <button class="sechd" type="button" data-sec="find" aria-expanded="true">Szukaj</button>
+  <form id="find" data-sec="find"><input id="q" type="text" placeholder="id pojazdu" autocomplete="off" spellcheck="false"></form>
+  <div id="hits" data-sec="find"></div>
+  <button class="sechd" type="button" data-sec="cls" aria-expanded="true">Klasy</button>
+  <div id="chips" data-sec="cls"></div>
+  <button class="sechd" type="button" data-sec="lay" aria-expanded="true">Warstwy</button>
+  <div id="opts" data-sec="lay">
     <label><input type="checkbox" id="osmroads"> kolor dróg OSM</label>
     <label><input type="checkbox" id="models"> modele 3D pojazdów</label>
     <button id="carcolor" type="button" class="chip">kolor auta: prędkość</button>
@@ -294,7 +416,8 @@ body.panel-off #panel { display: none; }
       <div id="flash-types"></div>
     </div>
   </div>
-  <div id="loadbox">
+  <button class="sechd" type="button" data-sec="view" aria-expanded="true">Widok</button>
+  <div id="loadbox" data-sec="view">
     <div class="muted">Widok</div>
     <div class="seg">
       <button type="button" class="chip on" data-view="cars">auta</button>
@@ -316,12 +439,14 @@ body.panel-off #panel { display: none; }
     </div>
     <p id="loadnote" class="muted" hidden></p>
   </div>
-  <div id="webbase">
+  <button class="sechd" type="button" data-sec="base" aria-expanded="true">Podkłady</button>
+  <div id="webbase" data-sec="base">
     <div class="muted">Podkłady</div>
     <div class="wbrow"><label><input type="checkbox" id="wb-osm" checked> OpenStreetMap</label><input type="range" id="wb-osm-op" min="0" max="100" value="60" title="krycie"></div>
     <div class="wbrow"><label><input type="checkbox" id="wb-orto"> Ortofotomapa (GUGiK)</label><input type="range" id="wb-orto-op" min="0" max="100" value="100" title="krycie"></div>
   </div>
-  <div id="svc">
+  <button class="sechd" type="button" data-sec="adv" aria-expanded="false">Zaawansowane</button>
+  <div id="svc" data-sec="adv">
     <div class="muted">Podkłady: WMS, WMTS, XYZ, obrazy</div>
     <div id="svc-list"></div>
     <div class="btns">
@@ -340,6 +465,7 @@ body.panel-off #panel { display: none; }
   <p id="mhint">Dotknij auta albo drogi. Dwa palce: obrót i pochylenie mapy.</p>
 </aside>
 <div id="bar">
+  <div id="dclk"><span id="dtime"></span><span id="dcount"></span></div>
   <button id="play" type="button">start</button>
   <button id="mdn" type="button" title="mnożnik −1">◀</button>
   <span id="mval">1×</span>
@@ -358,6 +484,7 @@ body.panel-off #panel { display: none; }
   <span id="base">Podkład wyłączony.</span>
   <span id="curves"></span>
   <span id="mattr" hidden>© OpenStreetMap</span>
+  <span id="dkeys">Spacja: start · ← →: ±1 min · F: śledź · Esc: wyczyść</span>
   </span>
   <button id="three" type="button">3D</button>
   <button id="hide" type="button">ukryj</button>
@@ -481,11 +608,22 @@ document.getElementById("mval").addEventListener("click", () => barEl.classList.
 document.getElementById("mspeeds").addEventListener("click", () => barEl.classList.remove("spd"));
 document.addEventListener("pointerdown", (ev) => { if (!barEl.contains(ev.target)) barEl.classList.remove("spd"); });
 // Zegar i licznik z paska (pisane w wielu miejscach) lustrzanie w pigułce u góry.
-[["clock", "mclock"], ["count", "mcount"]].forEach(([from, to]) => {
+// Na komputerze to samo idzie do kapsuły odtwarzacza (#dtime, #dcount).
+[["clock", "mclock"], ["count", "mcount"], ["clock", "dtime"], ["count", "dcount"]].forEach(([from, to]) => {
   const src = document.getElementById(from), dst = document.getElementById(to);
   const copy = () => { dst.textContent = from === "clock" ? src.textContent.replace(/:\d\d$/, "") : src.textContent; };  // pigułka: godziny i minuty, bez sekund
   new MutationObserver(copy).observe(src, {childList: true, characterData: true, subtree: true});
   copy();
+});
+// Komputer: nagłówki .sechd zwijają i rozwijają sekcje panelu (elementy z tym samym data-sec dostają .sec-off); zaawansowane startują zwinięte.
+function setSection(h, shut) {
+  h.classList.toggle("shut", shut);
+  h.setAttribute("aria-expanded", String(!shut));
+  document.querySelectorAll('[data-sec="' + h.dataset.sec + '"]:not(.sechd)').forEach((e) => e.classList.toggle("sec-off", shut));
+}
+document.querySelectorAll(".sechd").forEach((h) => {
+  h.addEventListener("click", () => setSection(h, !h.classList.contains("shut")));
+  if (h.dataset.sec === "adv") setSection(h, true);
 });
 new ResizeObserver(layoutDock).observe(barEl);
 window.addEventListener("resize", layoutDock);
@@ -1856,7 +1994,8 @@ async function bootMap() {
     const hit = pickAt(ev.point);
     if (!hit) {
       // telefon: dotknięcie pustej mapy zamyka arkusz, a gdy jest już zamknięty, kasuje zaznaczenie
-      if (!mobileMQ.matches) return;
+      // komputer: wyspa zamyka się tak tylko w wąskim oknie (≤ 1024 px), gdzie zasłania sporą część mapy
+      if (!mobileMQ.matches) { if (innerWidth <= 1024 && sheet.d) setSheet(0); return; }
       if (sheet.d) { setSheet(0); return; }
       selected = null;
       follow = false;
@@ -1864,7 +2003,7 @@ async function bootMap() {
       change();
       return;
     }
-    if (mobileMQ.matches && sheet.d === 0) setSheet(1);  // szczegóły są w arkuszu: otwiera się raz, przy nowym wyborze (nie przy odświeżaniu panelu)
+    if (sheet.d === 0) setSheet(1);  // szczegóły są w arkuszu (telefon) albo wyspie (komputer): otwiera się raz, przy nowym wyborze (nie przy odświeżaniu panelu)
     selected = hit;
     follow = false;
     change();

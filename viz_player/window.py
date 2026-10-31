@@ -595,15 +595,18 @@ def smoke(run):
                 result["error"] = f"pozycje klienta różnią się od Pythona o {float(miss.max()):.3f} m"
                 return
             result["worst_m"] = float(miss.max())
-            js("document.getElementById('hide').click()")
-            time.sleep(0.3)
+            # przycisk ustawień w stosie wysuwa wyspę (cała w oknie) i znów ją zwija
+            js("setSheet(0); document.getElementById('msheet').click()")
+            time.sleep(0.6)
             back = js(
-                "(function(){var b=document.getElementById('hide');var r=b.getBoundingClientRect();"
-                "return r.width>20 && r.left>=0 && r.right<=window.innerWidth+1 && b.textContent==='panel';})()"
+                "(function(){var e=document.getElementById('panel'),r=e.getBoundingClientRect();"
+                "return e.classList.contains('open') && r.width>200 && r.left>=0 && r.right<=window.innerWidth+1;})()"
             )
-            js("document.getElementById('hide').click()")
-            if back is not True:
-                result["error"] = "przycisk panelu " + str(back)
+            js("document.getElementById('msheet').click()")
+            time.sleep(0.6)
+            closed = js("!document.getElementById('panel').classList.contains('open') && document.getElementById('panel').getBoundingClientRect().left>=window.innerWidth")
+            if back is not True or closed is not True:
+                result["error"] = f"wyspa ustawień: otwarta w oknie {back}, zwinięta poza oknem {closed}"
                 return
             # Rysunek: czas ustawiony na szczyt, pętla rysuje klatkę klienta
             js("window.hold = false; t = " + str(t_win) + "; change();")
@@ -698,14 +701,17 @@ def smoke(run):
             if not _wait_js(window, "roadMode === 'type' && window.layerIds.indexOf('cars') >= 0 && !window.drawError", 15):
                 result["error"] = f"widok „auta”: {js('window.drawError')}"
                 return
-            # okno 1440 px to układ desktopowy: elementy telefonu ukryte, panel boczny 320 px, pasek w siatce (nie pływający)
+            # okno 1440 px to układ pływających wysp (≥ 701 px): pigułka telefonu i uchwyt arkusza ukryte, stos przycisków widoczny,
+            # panel (wyspa) i kapsuła odtwarzacza pływają, szerokości zgodne ze zmiennymi --pw i --cw dla szerokości okna
             desk = js(
                 "(function(){var s=function(i){return getComputedStyle(document.getElementById(i));};"
+                "var v=function(n){return parseInt(getComputedStyle(document.documentElement).getPropertyValue(n));};"
+                "var w=function(i){return Math.round(document.getElementById(i).getBoundingClientRect().width);};"
                 "return [s('mpill').display,s('mstack').display,s('grab').display,s('panel').position,s('bar').position,"
-                "Math.round(document.getElementById('panel').getBoundingClientRect().width)];})()"
+                "w('panel')===v('--pw'),w('bar')===Math.min(v('--cw'),innerWidth-32),v('--pw')>=340,s('dclk').display];})()"
             )
-            if desk != ["none", "none", "none", "static", "static", 320]:
-                result["error"] = f"układ desktopowy zmieniony przez styl telefonu: {desk}"
+            if desk != ["none", "flex", "none", "fixed", "fixed", True, True, True, "block"]:
+                result["error"] = f"układ komputerowy (wyspy) zmieniony: {desk}"
                 return
             result["load_links"] = int((ref_stats["n"] > 0).sum())
             mult_seq = js(

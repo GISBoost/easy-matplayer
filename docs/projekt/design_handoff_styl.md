@@ -2,6 +2,8 @@
 
 Dla następnego agenta, który ma przenieść ten styl na aplikację okienkową (Windows, pywebview/WebView2) i na stronę otwieraną na komputerze. Stan na 2026-10-31. Autor: Claude (sesja o układzie na telefon). Decyzje wizualne podjął właściciel (Michał Kaczorowski), poniżej jest to, co zostało wybrane i dlaczego.
 
+> **Aktualizacja 2026-10-31 (desktop zrobiony):** szeroki ekran (≥ 701 px) ma teraz ten sam język w układzie „pływające wyspy” (wariant A z `docs/projekt/desktop_moodboard.html`): blok `@media (min-width: 701px)` w `shell.html`, panel jako szklana wyspa z sekcjami zwijanymi (`.sechd`, `data-sec`), kapsuła odtwarzacza z zegarem bez sekund (`#dclk`), skróty w kapsule (`#dkeys`), cele 32–40 px, hover i `:focus-visible`. Tokeny jak niżej plus `--glassp` (szkło panelu), `--pw` i `--cw` (szerokości wyspy i kapsuły wg okna). Asercja `desk` w smoke sprawdza już ten układ. Poniższy opis „desktop = stary układ” jest historyczny.
+
 ## 1. Co to jest i gdzie leży
 
 - Jeden plik klienta dla wszystkich wersji: `viz_player/shell.html` (HTML, CSS, JS) plus `viz_player/engine.js`. Używają go aplikacja okienkowa i strona na GitHub Pages (`https://gisboost.github.io/easy-matplayer/`, tryb web wykrywa się po `?run=`, stała `WEB`).

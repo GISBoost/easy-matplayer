@@ -311,3 +311,22 @@ def test_phone_attribution_and_speed_buttons():
     html = (Path(pl.__file__).parent / "shell.html").read_text(encoding="utf-8")
     assert 'id="mattr"' in html and "© OpenStreetMap contributors" in html
     assert "#bar.spd #mdn" in html and "#bar.spd #mup" in html
+
+
+def test_desktop_islands_layout():
+    # komputer (≥ 701 px): wyspy z szkła, sekcje zwijane, zegar w kapsule bez sekund, skróty widoczne; każdy nowy napis ma tłumaczenie
+    import re
+
+    from viz_player import i18n
+
+    html = (Path(pl.__file__).parent / "shell.html").read_text(encoding="utf-8")
+    assert "@media (min-width: 701px)" in html and "--glassp" in html and "prefers-reduced-transparency" in html
+    css = html.split("@media (min-width: 701px) {", 1)[1]
+    assert not re.search(r"\.maplibregl-ctrl-top-left\s*\{[^}]*display\s*:\s*none", css)  # kontener deck.gl zostaje
+    secs = set(re.findall(r'<button class="sechd" type="button" data-sec="(\w+)"', html))
+    assert secs == {"view", "cls", "lay", "find", "base", "adv"}
+    for sec in secs:
+        assert f'data-sec="{sec}"' in html.split('<aside id="panel">', 1)[1].split("</aside>", 1)[0].replace('class="sechd" type="button" data-sec="' + sec, ""), sec
+    assert 'id="dtime"' in html and 'id="dkeys"' in html and '["clock", "dtime"]' in html
+    for key in ("Klasy", "Warstwy", "Szukaj", "Zaawansowane", "Spacja: start · ← →: ±1 min · F: śledź · Esc: wyczyść"):
+        assert key in i18n.EN, key
