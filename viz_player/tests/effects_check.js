@@ -1,6 +1,6 @@
 // Błyski aktywności i statystyki linków z engine.js kontra wzorzec policzony w Pythonie z eventów. Uruchamia test_effects.py:
 //   node effects_check.js <katalog strony> <expected.json>
-// expected.json: {flowFactor, flashes: [{t, life, types, ages, names}], stats: [{t, W, n, nf, len, tt, speed, flow}]}
+// expected.json: {flowFactor, flashes: [{t, life, kinds, types, ages, names, kind_of}], stats: [{t, W, n, nf, len, tt, speed, flow}]}
 // speed i flow: wartość na link albo null (brak ruchu).
 const fs = require("fs");
 const path = require("path");
@@ -26,10 +26,12 @@ const near = (a, b) => Math.abs(a - b) < 1e-6 * Math.max(1, Math.abs(b));
   for (const row of expected.flashes) {
     await eng.want(row.t);
     const typeOn = Uint8Array.from(eng.actTypes, (n) => (row.types.indexOf(n) >= 0 ? 1 : 0));
-    const fl = eng.flashes(row.t, row.life, typeOn);
-    const order = Array.from({length: fl.n}, (_, i) => i).sort((a, b) => fl.age[b] - fl.age[a] || fl.type[a] - fl.type[b]);
-    const ages = order.map((i) => fl.age[i]), names = order.map((i) => eng.actTypes[fl.type[i]]);
-    out.flashes.push({t: row.t, n_js: fl.n, n_py: row.ages.length, ok: JSON.stringify(ages) === JSON.stringify(row.ages) && JSON.stringify(names) === JSON.stringify(row.names)});
+    const kindOn = Uint8Array.of(row.kinds.indexOf(0) >= 0 ? 1 : 0, row.kinds.indexOf(1) >= 0 ? 1 : 0);
+    const fl = eng.flashes(row.t, row.life, typeOn, kindOn);
+    const order = Array.from({length: fl.n}, (_, i) => i).sort((a, b) => fl.age[b] - fl.age[a] || fl.type[a] - fl.type[b] || fl.kind[a] - fl.kind[b]);
+    const ages = order.map((i) => fl.age[i]), names = order.map((i) => eng.actTypes[fl.type[i]]), kinds = order.map((i) => fl.kind[i]);
+    out.flashes.push({t: row.t, n_js: fl.n, n_py: row.ages.length,
+      ok: JSON.stringify(ages) === JSON.stringify(row.ages) && JSON.stringify(names) === JSON.stringify(row.names) && JSON.stringify(kinds) === JSON.stringify(row.kind_of)});
   }
   for (const row of expected.stats) {
     await eng.want(row.t);

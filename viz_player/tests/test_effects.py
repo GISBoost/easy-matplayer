@@ -77,15 +77,18 @@ def ref_values(n, nf, ln, tt, window):
     return speed, flow
 
 
-def ref_starts(rows, t, life):
-    """Starty aktywności z (t - life, t] prosto z eventów (bez „car interaction”): (czas, typ)."""
+def ref_flashes(rows, t, life, kinds=(0, 1)):
+    """Starty (1) i końce (0) aktywności z (t - life, t] prosto z eventów (bez „car interaction”): (czas, typ, rodzaj)."""
     return sorted(
-        (ev_time(r), viz_index.field(r, "actType")) for r in rows
-        if viz_index.field(r, "type") == "actstart" and viz_index.field(r, "actType") != "car interaction" and t - life < ev_time(r) <= t
+        (ev_time(r), viz_index.field(r, "actType"), 1 if viz_index.field(r, "type") == "actstart" else 0) for r in rows
+        if viz_index.field(r, "type") in ("actstart", "actend") and viz_index.field(r, "actType") != "car interaction"
+        and t - life < ev_time(r) <= t and (1 if viz_index.field(r, "type") == "actstart" else 0) in kinds
     )
 
 
-FLASHES = [(1062, 5), (1092, 100), (5062, 3), (2045, 10), (3007, 5), (4000, 50), (1092, 1)]
+BOTH = (0, 1)
+FLASHES = [(1062, 5, BOTH), (1092, 100, BOTH), (5062, 3, BOTH), (2045, 10, BOTH), (3007, 5, BOTH), (4000, 50, BOTH), (1092, 1, BOTH),
+           (1000, 5, (0,)), (1092, 100, (1,)), (1092, 100, (0,))]
 STATS = [(1060, 60), (1045, 20), (2031, 30), (2040, 15), (3005, 10), (5030, 15), (1000, 5), (2040, 900)]
 
 
@@ -104,7 +107,9 @@ def test_export_v2_carries_activities(run, index):
     assert manifest["format"] == 2 and manifest["n_acts"] == len(index.act_t)
     assert manifest["act_types"] == [index.meta["act_type_legend"][str(i)] for i in range(len(manifest["act_types"]))]
     starts = np.bincount(index.act_type[index.act_kind == 1], minlength=len(manifest["act_types"]))
-    assert manifest["act_start_counts"] == [int(v) for v in starts]
+    ends = np.bincount(index.act_type[index.act_kind == 0], minlength=len(manifest["act_types"]))
+    assert manifest["act_start_counts"] == [int(v) for v in starts] and manifest["act_end_counts"] == [int(v) for v in ends]
+    assert sum(ends) > 0 and sum(starts) > 0
     out = run / "viz" / "export"
     cols = [tuple(c) for c in manifest["chunk_columns"]]
     rows = []
@@ -128,10 +133,13 @@ def test_export_v2_carries_activities(run, index):
 
 def test_flash_window_matches_raw_events(index):
     names = [index.meta["act_type_legend"][str(i)] for i in range(len(index.meta["act_type_legend"]))]
-    for t, life in FLASHES:
-        got = sorted((float(index.act_t[i]), names[int(index.act_type[i])]) for i in viz_engine.flash_window(index, t, life))
-        assert got == ref_starts(ROWS, t, life), (t, life)
-    assert len(ref_starts(ROWS, 1092, 100)) == 2 and len(ref_starts(ROWS, 4000, 50)) == 0
+    for t, life, kinds in FLASHES:
+        got = sorted((float(index.act_t[i]), names[int(index.act_type[i])], int(index.act_kind[i]))
+                     for i in viz_engine.flash_window(index, t, life, kinds=kinds))
+        assert got == ref_flashes(ROWS, t, life, kinds), (t, life, kinds)
+    # dwa starty „work” (r1 o 1061, t1 o 1091) i dwa końce „home” (999, 1029) w oknie 100 s przed 1092
+    assert len(ref_flashes(ROWS, 1092, 100, (1,))) == 2 and len(ref_flashes(ROWS, 1092, 100, (0,))) == 2
+    assert len(ref_flashes(ROWS, 1092, 100)) == 4 and len(ref_flashes(ROWS, 4000, 50)) == 0
 
 
 def test_link_window_stats_match_raw_events(index):
@@ -162,10 +170,11 @@ def test_client_matches_python(run, tmp_path):
     site_dir = p.write_site(tmp_path / "site").parent
     names = [p.index.meta["act_type_legend"][str(i)] for i in range(len(p.index.meta["act_type_legend"]))]
     expected = {"flowFactor": FLOW_FACTOR, "flashes": [], "stats": []}
-    for t, life in FLASHES:
-        starts = ref_starts(ROWS, t, life)
-        ranked = sorted(((t - te, name) for te, name in starts), key=lambda r: (-r[0], names.index(r[1])))
-        expected["flashes"].append({"t": t, "life": life, "types": names, "ages": [r[0] for r in ranked], "names": [r[1] for r in ranked]})
+    for t, life, kinds in FLASHES:
+        events = ref_flashes(ROWS, t, life, kinds)
+        ranked = sorted(((t - te, name, kind) for te, name, kind in events), key=lambda r: (-r[0], names.index(r[1]), r[2]))
+        expected["flashes"].append({"t": t, "life": life, "kinds": list(kinds), "types": names, "ages": [r[0] for r in ranked],
+                                    "names": [r[1] for r in ranked], "kind_of": [r[2] for r in ranked]})
     for t, window in STATS:
         n, nf, ln, tt = ref_stats(ROWS, t, window)
         speed, flow = ref_values(n, nf, ln, tt, window)

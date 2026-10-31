@@ -295,9 +295,10 @@ def link_window_stats(index, t, window, classes_on=None):
     return out
 
 
-def flash_window(index, t, life, types_on=None):
-    """Starty aktywności z (t - life, t]: indeksy zdarzeń (do act_*), wzorzec dla Engine.flashes. types_on: kody act_type albo None."""
-    pick = (index.act_kind == 1) & (index.act_t > np.float32(t - life)) & (index.act_t <= np.float32(t))
+def flash_window(index, t, life, types_on=None, kinds=(0, 1)):
+    """Starty (act_kind 1) i końce (0) aktywności z (t - life, t]: indeksy zdarzeń (do act_*), wzorzec dla Engine.flashes.
+    types_on: kody act_type albo None; kinds: które rodzaje zdarzeń."""
+    pick = np.isin(index.act_kind, list(kinds)) & (index.act_t > np.float32(t - life)) & (index.act_t <= np.float32(t))
     if types_on is not None:
         pick &= np.isin(index.act_type, list(types_on))
     return np.flatnonzero(pick)

@@ -153,6 +153,8 @@ Decyzje właściciela: D1 tylko start aktywności, D2 `tlo_*` z przełącznikiem
 - [x] **L4** wiersz w panelu zaznaczonego linku (aplikacja i web).
 - [x] **L0** koszt: dla Kutna (10 383 linków) odświeżenie kolorów co 250 ms nie zmienia płynności (w pomiarze w przeglądarce 100 klatek/s w trybach typ, prędkość i natężenie; `linkStats` 0,4 ms). **Nie zmierzone na Wiedniu (375 tys. linków)**; jeśli akcesor `getColor` okaże się za wolny, zostają dane binarne `PathLayer`.
 
+Zmiana decyzji D1 (właściciel, 2026-10-31, po obejrzeniu błysków o 6–7): błyski także przy **końcu** aktywności, żeby widać było wyjazd z domu, a kolor odróżniał start od końca. Wykonanie: dwa checkboxy (start, koniec), start = pierścień rozchodzący się z rdzeniem w kolorze typu, koniec = ten sam kolor rozjaśniony o 55%, pierścień zbiegający się do środka, bez rdzenia (kształt rozróżnia też bez koloru). Przeglądu, jak robi to Via, nie udało się potwierdzić: wyszukiwanie nie znalazło opisu błysków aktywności w Via ani OTFVis, więc projekt jest własny.
+
 Odstępstwa od planu:
 
 - Wyjazd z linku liczy się tylko po węźle wjazdu (`knot_len = 0`), nie po dowolnym węźle tego samego linku. Powód: fixtura (i potencjalnie dziwny run) dubluje `left link` i `leaves traffic` na ostatnim linku, a podwójne wyjście zawyżałoby natężenie.

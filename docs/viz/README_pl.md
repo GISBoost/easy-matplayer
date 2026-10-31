@@ -54,7 +54,12 @@ Do działania mapa podkładowa pobiera kafelki z publicznych usług WMS/WMTS (ad
 
 ## Błyski aktywności
 
-Gdy osoba zaczyna aktywność (event `actstart`), w tym miejscu mapy pojawia się krótki błysk: pierścień i rdzeń w kolorze typu aktywności. Przełącznik „błyski: start aktywności” w panelu, pod nim lista typów z checkboxami (np. żeby wyłączyć techniczne `tlo_end` ruchu tła). Kolory: `home` pomarańczowy, `work` niebieski, `edu`/`school` fioletowy, `shop` zielony, `leis…` różowy, inne typy z palety.
+Gdy osoba zaczyna aktywność (event `actstart`) albo ją kończy (`actend`, czyli np. wyjeżdża z domu), w tym miejscu mapy pojawia się krótki błysk. Przełącznik „błyski aktywności” w panelu, pod nim osobne checkboxy dla startu i końca oraz lista typów (np. żeby wyłączyć techniczne `tlo_start` i `tlo_end` ruchu tła).
+
+- **Start:** pierścień rozchodzi się od środka, z rdzeniem, w kolorze typu aktywności.
+- **Koniec:** ten sam kolor typu, ale rozjaśniony, a pierścień zbiega się do środka, bez rdzenia. Rozróżnienie działa więc także bez patrzenia na barwę.
+
+Kolory typów: `home` pomarańczowy, `work` niebieski, `edu`/`school` fioletowy, `shop` zielony, `leis…` różowy, inne typy z palety.
 
 - Miejsce i czas błysku to współrzędne `x`, `y` i czas z eventu `actstart`. Auto znika wcześniej (koniec jazdy), a MATSim dolicza dojście pieszo jako teleportowaną nogę `walk`, której program nie rysuje (nie ma trasy w wyniku). Ten odstęp jest prawdziwy.
 - Błyski pokazują starty aktywności wszystkich osób z eventów, także tych, które jadą innym trybem niż auto i nie mają pojazdu na mapie. Filtr klas ich nie dotyczy.

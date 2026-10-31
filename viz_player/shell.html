@@ -32,6 +32,8 @@ body { display: grid; grid-template-columns: 1fr 320px; grid-template-rows: 1fr 
 #lg-load { display: flex; gap: 8px; align-items: center; }
 #lg-load .bar { width: 128px; }
 #flashbox { display: flex; flex-direction: column; gap: 6px; }
+#flash-kinds { display: flex; flex-direction: column; gap: 3px; margin-left: 4px; }
+#flash-kinds label { font-size: 12px; }
 #flash-types { display: flex; flex-direction: column; gap: 3px; margin-left: 4px; }
 #flash-types label { display: flex; align-items: center; gap: 6px; font-size: 12px; }
 #flash-types i { display: inline-block; width: 10px; height: 10px; border-radius: 50%; }
@@ -165,7 +167,11 @@ body.panel-off #panel { display: none; }
     <label><input type="checkbox" id="models"> modele 3D pojazdów</label>
     <button id="carcolor" type="button" class="chip">kolor auta: prędkość</button>
     <div id="flashbox" hidden>
-      <label><input type="checkbox" id="flash" checked> błyski: start aktywności</label>
+      <label><input type="checkbox" id="flash" checked> błyski aktywności</label>
+      <div id="flash-kinds">
+        <label><input type="checkbox" id="flash-start" checked> start: pierścień rozchodzi się</label>
+        <label><input type="checkbox" id="flash-end" checked> koniec: jaśniejszy pierścień zbiega się</label>
+      </div>
       <div id="flash-types"></div>
     </div>
   </div>
@@ -312,9 +318,9 @@ const ROAD_OSM_OTHER = ["inna", "#4e5663", [], 1];
 // Kolor auta w trybie „klasa”: kim jest pojazd (inna tabela niż drogi). „?” to klasa „inne”.
 const CLASS_COLOR = {resident: "#5aa2ff", commuter: "#3dbe7a", outbound: "#e0c15a", tlo: "#a89880", ciezkie: "#e15a4a", "?": "#e7e9ee"};
 let carByClass = false, classRgb = null;
-// Błysk startu aktywności: pierścień i rdzeń w kolorze typu, czas życia w czasie ekranu (FLASH.wall s) przeliczony mnożnikiem odtwarzania,
+// Błysk aktywności: start (pierścień rozchodzi się, rdzeń) i koniec (ten sam kolor rozjaśniony o endMix, pierścień zbiega się, bez rdzenia), czas życia w czasie ekranu (FLASH.wall s) przeliczony mnożnikiem odtwarzania,
 // więc wygląd zależy tylko od t i mnożnika (przewijanie działa, pauza zamraża fazę). Stałe do strojenia po obejrzeniu na prawdziwym runie.
-const FLASH = {wall: 1.5, min: 3, max: 450, r0: 4, r1: 26, cap: 5000};
+const FLASH = {wall: 1.5, min: 3, max: 450, r0: 4, r1: 26, cap: 5000, endMix: 0.55};
 const FLASH_BLEND = {blendColorOperation: "add", blendColorSrcFactor: "src-alpha", blendColorDstFactor: "one",
   blendAlphaOperation: "add", blendAlphaSrcFactor: "one", blendAlphaDstFactor: "one-minus-src-alpha"};
 // Kolory typów aktywności: znane prefiksy (nazwy zależą od scenariusza), reszta z palety po haszu nazwy.
@@ -329,6 +335,7 @@ function actColor(name) {
   return ACT_PALETTE[h % ACT_PALETTE.length];
 }
 let flashOn = true, flashTypeOn = null, actRgb = null, fbuf = null;
+const flashKind = Uint8Array.of(1, 1);   // widoczne rodzaje zdarzeń, indeks = act_kind: [koniec, start]
 // Kolor dróg wg obciążenia (tryb "speed": średnia prędkość / swobodna, "flow": natężenie / przepustowość w skali próbki), z okna ostatnich loadWin s
 // symulacji (engine.linkStats). Link bez ruchu w oknie jest szary: brak ruchu to nie „swobodnie”. Odświeżanie najwyżej 4 razy na sekundę.
 let roadMode = "type", loadWin = 300, loadVals = null, loadRgba = null, loadStamp = 0, loadAt = -1e9, loadT = NaN, loadSig = "", carBeforeLoad = null;
@@ -563,7 +570,7 @@ function roadWidth(name) {
 function setupFlash() {
   const box = document.getElementById("flashbox");
   const names = engine.actTypes;
-  const shown = names.map((n, i) => i).filter((i) => engine.actStarts[i] > 0);
+  const shown = names.map((n, i) => i).filter((i) => engine.actStarts[i] > 0 || (engine.actEnds[i] || 0) > 0);
   box.hidden = !engine.hasActs || !shown.length;
   if (box.hidden) { flashOn = false; return; }
   const off = new Set(boot.flashOff || []);
@@ -914,20 +921,29 @@ function render() {
     window.flashN = 0;
     if (flashOn && engine.hasActs) {
       const life = Math.min(FLASH.max, Math.max(FLASH.min, FLASH.wall * mult));
-      const fl = engine.flashes(t, life, flashTypeOn);
+      const fl = engine.flashes(t, life, flashTypeOn, flashKind);
       window.flashN = fl.n;
       window.flashTruncated = fl.truncated;
       if (fl.n) {
         if (!fbuf) fbuf = {pos: new Float64Array(2 * FLASH.cap), ring: new Float32Array(FLASH.cap), core: new Float32Array(FLASH.cap),
           ringCol: new Uint8Array(4 * FLASH.cap), coreCol: new Uint8Array(4 * FLASH.cap)};
         for (let i = 0; i < fl.n; i++) {
-          const e = 1 - Math.min(1, fl.age[i] / life), c = actRgb[fl.type[i]];
+          const u = Math.min(1, fl.age[i] / life), e = 1 - u, c = actRgb[fl.type[i]];
           fbuf.pos[2 * i] = fl.lon[i];
           fbuf.pos[2 * i + 1] = fl.lat[i];
-          fbuf.ring[i] = FLASH.r0 + (FLASH.r1 - FLASH.r0) * (1 - e * e);
-          fbuf.core[i] = 3 + 4 * e;
-          fbuf.ringCol.set([c[0], c[1], c[2], Math.round(255 * e * e)], 4 * i);
-          fbuf.coreCol.set([c[0], c[1], c[2], Math.round(255 * e * e * e)], 4 * i);
+          if (fl.kind[i]) {
+            // start: pierścień rozchodzi się od środka, z rdzeniem, kolor typu
+            fbuf.ring[i] = FLASH.r0 + (FLASH.r1 - FLASH.r0) * (1 - e * e);
+            fbuf.core[i] = 3 + 4 * e;
+            fbuf.ringCol.set([c[0], c[1], c[2], Math.round(255 * e * e)], 4 * i);
+            fbuf.coreCol.set([c[0], c[1], c[2], Math.round(255 * e * e * e)], 4 * i);
+          } else {
+            // koniec: ten sam kolor typu rozjaśniony, pierścień zbiega się do środka, bez rdzenia
+            fbuf.ring[i] = FLASH.r1 - (FLASH.r1 - FLASH.r0) * u * u;
+            fbuf.core[i] = 0;
+            fbuf.ringCol.set([c[0] + (255 - c[0]) * FLASH.endMix, c[1] + (255 - c[1]) * FLASH.endMix, c[2] + (255 - c[2]) * FLASH.endMix, Math.round(255 * e)], 4 * i);
+            fbuf.coreCol.set([0, 0, 0, 0], 4 * i);
+          }
         }
         const data = (rad, col, name) => ({length: fl.n, attributes: {
           getPosition: {value: fbuf.pos, size: 2}, getRadius: {value: rad, size: 1}, [name]: {value: col, size: 4}}});
@@ -1073,12 +1089,13 @@ window.clientFrame = async (tt, keys) => {
 };
 
 // Do testów okna: błyski w chwili tt przy życiu life (s symulacji) dla widocznych typów (nazwy), posortowane po czasie startu.
-window.clientFlashes = async (tt, life, typeNames) => {
+window.clientFlashes = async (tt, life, typeNames, kinds) => {
   await engine.want(tt);
   const on = Uint8Array.from(engine.actTypes, (n) => (typeNames.indexOf(n) >= 0 ? 1 : 0));
-  const fl = engine.flashes(tt, life, on);
+  const fl = engine.flashes(tt, life, on, Uint8Array.of((kinds || [0, 1]).indexOf(0) >= 0 ? 1 : 0, (kinds || [0, 1]).indexOf(1) >= 0 ? 1 : 0));
   const order = Array.from({length: fl.n}, (_, i) => i).sort((a, b) => fl.age[b] - fl.age[a]);
   return {n: fl.n, truncated: fl.truncated, age: order.map((i) => fl.age[i]), type: order.map((i) => engine.actTypes[fl.type[i]]),
+    kind: order.map((i) => fl.kind[i]),
     lon: order.map((i) => fl.lon[i]), lat: order.map((i) => fl.lat[i])};
 };
 
@@ -1433,6 +1450,8 @@ document.getElementById("models").addEventListener("change", (ev) => { modelsOn 
 document.querySelectorAll("#loadbox [data-rm]").forEach((b) => b.addEventListener("click", () => { if (!b.disabled) setRoadMode(b.dataset.rm); }));
 document.querySelectorAll("#loadwin [data-w]").forEach((b) => b.addEventListener("click", () => setLoadWin(Number(b.dataset.w))));
 document.getElementById("flash").addEventListener("change", (ev) => { flashOn = ev.target.checked; dirty = true; });
+document.getElementById("flash-start").addEventListener("change", (ev) => { flashKind[1] = ev.target.checked ? 1 : 0; dirty = true; });
+document.getElementById("flash-end").addEventListener("change", (ev) => { flashKind[0] = ev.target.checked ? 1 : 0; dirty = true; });
 document.getElementById("carcolor").addEventListener("click", () => setCarColor(!carByClass));
 document.getElementById("osmroads").addEventListener("change", (ev) => setOsmRoads(ev.target.checked));
 document.getElementById("play").addEventListener("click", () => setPlaying(!playing));

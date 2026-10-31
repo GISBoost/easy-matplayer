@@ -56,7 +56,12 @@ The base map loads tiles from public WMS/WMTS services (addresses in the map pan
 
 ## Activity flashes
 
-When a person starts an activity (an `actstart` event), a short flash appears at that place on the map: a ring and a core in the colour of the activity type. Use the "flashes: activity start" toggle in the panel; below it is a list of types with checkboxes (for example to switch off the technical `tlo_end` of background traffic). Colours: `home` orange, `work` blue, `edu`/`school` purple, `shop` green, `leis…` pink, other types from a palette.
+When a person starts an activity (an `actstart` event) or ends it (`actend`, for example leaving home), a short flash appears at that place on the map. Use the "activity flashes" toggle in the panel; below it are separate checkboxes for start and end and a list of types (for example to switch off the technical `tlo_start` and `tlo_end` of background traffic).
+
+- **Start:** the ring expands from the centre, with a core, in the colour of the activity type.
+- **End:** the same type colour, lightened, and the ring contracts to the centre, without a core. So the two can be told apart without relying on colour.
+
+Type colours: `home` orange, `work` blue, `edu`/`school` purple, `shop` green, `leis…` pink, other types from a palette.
 
 - The place and time of a flash are the `x`, `y` and time of the `actstart` event. The car disappears earlier (end of the trip) and MATSim adds the walk to the activity as a teleported `walk` leg, which the program does not draw (the result has no route for it). That gap is real.
 - Flashes show activity starts of everybody in the events, also people travelling by other modes who have no vehicle on the map. The class filter does not apply to them.

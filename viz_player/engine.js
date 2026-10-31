@@ -7,8 +7,8 @@
 const SPEED_CAP = 30;       // m/s, jak w pipeline/viz_engine.py
 const DT_FLOOR = 1e-3;
 const M_PER_DEG = 111194.93; // sfera R = 6371008,8 m; tylko do prędkości zapasowej i długości śladu
-const KEEP = 6;
-const MAX_FLASH = 5000;     // najnowsze błyski aktywności w jednej klatce; reszta jest pomijana (Engine.flashes zwraca truncated)             // ile porcji zostaje w pamięci po obu stronach bieżącej
+const KEEP = 6;             // ile porcji zostaje w pamięci po obu stronach bieżącej
+const MAX_FLASH = 5000;     // najnowsze błyski aktywności w jednej klatce; reszta jest pomijana (Engine.flashes zwraca truncated)
 const TYPES = {"<i4": Int32Array, "<f4": Float32Array, "<f8": Float64Array, "<u2": Uint16Array, "u1": Uint8Array};
 
 function readColumns(buf, columns, counts, align) {
@@ -44,7 +44,8 @@ class Engine {
     this.classKeys = manifest.classes.map((c) => c.key);
     this.classHeavy = Uint8Array.from(manifest.classes.map((c) => (c.heavy ? 1 : 0)));
     this.actTypes = manifest.act_types || [];
-    this.actStarts = manifest.act_start_counts || [];     // ile startów ma każdy typ (lista typów w oknie pokazuje te, które błyskają)
+    this.actStarts = manifest.act_start_counts || [];     // ile startów i końców ma każdy typ (lista typów w oknie pokazuje te, które błyskają)
+    this.actEnds = manifest.act_end_counts || [];
     this.hasActs = manifest.chunk_columns.some((c) => c[0] === "act_t");
     this.back = 1;          // ile porcji przed bieżącą trzymać w pamięci (błyski i statystyki linków patrzą wstecz, okno i życie błysku < porcja)
     this.fl = null;
@@ -162,13 +163,13 @@ class Engine {
   }
 
   // ---- błyski aktywności ----
-  // Starty aktywności z (t - life, t] z załadowanych porcji, najnowsze najpierw (do MAX_FLASH).
-  // typeOn: Uint8Array(len act_types) z 1 dla widocznych typów. Zwraca bufory do następnej klatki:
-  // {n, truncated, lon, lat, age (s symulacji od startu), type}.
-  flashes(t, life, typeOn) {
+  // Starty i końce aktywności z (t - life, t] z załadowanych porcji, najnowsze najpierw (do MAX_FLASH).
+  // typeOn: Uint8Array(len act_types) z 1 dla widocznych typów; kindOn: Uint8Array [koniec, start] z 1 dla widocznych rodzajów (indeks = act_kind).
+  // Zwraca bufory do następnej klatki: {n, truncated, lon, lat, age (s symulacji od zdarzenia), type, kind}.
+  flashes(t, life, typeOn, kindOn) {
     if (!this.fl) {
       this.fl = {n: 0, truncated: false, lon: new Float64Array(MAX_FLASH), lat: new Float64Array(MAX_FLASH),
-                 age: new Float32Array(MAX_FLASH), type: new Uint16Array(MAX_FLASH)};
+                 age: new Float32Array(MAX_FLASH), type: new Uint16Array(MAX_FLASH), kind: new Uint8Array(MAX_FLASH)};
     }
     const o = this.fl;
     o.n = 0;
@@ -183,12 +184,13 @@ class Engine {
       let a = 0, b = at.length;                       // pierwszy indeks z act_t > t
       while (a < b) { const mid = (a + b) >> 1; if (at[mid] <= hiT) a = mid + 1; else b = mid; }
       for (let i = a - 1; i >= 0 && at[i] > loT; i--) {
-        if (!ch.act_kind[i] || !typeOn[ch.act_type[i]]) continue;
+        if (!kindOn[ch.act_kind[i]] || !typeOn[ch.act_type[i]]) continue;
         if (o.n >= MAX_FLASH) { o.truncated = true; break; }
         o.lon[o.n] = this.lon0 + ch.act_dlon[i];
         o.lat[o.n] = this.lat0 + ch.act_dlat[i];
         o.age[o.n] = t - at[i];
         o.type[o.n] = ch.act_type[i];
+        o.kind[o.n] = ch.act_kind[i];
         o.n++;
       }
     }

@@ -175,6 +175,7 @@ def build(run_dir, out=None, chunk_sec=CHUNK_SEC):
         "n_acts": int(len(a["act_t"])),
         "act_types": [meta["act_type_legend"][str(i)] for i in range(len(meta["act_type_legend"]))],
         "act_start_counts": np.bincount(a["act_type"][a["act_kind"] == 1], minlength=len(meta["act_type_legend"])).astype(int).tolist(),
+        "act_end_counts": np.bincount(a["act_type"][a["act_kind"] == 0], minlength=len(meta["act_type_legend"])).astype(int).tolist(),
         "n_knots_in_chunks": total_knots,
         "tracks": {"file": "tracks.bin", "columns": TRACK_COLUMNS},
         "persons": "persons.json",
