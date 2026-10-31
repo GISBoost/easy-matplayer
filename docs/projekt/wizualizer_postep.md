@@ -32,6 +32,9 @@ Cel: 30 FPS na Kutnie 100%. Łódź tylko 10%. Test tylko na GPU właściciela (
 - [x] P5a. Przycisk „otwórz run…” (wybór folderu, błąd zostawia bieżący run, sukces przeładowuje stronę).
 - [x] P5b. Podkłady WMS / WMTS jak w QGIS: „dodaj WMS / WMTS…”, nazwa + adres, lista warstw z GetCapabilities, układ dopasowany automatycznie.
 - [x] P5c. Własny raster: kafelki XYZ, obraz z georeferencją (GeoTIFF, plik świata) i obraz bez niej (układanie ręczne albo wpisany zakres).
+- [x] W1. Wersja przeglądarkowa na GitHub Pages (`wizualizer_web.md`), wdrożenie z workflow `web_pages.yml`.
+- [x] T1. Układ na telefon: mapa, pływający odtwarzacz, arkusz ustawień (2026-10-31), poprawki po teście na telefonie (2026-10-31, niżej).
+- [ ] T2. Wydajność na telefonie przy modelach 3D i budynkach (plan w sekcji „Roadmapa”).
 
 Wcześniej zrobione (fundamenty, D24): origin z sieci, `person_id` i klasyfikator, bezstanowa klatka, podział kodu, testy pytest. Patrz PROGRESS 2026-10-22.
 
@@ -411,3 +414,30 @@ Wszystkie trzy części (A2a, A2b, A2c) przeszły: 96 testów i smoke w prawdziw
 - Poprawka: `.maplibregl-ctrl-top-left .maplibregl-ctrl-group { display: none }` (chowa tylko przyciski). Test regresyjny `test_phone_css_keeps_deck_container`.
 - Dowód: emulator Pixel (Chrome 124), strona na żywo przed poprawką: `deckgl-overlay` 1×1, szerokość 0; po wstrzyknięciu tej samej reguły CSS: kanwa 1081×2055, auta i kolor dróg widoczne po przybliżeniu (zoom 11,5). Nie sprawdzone po wdrożeniu poprawki na Pages (wymaga pusha i uruchomienia workflow przez właściciela).
 - Uwaga: przy starcie całość sieci (ok. 40×60 km) mieści się w zoomie 8,2 na wąskim ekranie, więc auta są tam bardzo małe. To dopasowanie do obszaru sieci, bez zmian. Serwery kafelków OSM odpowiedziały kilka razy „418 Access blocked” po wielokrotnym ładowaniu z emulatora; to ograniczenie OSM, nie błąd aplikacji.
+
+## Telefon: poprawki po teście na prawdziwym telefonie (2026-10-31, uwagi właściciela)
+
+| Uwaga | Przyczyna w kodzie | Poprawka |
+|---|---|---|
+| Zegar bez sekund | pigułka kopiowała tekst `#clock` (`GG:MM:SS`) | kopia w pigułce obcina `:SS` (`replace(/:\d\d$/, "")`); zegar w pasku desktopu bez zmian |
+| Przyciski przyspiesz/zwolnij jak na desktopie | na telefonie `#mdn` i `#mup` miały `display: none`, zostały tylko presety | po rozwinięciu „60×” drugi rząd to ◀ presety ▶ (mnożnik −1/+1, zakres 1–300 jak na desktopie) |
+| Dotknięcie mapy ma zamykać arkusz | handler kliknięcia mapy ignorował puste trafienie | telefon: puste dotknięcie zamyka arkusz; gdy już zamknięty, kasuje zaznaczenie (jak Esc) |
+| Po zaznaczeniu linku nie dało się go odznaczyć ani zwinąć ustawień | `showPanel` otwierał arkusz przy każdym wywołaniu, a przy zaznaczonym łączu panel odświeża się co 250 ms, więc arkusz otwierał się od nowa po każdym zamknięciu | otwarcie przeniesione do handlera kliknięcia mapy (raz, przy nowym wyborze); puste dotknięcie kasuje zaznaczenie |
+| Napisy na dole kolidowały ze skalą i podpisem OSM | legenda, skala i atrybucja MapLibre leżały w tym samym rogu | atrybucja poza mapą: skrót „© OpenStreetMap” w karcie odtwarzacza (`#mattr`), pełny tekst na dole arkusza (`#attrfull`), kontrolka MapLibre schowana tylko na telefonie; skala 90 px; legenda tuż nad kartą odtwarzacza |
+
+- Dowody (emulator Pixel, Chrome 124, strona z `scripts/web_build.py` na demo Kutno): pigułka „06:00 · 277 aut”; po dotknięciu auta i zamknięciu arkusza przyciskiem arkusz zostaje zamknięty po 3 s, a trasa auta nadal widoczna (przed poprawką otwierał się z powrotem); dotknięcie mapy zamyka arkusz; rząd ◀ 1× 10× 60× 300× ▶ widoczny; legenda i skala bez nakładania, atrybucja w karcie. Test `test_phone_css_keeps_deck_container` rozszerzony o skrót i pełny tekst atrybucji. Dla zgodności z licencją OSM pełny tekst „© OpenStreetMap contributors” pozostaje w arkuszu, a skrót jest stale widoczny w karcie.
+- Nie sprawdzone: kasowanie zaznaczenia dotknięciem mapy testowane tylko na aucie/łączu w emulatorze z grafiką programową (wolne, bez pomiaru czasu reakcji); prawdziwy telefon po wdrożeniu poprawki (wymaga pusha i uruchomienia workflow przez właściciela).
+
+## Roadmapa (stan 2026-10-31)
+
+Zrobione: odtwarzacz okienkowy (kroki 1–6, P1–P5, A1–A7), wersja web na Pages, błyski aktywności, obciążenie linków (prędkość, natężenie), widok auta / drogi, układ na telefon z poprawkami.
+
+Otwarte, w kolejności:
+1. **Wydajność na telefonie (T2, uwaga właściciela: zwalnia przy wielu modelach 3D i budynkach).** Najpierw pomiar, potem poprawki; hipotezy do sprawdzenia (nie zmierzone):
+   - budynki 3D rysowane w całości także w oddaleniu: ukrywać poniżej zoomu ok. 14 albo upraszczać (bez ścian bocznych) i ograniczyć do widocznego obszaru;
+   - modele aut (mesh) przy dużej liczbie aut: przełączać na znacznik 2D powyżej progu liczby aut albo w oddaleniu (jest już przełącznik „modele 3D pojazdów”; czy domyślny stan na telefonie ma się różnić, do decyzji);
+   - `devicePixelRatio` 2,6–3 na telefonie: ograniczyć rozdzielczość kanwy deck.gl (np. `useDevicePixels: 1.5`);
+   - liczenie klatki w głównym wątku: pomiar czasu klatki i liczby obiektów (FPS na prawdziwym telefonie, nie na emulatorze z grafiką programową).
+2. Krok 7: nowe tryby, PT, atrybuty osób.
+3. Krok 8: test na zintegrowanej grafice (odłożony).
+4. Telefon: układ poziomy, przeciąganie arkusza za treść, Safari na iPhonie (`backdrop-filter`, `100dvh`), pierwszy zoom dopasowany do ruchu a nie do całej sieci (dziś cała sieć mieści się w zoomie 8 na wąskim ekranie, auta są wtedy bardzo małe).

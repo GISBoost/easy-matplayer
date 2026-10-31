@@ -88,8 +88,8 @@ Przy szerokości okna do 700 px (telefon w pionie) strona przełącza się na uk
 
 - Mapa jest na cały ekran. Dwa palce: obrót i pochylenie.
 - U góry po lewej pigułka z czasem i liczbą aut, po prawej szklany stos przycisków: 3D, pokaż cały obszar, ustawienia.
-- Na dole pływająca karta odtwarzacza: start/pauza, suwak czasu i mnożnik. Dotknięcie „60×” rozwija wybór 1, 10, 60, 300×. Pod spodem próbka i uwagi o runie (np. pokrycie OSM).
-- Panel boczny to arkusz nad odtwarzaczem o trzech wysokościach: zamknięty, środek, wysoko. Przeciągasz go za uchwyt u góry (albo dotykasz uchwytu: środek ↔ wysoko), przycisk ustawień otwiera i zamyka. Dotknięcie auta lub drogi otwiera arkusz ze szczegółami. Mapa zostaje widoczna nad arkuszem.
+- Na dole pływająca karta odtwarzacza: start/pauza, suwak czasu i mnożnik. Dotknięcie „60×” rozwija rząd ◀ 1× 10× 60× 300× ▶ (◀ ▶ zmieniają mnożnik o 1, jak na komputerze). Pod spodem próbka, uwagi o runie (np. pokrycie OSM) i skrót „© OpenStreetMap” (pełny tekst na dole arkusza). Zegar w pigułce pokazuje godziny i minuty.
+- Panel boczny to arkusz nad odtwarzaczem o trzech wysokościach: zamknięty, środek, wysoko. Przeciągasz go za uchwyt u góry (albo dotykasz uchwytu: środek ↔ wysoko), przycisk ustawień otwiera i zamyka. Dotknięcie auta lub drogi otwiera arkusz ze szczegółami. Dotknięcie pustej mapy zamyka arkusz, a przy zamkniętym kasuje zaznaczenie. Mapa zostaje widoczna nad arkuszem.
 - W arkuszu: szczegóły, widok (auta, tylko drogi, auta + drogi), klasy aut, przełączniki (kolor dróg OSM, modele 3D, błyski), wyszukiwarka, podkłady.
 - Granice: tylko układ pionowy (poziomo telefon dostaje układ komputerowy), arkusz przeciąga się tylko za uchwyt, skróty klawiszowe nie dotyczą telefonu, a WMS, obrazy i otwieranie runów są tylko w aplikacji.
 

@@ -304,3 +304,10 @@ def test_phone_css_keeps_deck_container():
 
     html = (Path(pl.__file__).parent / "shell.html").read_text(encoding="utf-8")
     assert not re.search(r"\.maplibregl-ctrl-top-left\s*\{[^}]*display\s*:\s*none", html)
+
+
+def test_phone_attribution_and_speed_buttons():
+    # na telefonie atrybucja OSM jest w karcie odtwarzacza i w arkuszu, a nie jako osobna tabliczka na mapie; ◀ ▶ mnożnika są w rozwiniętym menu
+    html = (Path(pl.__file__).parent / "shell.html").read_text(encoding="utf-8")
+    assert 'id="mattr"' in html and "© OpenStreetMap contributors" in html
+    assert "#bar.spd #mdn" in html and "#bar.spd #mup" in html

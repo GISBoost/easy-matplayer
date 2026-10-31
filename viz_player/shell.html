@@ -14,6 +14,7 @@ body { display: grid; grid-template-columns: 1fr 320px; grid-template-rows: 1fr 
 #nogl { position: absolute; inset: 0; z-index: 600; display: none; align-items: center; justify-content: center;
   padding: 24px; text-align: center; background: #121418; line-height: 1.5; }
 [hidden] { display: none !important; }
+#mattr, #attrfull { display: none; }
 #legend { position: absolute; z-index: 500; left: 12px; bottom: 22px; display: flex; flex-direction: column; gap: 6px;
   align-items: flex-start; padding: 6px 8px; border-radius: 6px; background: rgba(18, 20, 24, .82);
   color: #e7e9ee; font-size: 12px; }
@@ -152,7 +153,10 @@ body.panel-off #panel { display: none; }
   .maplibregl-ctrl-top-left .maplibregl-ctrl-group { display: none; }
   .maplibregl-ctrl-bottom-right { bottom: var(--dock); }
   #legend { bottom: calc(var(--dock) + 8px); }
-  #bleg { max-width: calc(100vw - 110px); }
+  .maplibregl-ctrl-attrib { display: none; }  /* atrybucja jest w karcie odtwarzacza (#mattr) i pełna w arkuszu (#attrfull) */
+  #bar #mattr { display: inline; }
+  #attrfull { display: block; font-size: 12px; }
+  #bleg { max-width: calc(100vw - 130px); }
   #mpill, #mstack, #bar { background: var(--glass); -webkit-backdrop-filter: blur(24px) saturate(1.8); backdrop-filter: blur(24px) saturate(1.8);
     border: .5px solid rgba(255, 255, 255, .14); }
   #mpill { display: flex; align-items: center; gap: 6px; position: fixed; z-index: 500; left: 12px; top: calc(12px + env(safe-area-inset-top));
@@ -177,8 +181,14 @@ body.panel-off #panel { display: none; }
   #bar #slider { grid-column: 2; grid-row: 1; width: 100%; min-width: 0; height: 32px; margin: 0; }
   #bar #mval { grid-column: 3; grid-row: 1; display: block; min-width: 64px; line-height: 44px; border-radius: 22px; background: rgba(118, 118, 128, .28);
     font-weight: 600; font-size: 17px; text-align: center; cursor: pointer; }
-  #mspeeds { grid-column: 1 / -1; grid-row: 2; display: none; gap: 6px; }
+  /* drugi rząd: ◀ presety ▶ (± to mnożnik −1/+1 jak na desktopie, kolumny jak w rzędzie z odtwarzaczem) */
+  #mspeeds { grid-column: 2; grid-row: 2; display: none; gap: 6px; }
   #bar.spd #mspeeds { display: flex; }
+  #bar.spd #mdn, #bar.spd #mup { display: block; grid-row: 2; min-height: 40px; padding: 0; border: 0; border-radius: 12px;
+    background: rgba(118, 118, 128, .24); font-size: 16px; }
+  #bar.spd #mdn { grid-column: 1; }
+  #bar.spd #mup { grid-column: 3; padding: 0 16px; }
+  #mspeeds button, #bar.spd #mdn, #bar.spd #mup { color: inherit; }
   #mspeeds button { flex: 1; min-height: 40px; border: 0; border-radius: 12px; background: rgba(118, 118, 128, .24); font-size: 16px; }
   #mspeeds button.on { background: #636366; color: #fff; }
   #binfo { grid-column: 1 / -1; grid-row: 3; display: flex; flex-wrap: wrap; gap: 2px 10px; font-size: 12px; }
@@ -325,6 +335,7 @@ body.panel-off #panel { display: none; }
     <div id="axis-ends"><span id="axis-a"></span><span id="axis-note">postoje ściśnięte</span><span id="axis-b"></span></div>
   </div>
   <p id="credit" class="muted" hidden>Modele aut: Quaternius (CC0).</p>
+  <p id="attrfull" class="muted" hidden>© OpenStreetMap contributors · © GUGiK (Geoportal.gov.pl)</p>
   <p id="hint">Spacja: start. Strzałki: ±1 min. F: śledź. Esc: wyczyść. Prawy przycisk myszy: obrót i pochylenie mapy.</p>
   <p id="mhint">Dotknij auta albo drogi. Dwa palce: obrót i pochylenie mapy.</p>
 </aside>
@@ -346,6 +357,7 @@ body.panel-off #panel { display: none; }
   <span id="sample"></span>
   <span id="base">Podkład wyłączony.</span>
   <span id="curves"></span>
+  <span id="mattr" hidden>© OpenStreetMap</span>
   </span>
   <button id="three" type="button">3D</button>
   <button id="hide" type="button">ukryj</button>
@@ -471,7 +483,7 @@ document.addEventListener("pointerdown", (ev) => { if (!barEl.contains(ev.target
 // Zegar i licznik z paska (pisane w wielu miejscach) lustrzanie w pigułce u góry.
 [["clock", "mclock"], ["count", "mcount"]].forEach(([from, to]) => {
   const src = document.getElementById(from), dst = document.getElementById(to);
-  const copy = () => { dst.textContent = src.textContent; };
+  const copy = () => { dst.textContent = from === "clock" ? src.textContent.replace(/:\d\d$/, "") : src.textContent; };  // pigułka: godziny i minuty, bez sekund
   new MutationObserver(copy).observe(src, {childList: true, characterData: true, subtree: true});
   copy();
 });
@@ -819,6 +831,7 @@ function applyBoot() {
   slider.step = "1";
   slider.value = String(t);
   if (boot.basemap || WEB) document.getElementById("base").hidden = true;
+  if (WEB) { document.getElementById("mattr").hidden = false; document.getElementById("attrfull").hidden = false; }
   (boot.classes || []).forEach((c) => {
     const b = document.createElement("button");
     b.type = "button";
@@ -946,7 +959,6 @@ function showAxis(segments) {
 function showPanel(p) {
   const el = document.getElementById("detail");
   if (!p || p.kind === "miss") return;
-  if (p.kind !== "empty" && mobileMQ.matches && sheet.d === 0) setSheet(1);  // telefon: szczegóły są w arkuszu, więc dotknięcie auta go otwiera
   el.className = p.kind === "empty" ? "muted" : "";
   el.replaceChildren();
   const lines = (p.lines && p.lines.length) ? p.lines : (p.kind === "empty" ? [T("Kliknij auto albo drogę.")] : []);
@@ -1833,16 +1845,26 @@ async function bootMap() {
     container: "map", style, attributionControl: false, minZoom: 3, maxZoom: 19, maxPitch: 70,
     bounds: b ? [[b[0][1], b[0][0]], [b[1][1], b[1][0]]] : undefined, fitBoundsOptions: {padding: 20},
   });
-  if (boot.basemap || WEB) map.addControl(new maplibregl.AttributionControl({compact: false}));
+  if (boot.basemap || WEB) map.addControl(new maplibregl.AttributionControl({compact: mobileMQ.matches}));
   if (WEB) bindWebBasemaps();
   map.addControl(new maplibregl.NavigationControl({visualizePitch: true}), "top-left");
   map.addControl(new FitControl(), "top-left");
-  map.addControl(new maplibregl.ScaleControl({maxWidth: 140, unit: "metric"}), "bottom-right");
+  map.addControl(new maplibregl.ScaleControl({maxWidth: mobileMQ.matches ? 90 : 140, unit: "metric"}), "bottom-right");
   overlay = new deck.MapboxOverlay({interleaved: false, layers: []});
   map.addControl(overlay);
   map.on("click", (ev) => {
     const hit = pickAt(ev.point);
-    if (!hit) return;
+    if (!hit) {
+      // telefon: dotknięcie pustej mapy zamyka arkusz, a gdy jest już zamknięty, kasuje zaznaczenie
+      if (!mobileMQ.matches) return;
+      if (sheet.d) { setSheet(0); return; }
+      selected = null;
+      follow = false;
+      showPanel({kind: "empty"});
+      change();
+      return;
+    }
+    if (mobileMQ.matches && sheet.d === 0) setSheet(1);  // szczegóły są w arkuszu: otwiera się raz, przy nowym wyborze (nie przy odświeżaniu panelu)
     selected = hit;
     follow = false;
     change();
