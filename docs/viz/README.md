@@ -84,6 +84,17 @@ Panel "View" has three settings: `cars` (default, roads in their usual colours),
 - Statistics from a 25% sample are noisy on single links (a few cars in the window): a longer window smooths them. In the `cars + roads` view cars are coloured by class (back in `cars` the previous choice returns) so they do not blend into the road. Road colour counts all traffic: the car class buttons hide cars but do not change road colours.
 - The selected-link panel has an extra line with the window values, e.g. "last 5 min: 13 km/h (free 42 km/h), 156 veh/h (104% of capacity, sample scale)".
 
+## Phone (web page)
+
+At a window width of up to 700 px (a phone held upright) the page switches to a touch layout. The desktop browser and the desktop app are unchanged.
+
+- The map fills the screen. Two fingers: rotate and tilt.
+- Top left a pill with the time and car count, top right a glass stack of buttons: 3D, fit the whole area, settings.
+- At the bottom a floating player card: play/pause, time slider and speed. Tapping "60×" expands the choice 1, 10, 60, 300×. Below it the sample and notes about the run (e.g. OSM coverage).
+- The side panel becomes a sheet above the player with three heights: closed, middle, high. Drag it by the grabber at the top (or tap the grabber: middle ↔ high); the settings button opens and closes it. Tapping a car or a road opens the sheet with its details. The map stays visible above the sheet.
+- In the sheet: details, view (cars, roads only, cars + roads), car classes, switches (OSM road colours, 3D models, flashes), search, basemaps.
+- Limits: portrait only (a phone held sideways gets the desktop layout), the sheet is dragged by the grabber only, keyboard shortcuts do not apply, and WMS, images and opening runs exist in the desktop app only.
+
 ## Known limitations
 
 - Windows only, no code signature and no installer.

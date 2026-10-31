@@ -1,0 +1,375 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>easy-matplayer na telefonie: moodboard</title>
+<style>
+:root{--bg:#0b0b0d;--card:#151518;--line:rgba(255,255,255,.09);--tx:#f2f2f7;--mut:#9b9ba3;--acc:#0a84ff;--grn:#30d158;--org:#ff9f0a;--red:#ff453a;--yel:#ffd60a;--cy:#5ac8fa}
+*{box-sizing:border-box}
+html{background:var(--bg)}
+body{margin:0;color:var(--tx);font:16px/1.5 -apple-system,BlinkMacSystemFont,"SF Pro Text","Segoe UI",system-ui,sans-serif;-webkit-font-smoothing:antialiased}
+.wrap{max-width:1260px;margin:0 auto;padding:40px 20px 80px}
+h1{font-size:40px;line-height:1.1;letter-spacing:-.02em;margin:0 0 8px}
+h2{font-size:26px;letter-spacing:-.01em;margin:0 0 4px}
+h3{font-size:13px;letter-spacing:.08em;text-transform:uppercase;color:var(--mut);margin:0 0 8px;font-weight:600}
+p{margin:0 0 10px}.mut{color:var(--mut)}
+.lead{font-size:18px;color:var(--mut);max-width:760px;margin-bottom:28px}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+@media(max-width:820px){.grid2{grid-template-columns:1fr}}
+.card{background:var(--card);border:1px solid var(--line);border-radius:18px;padding:20px}
+ul{margin:0;padding-left:18px}li{margin:3px 0}
+.sw{display:flex;gap:8px;flex-wrap:wrap;margin:6px 0 12px}.sw i{width:56px;height:44px;border-radius:10px;border:1px solid var(--line);display:flex;align-items:flex-end;padding:3px 5px;font:10px/1 ui-monospace,monospace;color:#fff;font-style:normal;text-shadow:0 0 3px #000}
+section.prop{margin-top:64px;padding-top:28px;border-top:1px solid var(--line)}
+.tag{display:inline-block;font-size:12px;font-weight:700;letter-spacing:.06em;padding:3px 10px;border-radius:999px;background:var(--acc);color:#fff;margin-bottom:10px}
+.phones{display:flex;gap:28px;flex-wrap:wrap;justify-content:center;margin:26px 0}
+figure{margin:0;text-align:center;width:264px}
+figcaption{font-size:13px;color:var(--mut);margin-top:10px;line-height:1.35}
+figcaption b{color:var(--tx)}
+.facts{display:grid;grid-template-columns:repeat(auto-fit,minmax(250px,1fr));gap:12px}
+.facts .card{padding:16px;font-size:14px}
+table{border-collapse:collapse;width:100%;font-size:14px}
+th,td{border-bottom:1px solid var(--line);padding:9px 10px;text-align:left;vertical-align:top}
+th{color:var(--mut);font-weight:600;font-size:12px;letter-spacing:.06em;text-transform:uppercase;position:sticky;top:0;background:var(--bg)}
+.tw{overflow-x:auto}
+.rec{background:linear-gradient(135deg,#0d2a4a,#151518);border-color:#1d4a7a}
+a{color:var(--cy)}
+code{font:13px ui-monospace,monospace;background:#1f1f23;padding:1px 5px;border-radius:5px}
+
+/* ---------- telefon: projektowany w prawdziwych 390x844 pt, pomniejszony do 0.64 ---------- */
+.pw{width:264px;height:552px;padding:7px;border-radius:40px;background:#2a2a2e;margin:0 auto;box-shadow:0 18px 40px rgba(0,0,0,.55),inset 0 0 0 1px #4a4a50}
+.ph{width:390px;height:844px;transform:scale(.64);transform-origin:0 0;border-radius:54px;overflow:hidden;position:relative;background:#101319;color:#fff;
+ font:17px/1.3 -apple-system,BlinkMacSystemFont,"SF Pro Text","Segoe UI",system-ui,sans-serif}
+.pwi{width:250px;height:538px;border-radius:34px;overflow:hidden;position:relative}
+.map{position:absolute;inset:0;width:100%;height:100%}
+.sb{position:absolute;top:0;left:0;right:0;height:54px;display:flex;justify-content:space-between;align-items:center;padding:6px 34px 0;font-weight:600;font-size:16px;z-index:50;pointer-events:none}
+.isl{position:absolute;top:11px;left:50%;margin-left:-62px;width:124px;height:36px;border-radius:20px;background:#000;z-index:51}
+.hi{position:absolute;bottom:8px;left:50%;margin-left:-67px;width:134px;height:5px;border-radius:3px;background:rgba(255,255,255,.7);z-index:60}
+.glass{background:rgba(44,44,46,.66);-webkit-backdrop-filter:blur(24px) saturate(1.8);backdrop-filter:blur(24px) saturate(1.8);border:.5px solid rgba(255,255,255,.14)}
+.i{width:24px;height:24px;stroke:currentColor;fill:none;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round;flex:none}
+.circ{width:44px;height:44px;border-radius:50%;display:grid;place-items:center;flex:none}
+.circ.big{width:56px;height:56px}.circ.acc{background:var(--acc)}
+.abs{position:absolute}
+.pill{height:36px;border-radius:18px;padding:0 14px;display:flex;align-items:center;gap:6px;font-size:15px;font-weight:600;white-space:nowrap;font-variant-numeric:tabular-nums}
+.pill small{font-weight:400;color:#ebebf5a0;font-size:14px}
+.stack{display:flex;flex-direction:column;border-radius:22px;overflow:hidden}
+.stack .circ{border-radius:0}.stack .circ+.circ{border-top:.5px solid rgba(255,255,255,.12)}
+.speed{height:44px;min-width:64px;border-radius:22px;padding:0 14px;display:flex;align-items:center;justify-content:center;gap:4px;font-weight:600;font-size:17px;font-variant-numeric:tabular-nums;background:rgba(118,118,128,.28)}
+.sheet{position:absolute;left:0;right:0;bottom:0;border-radius:28px 28px 0 0;background:rgba(28,28,30,.84);-webkit-backdrop-filter:blur(30px) saturate(1.8);backdrop-filter:blur(30px) saturate(1.8);border-top:.5px solid rgba(255,255,255,.14);padding:0 16px;z-index:20}
+.grab{width:36px;height:5px;border-radius:3px;background:rgba(235,235,245,.3);margin:8px auto 10px}
+.tr{display:flex;align-items:center;gap:12px}
+.clk{font-size:28px;font-weight:700;letter-spacing:-.01em;font-variant-numeric:tabular-nums;line-height:1.05}
+.sub{font-size:13px;color:#ebebf599}
+.scrub{height:5px;border-radius:3px;background:rgba(235,235,245,.22);position:relative;flex:1}
+.scrub i{position:absolute;left:0;top:0;bottom:0;border-radius:3px;background:#fff}
+.scrub u{position:absolute;top:-8px;width:21px;height:21px;border-radius:50%;background:#fff;margin-left:-10px;box-shadow:0 2px 6px rgba(0,0,0,.5)}
+.ends{display:flex;justify-content:space-between;font-size:12px;color:#ebebf580;margin-top:10px;font-variant-numeric:tabular-nums}
+.lab{font-size:13px;font-weight:600;letter-spacing:.05em;text-transform:uppercase;color:#ebebf599;margin:16px 0 8px}
+.seg{display:flex;background:rgba(118,118,128,.24);border-radius:9px;padding:2px;margin-bottom:8px}
+.seg b{flex:1;text-align:center;font-weight:500;font-size:14px;line-height:32px;border-radius:7px;color:#ebebf5d0;white-space:nowrap}
+.seg b.on{background:#636366;color:#fff;font-weight:600;box-shadow:0 1px 3px rgba(0,0,0,.4)}
+.chips{display:flex;gap:8px;overflow:hidden}
+.chx{display:flex;align-items:center;gap:7px;height:36px;border-radius:18px;padding:0 14px;font-size:14px;background:rgba(118,118,128,.24);white-space:nowrap;flex:none}
+.chx i{width:10px;height:10px;border-radius:50%}.chx.on{background:rgba(10,132,255,.28);box-shadow:inset 0 0 0 1.2px var(--acc)}
+.group{background:#1c1c1e;border-radius:12px;overflow:hidden}
+.glass-g{background:rgba(118,118,128,.18);border-radius:12px;overflow:hidden}
+.row{display:flex;align-items:center;justify-content:space-between;gap:10px;min-height:48px;padding:0 16px;font-size:17px;border-bottom:.5px solid rgba(255,255,255,.1)}
+.row:last-child{border-bottom:0}.row .r{display:flex;align-items:center;gap:6px;color:#ebebf599}
+.row.sm{font-size:15px;min-height:44px;padding-left:34px;color:#ebebf5d0}
+.tg{width:51px;height:31px;border-radius:16px;background:#39393d;position:relative;flex:none}
+.tg:after{content:"";position:absolute;left:2px;top:2px;width:27px;height:27px;border-radius:50%;background:#fff;box-shadow:0 2px 4px rgba(0,0,0,.4)}
+.tg.on{background:var(--grn)}.tg.on:after{left:22px}
+.sl{width:110px;height:4px;border-radius:2px;background:#48484a;position:relative}.sl i{position:absolute;left:0;top:0;bottom:0;width:60%;background:var(--acc);border-radius:2px}.sl u{position:absolute;left:60%;top:-9px;width:22px;height:22px;margin-left:-11px;border-radius:50%;background:#fff;box-shadow:0 2px 4px rgba(0,0,0,.5)}
+.tabbar{position:absolute;left:0;right:0;bottom:0;height:88px;padding:8px 8px 0;display:flex;z-index:30;border-top:.5px solid rgba(255,255,255,.14);background:rgba(28,28,30,.88);-webkit-backdrop-filter:blur(30px) saturate(1.8);backdrop-filter:blur(30px) saturate(1.8)}
+.tabbar div{flex:1;display:flex;flex-direction:column;align-items:center;gap:3px;font-size:11px;font-weight:500;color:#ebebf599}
+.tabbar div.on{color:var(--acc)}
+.nav{display:flex;justify-content:space-between;align-items:center;padding:60px 20px 0}
+.nav b{color:var(--acc);font-weight:600}
+.large{font-size:34px;font-weight:700;letter-spacing:-.02em;padding:6px 20px 12px}
+.fade{position:absolute;left:0;right:0;bottom:0;height:120px;background:linear-gradient(transparent,#000);z-index:5}
+.card-sel{position:absolute;left:16px;right:16px;border-radius:22px;padding:16px;z-index:20}
+.btn{height:36px;padding:0 16px;border-radius:18px;display:inline-flex;align-items:center;font-weight:600;font-size:15px;background:rgba(118,118,128,.3)}.btn.acc{background:var(--acc)}
+.axis{display:flex;height:30px;border-radius:7px;overflow:hidden;gap:2px;position:relative}
+.axis i{display:block;background:#48484a}.axis i.t{background:var(--acc)}.axis em{position:absolute;top:-3px;bottom:-3px;width:2px;background:#fff;left:55%}
+.leg{position:absolute;left:16px;height:30px;border-radius:15px;padding:0 12px;display:flex;align-items:center;gap:8px;font-size:12px;z-index:15}
+.leg b{width:46px;height:6px;border-radius:3px;background:linear-gradient(90deg,var(--red),var(--yel),var(--grn))}
+</style>
+</head>
+<body>
+<!-- ikony i mapa jako wspólne definicje -->
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+ <symbol id="play" viewBox="0 0 24 24"><path d="M8 5.5v13l11-6.5z" fill="currentColor" stroke="none"/></symbol>
+ <symbol id="cube" viewBox="0 0 24 24"><path d="M12 3l8 4.5v9L12 21l-8-4.5v-9z"/><path d="M12 12l8-4.5M12 12L4 7.5M12 12v9"/></symbol>
+ <symbol id="fit" viewBox="0 0 24 24"><path d="M4 9V4h5M15 4h5v5M20 15v5h-5M9 20H4v-5"/></symbol>
+ <symbol id="layers" viewBox="0 0 24 24"><path d="M12 3l9 5-9 5-9-5z"/><path d="M3 12.5l9 5 9-5"/><path d="M3 16.5l9 5 9-5"/></symbol>
+ <symbol id="road" viewBox="0 0 24 24"><path d="M8 3L5 21M16 3l3 18M12 4v3M12 10.5v3M12 17v3"/></symbol>
+ <symbol id="search" viewBox="0 0 24 24"><circle cx="11" cy="11" r="6.5"/><path d="M16 16l4.5 4.5"/></symbol>
+ <symbol id="sliders" viewBox="0 0 24 24"><path d="M4 7h10M18 7h2M4 17h2M10 17h10"/><circle cx="16" cy="7" r="2"/><circle cx="8" cy="17" r="2"/></symbol>
+ <symbol id="dots" viewBox="0 0 24 24"><circle cx="5.5" cy="12" r="1.6" fill="currentColor" stroke="none"/><circle cx="12" cy="12" r="1.6" fill="currentColor" stroke="none"/><circle cx="18.5" cy="12" r="1.6" fill="currentColor" stroke="none"/></symbol>
+ <symbol id="x" viewBox="0 0 24 24"><path d="M7 7l10 10M17 7L7 17"/></symbol>
+ <symbol id="chev" viewBox="0 0 24 24"><path d="M9 6l6 6-6 6"/></symbol>
+ <symbol id="updown" viewBox="0 0 24 24"><path d="M8 10l4-4 4 4M8 14l4 4 4-4"/></symbol>
+ <symbol id="map" viewBox="0 0 270 584" preserveAspectRatio="xMidYMid slice">
+  <rect width="270" height="584" fill="#0f1217"/>
+  <path d="M-10 410 C 60 380, 110 440, 190 410 S 260 360, 290 380" stroke="#14253a" stroke-width="22" fill="none"/>
+  <g fill="#141921"><rect x="18" y="70" width="64" height="46" rx="3"/><rect x="96" y="58" width="52" height="64" rx="3"/><rect x="170" y="80" width="70" height="38" rx="3"/><rect x="24" y="150" width="44" height="60" rx="3"/><rect x="90" y="156" width="70" height="52" rx="3"/><rect x="182" y="150" width="58" height="70" rx="3"/><rect x="30" y="250" width="70" height="46" rx="3"/><rect x="120" y="244" width="40" height="64" rx="3"/><rect x="180" y="256" width="62" height="44" rx="3"/><rect x="26" y="470" width="80" height="54" rx="3"/><rect x="140" y="466" width="90" height="60" rx="3"/></g>
+  <g stroke="#232a35" stroke-width="1.4" fill="none"><path d="M0 130H270M0 228H270M0 320H270M0 450H270M0 540H270M88 0V584M164 0V584M236 0V584M40 0V584"/></g>
+  <g stroke="#3a4352" stroke-width="3" fill="none" stroke-linecap="round"><path d="M-10 322L90 318 164 326 280 318"/><path d="M90 -10L88 140 92 330 86 600"/><path d="M-10 230L120 228 280 236"/></g>
+  <g stroke-width="3.4" fill="none" stroke-linecap="round" opacity=".95"><path d="M-8 322L60 319" stroke="#30d158"/><path d="M60 319L90 318 130 322" stroke="#ffd60a"/><path d="M130 322L164 326 210 322" stroke="#ff453a"/><path d="M210 322L270 318" stroke="#30d158"/><path d="M90 -8L89 90" stroke="#30d158"/><path d="M89 90L88 140 91 230" stroke="#ffd60a"/><path d="M-8 230L60 229" stroke="#30d158"/><path d="M120 228L200 231" stroke="#ff453a" opacity=".8"/></g>
+  <g><circle cx="42" cy="321" r="3.6" fill="#ff9f0a"/><circle cx="74" cy="319" r="3.6" fill="#ff9f0a"/><circle cx="103" cy="320" r="3.6" fill="#5ac8fa"/><circle cx="148" cy="324" r="3.6" fill="#ff9f0a"/><circle cx="158" cy="325" r="3.6" fill="#aeaeb2"/><circle cx="184" cy="324" r="3.6" fill="#ff9f0a"/><circle cx="245" cy="319" r="3.6" fill="#5ac8fa"/><circle cx="89" cy="60" r="3.6" fill="#ff9f0a"/><circle cx="88" cy="118" r="3.6" fill="#aeaeb2"/><circle cx="90" cy="190" r="3.6" fill="#ff9f0a"/><circle cx="92" cy="268" r="3.6" fill="#5ac8fa"/><circle cx="90" cy="372" r="3.6" fill="#ff9f0a"/><circle cx="35" cy="229" r="3.6" fill="#ff9f0a"/><circle cx="150" cy="229" r="3.6" fill="#ff9f0a"/><circle cx="186" cy="231" r="3.6" fill="#5ac8fa"/><circle cx="86" cy="500" r="3.6" fill="#ff9f0a"/></g>
+  <g fill="none"><circle cx="205" cy="168" r="3" fill="#ff9f0a"/><circle cx="52" cy="272" r="13" stroke="#5ac8fa" stroke-width="1.6" opacity=".7"/><circle cx="52" cy="272" r="21" stroke="#5ac8fa" stroke-width="1" opacity=".3"/><circle cx="128" cy="276" r="3" fill="#30d158"/><circle cx="214" cy="272" r="9" stroke="#ff9f0a" stroke-width="1.6" opacity=".7"/></g>
+ </symbol>
+</svg>
+
+<div class="wrap">
+ <h1>easy-matplayer na telefonie</h1>
+ <p class="lead">Trzy kierunki dla ekranu telefonu: co zrobić z paskiem przycisków na dole, co z panelem bocznym i jak zostawić jak najwięcej mapy. Ciemny motyw, minimalizm, język wizualny zbliżony do Apple (arkusze, szkło, kapsuły, duże cele dotyku). Makiety są statyczne i pokazują kierunek, nie gotowy ekran. Wybierz jeden (albo mieszankę), a go zakoduję.</p>
+
+ <div class="grid2">
+  <div class="card">
+   <h3>Stan obecny (z kodu shell.html)</h3>
+   <ul>
+    <li><b>Brak <code>&lt;meta name="viewport"&gt;</code></b>: telefon pokaże stronę w szerokości ok. 980 px, pomniejszoną do nieczytelności.</li>
+    <li><b>Panel boczny ma stałe 320 px</b> (<code>grid-template-columns: 1fr 320px</code>). Na ekranie 390 px zostaje ok. 70 px mapy.</li>
+    <li><b>Dolny pasek 52 px ma ok. 14 elementów w jednym rzędzie</b> (start, ◀ 1× ▶, 1×/10×/60×/300×, suwak, zegar, licznik, próbka, podkład, krzywe, 3D, ukryj). Mieści się może połowa.</li>
+    <li><b>Cele dotyku ok. 28 px</b> (przyciski 4×10 px paddingu, chipy). Apple zaleca min. 44×44 pt.</li>
+    <li><b>Podpowiedź mówi o spacji, strzałkach i prawym przycisku myszy</b>. Na telefonie nic z tego nie działa (obrót i pochylenie mapy dają dwa palce, to MapLibre ma wbudowane).</li>
+    <li>Panel ma 12+ sekcji w jednej długiej kolumnie: wyszukiwarka, klasy, opcje, widok, podkład, WMS, obrazy, szczegóły, oś czasu.</li>
+   </ul>
+   <p class="mut" style="margin-top:10px;font-size:13px">Sprawdzone w kodzie. Nie oglądałem tego na prawdziwym telefonie: emulacja w mojej przeglądarce nie zmienia szerokości okna.</p>
+  </div>
+  <div class="card">
+   <h3>Język wizualny</h3>
+   <div class="sw">
+    <i style="background:#000">#000</i><i style="background:#1c1c1e">#1c1c1e</i><i style="background:#2c2c2e">#2c2c2e</i><i style="background:#636366">#636366</i>
+    <i style="background:#0a84ff">akcent</i><i style="background:#30d158">zielony</i><i style="background:#ff9f0a">pomarańcz</i><i style="background:#ff453a">czerwony</i>
+   </div>
+   <ul>
+    <li><b>Materiał:</b> szkło (rozmycie 24–30 px + lekkie nasycenie) na pływających elementach, litej szarości <code>#1c1c1e</code> w listach.</li>
+    <li><b>Kształt:</b> kapsuły (promień = pół wysokości), arkusze z promieniem 28 px, grupy list 12 px.</li>
+    <li><b>Typografia:</b> <code>-apple-system, system-ui</code> (na iPhonie to SF Pro; na Androidzie Roboto). 17 px treść, 13 px etykiety, cyfry tabelaryczne dla zegara.</li>
+    <li><b>Dotyk:</b> cele min. 44 px, kciuk sięga dołu ekranu, więc <b>sterowanie na dole, mapa na górze</b>.</li>
+    <li><b>Ruch:</b> sprężyste 0,35 s, przeciąganie arkusza palcem, bez migania.</li>
+    <li>Akcent <code>#0a84ff</code> to ten sam niebieski co dziś (<code>#7eb6ff</code> jaśniejszy). Kolory klas aut i skali dróg zostają bez zmian.</li>
+   </ul>
+  </div>
+ </div>
+
+ <div class="card" style="margin-top:16px">
+  <h3>Wspólne dla wszystkich trzech (to jest robione zawsze)</h3>
+  <div class="facts">
+   <div>• <code>meta viewport</code> + <code>viewport-fit=cover</code> + <code>env(safe-area-inset-*)</code> (wcięcie, pasek domowy)</div>
+   <div>• <code>100dvh</code> zamiast <code>100%</code> (pasek adresu przeglądarki)</div>
+   <div>• Cele dotyku ≥ 44 px, <code>touch-action</code> na mapie, bez zaznaczania tekstu</div>
+   <div>• Podpowiedź o klawiaturze znika; zamiast tego jedno zdanie o gestach (dwa palce: obrót i pochylenie)</div>
+   <div>• Układ przełącza się przy szerokości ≤ 700 px (lub ekranie dotykowym). <b>Desktop zostaje taki, jaki jest.</b></div>
+   <div>• Ten sam <code>shell.html</code> i ta sama logika. Zmienia się tylko warstwa wyglądu (CSS i trochę HTML), nie silnik.</div>
+  </div>
+ </div>
+
+ <!-- ============================== A ============================== -->
+ <section class="prop">
+  <span class="tag">PROPOZYCJA A</span>
+  <h2>Mapa + dolny arkusz (jak Mapy Apple)</h2>
+  <p class="mut" style="max-width:800px">Jeden arkusz u dołu z trzema wysokościami. Najniższa to odtwarzacz (start, zegar, prędkość, suwak), średnia dokłada widok i warstwy, najwyższa wszystko pozostałe. Przeciągasz palcem w górę i w dół, tak jak w Mapach, Znajdź lub Pogodzie. Kliknięcie auta otwiera szczegóły w tym samym arkuszu.</p>
+  <div class="phones">
+   <figure><div class="pw"><div class="pwi"><div class="ph">
+    <svg class="map"><use href="#map"/></svg><div class="sb"><span>9:41</span><span>●●● ▮</span></div><div class="isl"></div>
+    <div class="abs pill glass" style="top:62px;left:16px">06:18 <small>· 2 401 aut</small></div>
+    <div class="abs stack glass" style="top:62px;right:16px"><div class="circ"><svg class="i"><use href="#cube"/></svg></div><div class="circ"><svg class="i"><use href="#fit"/></svg></div></div>
+    <div class="leg glass" style="bottom:240px"><b></b>prędkość</div>
+    <div class="sheet" style="height:216px"><div class="grab"></div>
+     <div class="tr"><div class="circ big acc"><svg class="i" style="width:28px;height:28px"><use href="#play"/></svg></div><div style="flex:1"><div class="clk">06:18:42</div><div class="sub">demo Kutno · próbka 25%</div></div><div class="speed">60× <svg class="i" style="width:16px;height:16px"><use href="#updown"/></svg></div></div>
+     <div class="scrub" style="margin-top:22px"><i style="width:26%"></i><u style="left:26%"></u></div><div class="ends"><span>00:00</span><span>24:00</span></div>
+    </div><div class="hi"></div></div></div></div><figcaption><b>A1 · najniżej (domyślnie).</b> Start, zegar, prędkość i suwak. Reszta mapy jest wolna.</figcaption></figure>
+
+   <figure><div class="pw"><div class="pwi"><div class="ph">
+    <svg class="map"><use href="#map"/></svg><div class="sb"><span>9:41</span><span>●●● ▮</span></div><div class="isl"></div>
+    <div class="abs pill glass" style="top:62px;left:16px">06:18 <small>· 2 401 aut</small></div>
+    <div class="abs stack glass" style="top:62px;right:16px"><div class="circ"><svg class="i"><use href="#cube"/></svg></div><div class="circ"><svg class="i"><use href="#fit"/></svg></div></div>
+    <div class="sheet" style="height:560px"><div class="grab"></div>
+     <div class="tr"><div class="circ acc"><svg class="i"><use href="#play"/></svg></div><div class="clk" style="flex:1;font-size:24px">06:18:42</div><div class="speed">60×</div></div>
+     <div class="lab">Widok</div>
+     <div class="seg"><b class="on">Auta</b><b>Tylko drogi</b><b>Auta + drogi</b></div>
+     <div class="seg"><b class="on">Prędkości</b><b>Natężenia</b></div>
+     <div class="seg"><b>1 min</b><b class="on">5 min</b><b>15 min</b></div>
+     <div class="lab">Klasy aut</div>
+     <div class="chips"><div class="chx on"><i style="background:#ff9f0a"></i>Mieszkaniec</div><div class="chx on"><i style="background:#5ac8fa"></i>Przyjeżdżający</div><div class="chx"><i style="background:#aeaeb2"></i>Tło</div></div>
+     <div class="lab">Warstwy</div>
+     <div class="group"><div class="row">Błyski aktywności<div class="tg on"></div></div><div class="row">Modele 3D pojazdów<div class="tg"></div></div><div class="row">Wszystkie ustawienia<div class="r"><svg class="i" style="width:18px;height:18px"><use href="#chev"/></svg></div></div></div>
+    </div><div class="hi"></div></div></div></div><figcaption><b>A2 · środek.</b> Widok drogi/auta, wskaźnik, okno, klasy, dwa najczęstsze przełączniki.</figcaption></figure>
+
+   <figure><div class="pw"><div class="pwi"><div class="ph">
+    <svg class="map"><use href="#map"/><circle cx="92" cy="268" r="9" fill="none" stroke="#fff" stroke-width="1.6"/></svg><div class="sb"><span>9:41</span><span>●●● ▮</span></div><div class="isl"></div>
+    <div class="abs pill glass" style="top:62px;left:16px">06:18 <small>· 2 401 aut</small></div>
+    <div class="abs stack glass" style="top:62px;right:16px"><div class="circ"><svg class="i"><use href="#cube"/></svg></div><div class="circ"><svg class="i"><use href="#fit"/></svg></div></div>
+    <div class="sheet" style="height:420px"><div class="grab"></div>
+     <div class="tr"><div style="flex:1"><div style="font-size:22px;font-weight:700;letter-spacing:-.01em">Auto 101677</div><div class="sub">Przyjeżdżający · jedzie 42 km/h</div></div><span class="btn acc">Śledź</span><div class="circ" style="background:rgba(118,118,128,.3);width:36px;height:36px"><svg class="i" style="width:18px;height:18px"><use href="#x"/></svg></div></div>
+     <div class="lab">Dzień tej osoby</div>
+     <div class="axis"><i style="width:18%"></i><i class="t" style="width:14%"></i><i style="width:30%"></i><i class="t" style="width:12%"></i><i style="flex:1"></i><em></em></div>
+     <div class="ends" style="margin-top:6px"><span>06:02</span><span>postoje ściśnięte</span><span>17:40</span></div>
+     <div class="lab">Droga</div>
+     <div class="sub" style="font-size:15px;color:#ebebf5d0">ostatnie 5 min: 13 km/h (swobodna 42 km/h), 156 poj/h, 104% przepustowości (skala próbki)</div>
+     <div class="tr" style="margin-top:22px"><div class="circ acc"><svg class="i"><use href="#play"/></svg></div><div class="clk" style="flex:1;font-size:24px">06:18:42</div><div class="speed">60×</div></div>
+    </div><div class="hi"></div></div></div></div><figcaption><b>A3 · szczegóły.</b> Klik w auto albo drogę. Transport zostaje na dole, kciuk go dosięga.</figcaption></figure>
+  </div>
+  <div class="facts">
+   <div class="card"><h3>Przyciski</h3>Start, zegar i suwak zawsze widoczne w najniższej wysokości. Mnożnik to jedna pigułka „60×” (dotknięcie rozwija wybór 1/10/60/300, przytrzymanie daje krok ◀ ▶). 3D i „dopasuj” to szklany stos na mapie po prawej.</div>
+   <div class="card"><h3>Panel boczny</h3>Znika. Jego zawartość to arkusz: średnio widok i klasy, wysoko wyszukiwarka, podkłady i reszta. Zasuwasz go palcem w dół, zamiast przycisku „ukryj”.</div>
+   <div class="card"><h3>Poziomo</h3>Arkusz staje się kolumną 360 px po lewej (jak w Mapach na iPadzie), mapa po prawej.</div>
+   <div class="card"><h3>Plusy / minusy</h3>+ Znajomy wzorzec, jeden komponent na wszystko, mapa widoczna przy każdej wysokości.<br>− Przeciąganie arkusza to ok. 100 linii JS (detents, tempo, kolizja z przewijaniem listy).</div>
+  </div>
+ </section>
+
+ <!-- ============================== B ============================== -->
+ <section class="prop">
+  <span class="tag">PROPOZYCJA B</span>
+  <h2>Pasek zakładek + pływający odtwarzacz (jak aplikacje Apple)</h2>
+  <p class="mut" style="max-width:800px">Zawsze widoczny odtwarzacz w szklanej karcie nad paskiem zakładek. Cztery zakładki (Odtwarzanie, Widok, Warstwy, Szukaj) otwierają półarkusz z odpowiednią częścią panelu. Każda funkcja ma stałe miejsce, nic się nie chowa za przeciąganiem, ale dolna część ekranu jest zajęta na stałe.</p>
+  <div class="phones">
+   <figure><div class="pw"><div class="pwi"><div class="ph">
+    <svg class="map"><use href="#map"/></svg><div class="sb"><span>9:41</span><span>●●● ▮</span></div><div class="isl"></div>
+    <div class="abs pill glass" style="top:62px;left:16px">06:18 <small>· 2 401 aut</small></div>
+    <div class="abs stack glass" style="top:62px;right:16px"><div class="circ"><svg class="i"><use href="#cube"/></svg></div><div class="circ"><svg class="i"><use href="#fit"/></svg></div></div>
+    <div class="leg glass" style="bottom:208px"><b></b>prędkość</div>
+    <div class="abs glass" style="left:12px;right:12px;bottom:100px;border-radius:26px;padding:12px 14px;z-index:20"><div class="tr"><div class="circ acc"><svg class="i"><use href="#play"/></svg></div><div style="flex:1"><div class="scrub"><i style="width:26%"></i><u style="left:26%"></u></div><div class="ends" style="margin-top:12px"><span>06:18:42</span><span>24:00</span></div></div><div class="speed">60×</div></div></div>
+    <div class="tabbar"><div class="on"><svg class="i"><use href="#play"/></svg>Odtwarzanie</div><div><svg class="i"><use href="#road"/></svg>Widok</div><div><svg class="i"><use href="#layers"/></svg>Warstwy</div><div><svg class="i"><use href="#search"/></svg>Szukaj</div></div><div class="hi"></div></div></div></div><figcaption><b>B1 · domyślnie.</b> Karta odtwarzacza i pasek zakładek. Mapa ma ok. 70% wysokości.</figcaption></figure>
+
+   <figure><div class="pw"><div class="pwi"><div class="ph">
+    <svg class="map"><use href="#map"/></svg><div class="sb"><span>9:41</span><span>●●● ▮</span></div><div class="isl"></div>
+    <div class="abs pill glass" style="top:62px;left:16px">06:18 <small>· 2 401 aut</small></div>
+    <div class="abs stack glass" style="top:62px;right:16px"><div class="circ"><svg class="i"><use href="#cube"/></svg></div><div class="circ"><svg class="i"><use href="#fit"/></svg></div></div>
+    <div class="sheet" style="bottom:88px;height:400px;border-radius:26px;margin:0 8px;left:0;right:0"><div class="grab"></div>
+     <div style="font-size:20px;font-weight:700;margin:2px 0 6px">Widok</div>
+     <div class="lab" style="margin-top:8px">Pokaż</div>
+     <div class="seg"><b>Auta</b><b>Tylko drogi</b><b class="on">Auta + drogi</b></div>
+     <div class="lab">Kolor dróg według</div>
+     <div class="seg"><b class="on">Prędkości</b><b>Natężenia</b></div>
+     <div class="lab">Okno czasu</div>
+     <div class="seg"><b>1 min</b><b class="on">5 min</b><b>15 min</b></div>
+     <div class="group" style="margin-top:14px"><div class="row">Kolor auta<div class="r">klasa <svg class="i" style="width:18px;height:18px"><use href="#chev"/></svg></div></div></div>
+    </div>
+    <div class="tabbar"><div><svg class="i"><use href="#play"/></svg>Odtwarzanie</div><div class="on"><svg class="i"><use href="#road"/></svg>Widok</div><div><svg class="i"><use href="#layers"/></svg>Warstwy</div><div><svg class="i"><use href="#search"/></svg>Szukaj</div></div><div class="hi"></div></div></div></div><figcaption><b>B2 · zakładka Widok.</b> Półarkusz nad paskiem zakładek, ponowne dotknięcie zakładki go zamyka.</figcaption></figure>
+
+   <figure><div class="pw"><div class="pwi"><div class="ph">
+    <svg class="map"><use href="#map"/></svg><div class="sb"><span>9:41</span><span>●●● ▮</span></div><div class="isl"></div>
+    <div class="abs pill glass" style="top:62px;left:16px">06:18 <small>· 2 401 aut</small></div>
+    <div class="sheet" style="bottom:88px;height:500px;border-radius:26px;margin:0 8px;left:0;right:0"><div class="grab"></div>
+     <div style="font-size:20px;font-weight:700;margin:2px 0 6px">Warstwy</div>
+     <div class="chips" style="margin:8px 0 12px"><div class="chx on"><i style="background:#ff9f0a"></i>Mieszkaniec</div><div class="chx on"><i style="background:#5ac8fa"></i>Przyjeżdż.</div><div class="chx"><i style="background:#aeaeb2"></i>Tło</div></div>
+     <div class="group"><div class="row">Błyski aktywności<div class="tg on"></div></div><div class="row sm">Start (rdzeń)<div class="tg on" style="transform:scale(.8)"></div></div><div class="row sm">Koniec (pierścień)<div class="tg on" style="transform:scale(.8)"></div></div><div class="row">Modele 3D pojazdów<div class="tg"></div></div><div class="row">Kolor dróg OSM<div class="tg"></div></div></div>
+     <div class="lab">Podkład</div>
+     <div class="group"><div class="row">OpenStreetMap<div class="sl"><i></i><u></u></div></div><div class="row">Ortofotomapa<div class="tg"></div></div></div>
+    </div>
+    <div class="tabbar"><div><svg class="i"><use href="#play"/></svg>Odtwarzanie</div><div><svg class="i"><use href="#road"/></svg>Widok</div><div class="on"><svg class="i"><use href="#layers"/></svg>Warstwy</div><div><svg class="i"><use href="#search"/></svg>Szukaj</div></div><div class="hi"></div></div></div></div><figcaption><b>B3 · zakładka Warstwy.</b> Klasy, błyski z typami, modele, podkłady.</figcaption></figure>
+  </div>
+  <div class="facts">
+   <div class="card"><h3>Przyciski</h3>Start, suwak i mnożnik są zawsze na wierzchu w karcie nad zakładkami. Pełny wybór mnożnika (1/10/60/300) i krok ◀ ▶ w zakładce „Odtwarzanie”. 3D i „dopasuj” na mapie po prawej.</div>
+   <div class="card"><h3>Panel boczny</h3>Rozbity na zakładki: <b>Widok</b> (widok, wskaźnik, okno), <b>Warstwy</b> (klasy, błyski, modele, podkłady), <b>Szukaj</b> (wyszukiwarka, zaznaczony obiekt, oś czasu, język, o runie).</div>
+   <div class="card"><h3>Poziomo</h3>Pasek zakładek przechodzi w pionową szynę po lewej, karta odtwarzacza w pasek na dole mapy.</div>
+   <div class="card"><h3>Plusy / minusy</h3>+ Najbardziej przewidywalne, nic nie trzeba odkrywać, prosta implementacja (zakładki + stały półarkusz).<br>− Najmniej mapy: ok. 190 px u dołu zajęte na stałe. Więcej elementów w stałym układzie.</div>
+  </div>
+ </section>
+
+ <!-- ============================== C ============================== -->
+ <section class="prop">
+  <span class="tag">PROPOZYCJA C</span>
+  <h2>Sama mapa + jedna kapsuła + Ustawienia na pełnym ekranie</h2>
+  <p class="mut" style="max-width:800px">Najbardziej minimalistyczna. Na ekranie jest mapa, mała pigułka z czasem u góry i jedna kapsuła odtwarzacza u dołu. Wszystko inne to jeden ekran „Ustawienia” w stylu aplikacji Ustawienia iOS, otwierany przyciskiem „⋯”. Kliknięcie auta pokazuje małą kartę nad kapsułą. Kapsuła chowa się po kilku sekundach bezczynności (jak w odtwarzaczu wideo).</p>
+  <div class="phones">
+   <figure><div class="pw"><div class="pwi"><div class="ph">
+    <svg class="map"><use href="#map"/></svg><div class="sb"><span>9:41</span><span>●●● ▮</span></div><div class="isl"></div>
+    <div class="abs pill glass" style="top:62px;left:16px">06:18:42 <small>· 2 401 aut</small></div>
+    <div class="abs stack glass" style="top:62px;right:16px"><div class="circ"><svg class="i"><use href="#cube"/></svg></div><div class="circ"><svg class="i"><use href="#dots"/></svg></div></div>
+    <div class="leg glass" style="bottom:140px"><b></b>prędkość</div>
+    <div class="abs glass" style="left:16px;right:16px;bottom:38px;height:72px;border-radius:36px;padding:0 14px;z-index:20"><div class="tr" style="height:100%"><div class="circ big acc"><svg class="i" style="width:28px;height:28px"><use href="#play"/></svg></div><div class="scrub"><i style="width:26%"></i><u style="left:26%"></u></div><div class="speed" style="min-width:58px">60×</div></div></div>
+    <div class="hi"></div></div></div></div><figcaption><b>C1 · domyślnie.</b> Prawie cała mapa. Kapsuła i przyciski chowają się po 4 s bez dotyku.</figcaption></figure>
+
+   <figure><div class="pw"><div class="pwi"><div class="ph" style="background:#000">
+    <div class="sb"><span>9:41</span><span>●●● ▮</span></div><div class="isl"></div>
+    <div class="nav"><span></span><b>Gotowe</b></div><div class="large">Ustawienia</div>
+    <div style="padding:0 16px;position:relative;z-index:1">
+     <div class="lab" style="margin-top:4px">Widok</div>
+     <div class="group" style="padding:10px"><div class="seg" style="margin-bottom:8px"><b>Auta</b><b>Tylko drogi</b><b class="on">Auta + drogi</b></div><div class="seg" style="margin-bottom:8px"><b class="on">Prędkości</b><b>Natężenia</b></div><div class="seg" style="margin:0"><b>1 min</b><b class="on">5 min</b><b>15 min</b></div></div>
+     <div class="lab">Warstwy</div>
+     <div class="group"><div class="row">Klasy aut<div class="r">2 z 3 <svg class="i" style="width:18px;height:18px"><use href="#chev"/></svg></div></div><div class="row">Błyski aktywności<div class="tg on"></div></div><div class="row">Modele 3D pojazdów<div class="tg"></div></div><div class="row">Kolor dróg OSM<div class="tg"></div></div></div>
+     <div class="lab">Podkład</div>
+     <div class="group"><div class="row">OpenStreetMap<div class="sl"><i></i><u></u></div></div><div class="row">Ortofotomapa<div class="tg"></div></div></div>
+     <div class="lab">Inne</div>
+     <div class="group"><div class="row">Szukaj auta lub drogi<div class="r"><svg class="i" style="width:18px;height:18px"><use href="#chev"/></svg></div></div><div class="row">Język<div class="r">Polski <svg class="i" style="width:18px;height:18px"><use href="#chev"/></svg></div></div></div>
+    </div><div class="fade"></div><div class="hi"></div></div></div></div><figcaption><b>C2 · Ustawienia.</b> Pełny ekran, listy grupowane jak w iOS, przewijane. „Gotowe” wraca do mapy.</figcaption></figure>
+
+   <figure><div class="pw"><div class="pwi"><div class="ph">
+    <svg class="map"><use href="#map"/><circle cx="92" cy="268" r="9" fill="none" stroke="#fff" stroke-width="1.6"/></svg><div class="sb"><span>9:41</span><span>●●● ▮</span></div><div class="isl"></div>
+    <div class="abs pill glass" style="top:62px;left:16px">06:18:42 <small>· 2 401 aut</small></div>
+    <div class="abs stack glass" style="top:62px;right:16px"><div class="circ"><svg class="i"><use href="#cube"/></svg></div><div class="circ"><svg class="i"><use href="#dots"/></svg></div></div>
+    <div class="card-sel glass" style="bottom:126px"><div class="tr"><div style="flex:1"><div style="font-size:20px;font-weight:700">Auto 101677</div><div class="sub">Przyjeżdżający · 42 km/h</div></div><div class="circ" style="background:rgba(118,118,128,.3);width:32px;height:32px"><svg class="i" style="width:16px;height:16px"><use href="#x"/></svg></div></div>
+     <div class="tr" style="margin-top:14px"><span class="btn acc">Śledź</span><span class="btn">Oś czasu</span><span class="btn">Droga</span></div></div>
+    <div class="abs glass" style="left:16px;right:16px;bottom:38px;height:72px;border-radius:36px;padding:0 14px;z-index:20"><div class="tr" style="height:100%"><div class="circ big acc"><svg class="i" style="width:28px;height:28px"><use href="#play"/></svg></div><div class="scrub"><i style="width:26%"></i><u style="left:26%"></u></div><div class="speed" style="min-width:58px">60×</div></div></div>
+    <div class="hi"></div></div></div></div><figcaption><b>C3 · zaznaczone auto.</b> Karta nad kapsułą. „Oś czasu” i „Droga” otwierają szczegóły w arkuszu.</figcaption></figure>
+  </div>
+  <div class="facts">
+   <div class="card"><h3>Przyciski</h3>Cały odtwarzacz to jedna kapsuła: start, suwak, pigułka „60×” (dotknięcie = menu 1/10/60/300). Zegar i licznik w górnej pigułce. 3D i „⋯” u góry po prawej.</div>
+   <div class="card"><h3>Panel boczny</h3>Znika z mapy. Jest jedną przewijaną listą w pełnoekranowym modalu „Ustawienia”. Wyszukiwarka i szczegóły to podekrany z listy lub karta po kliknięciu.</div>
+   <div class="card"><h3>Poziomo</h3>Kapsuła w dolnej połowie mapy, jej szerokość max. 520 px. Ustawienia jako arkusz po prawej.</div>
+   <div class="card"><h3>Plusy / minusy</h3>+ Najwięcej mapy, najmniej kodu (jeden modal + jedna kapsuła), wygląda „jak aplikacja Apple”.<br>− Zmiana widoku (auta / drogi) wymaga wejścia w Ustawienia, więc wolniejsza przy częstym przełączaniu.</div>
+  </div>
+ </section>
+
+ <!-- ============================== tabela ============================== -->
+ <section class="prop">
+  <h2>Gdzie trafia każdy element</h2>
+  <p class="mut">Z obecnego dolnego paska i panelu bocznego.</p>
+  <div class="tw"><table>
+   <tr><th>Element dziś</th><th>A · arkusz</th><th>B · zakładki</th><th>C · kapsuła</th></tr>
+   <tr><td>Start / pauza</td><td>56 px w arkuszu, zawsze</td><td>karta nad zakładkami</td><td>w kapsule</td></tr>
+   <tr><td>Mnożnik 1/10/60/300, ◀ ▶</td><td>pigułka „60×”: tap = menu</td><td>pigułka + pełny wybór w „Odtwarzanie”</td><td>pigułka w kapsule: tap = menu</td></tr>
+   <tr><td>Suwak, zegar</td><td>arkusz (najniżej)</td><td>karta nad zakładkami</td><td>suwak w kapsule, zegar u góry</td></tr>
+   <tr><td>Licznik aut, próbka, podkład, krzywe</td><td>pigułka u góry, próbka w arkuszu</td><td>pigułka u góry, reszta w „Szukaj”</td><td>pigułka u góry, reszta w Ustawieniach</td></tr>
+   <tr><td>3D, dopasuj widok</td><td>szklany stos na mapie</td><td>szklany stos na mapie</td><td>3D na mapie, „dopasuj” w „⋯”</td></tr>
+   <tr><td>„ukryj” panel</td><td>zasunięcie arkusza palcem</td><td>ponowny tap w zakładkę</td><td>niepotrzebne (kapsuła sama się chowa)</td></tr>
+   <tr><td>Widok auta / drogi, wskaźnik, okno</td><td>arkusz, środek</td><td>zakładka Widok</td><td>Ustawienia, góra</td></tr>
+   <tr><td>Chipy klas aut</td><td>arkusz, środek</td><td>Warstwy</td><td>Ustawienia › Klasy aut</td></tr>
+   <tr><td>Błyski aktywności + typy</td><td>przełącznik w środku, typy na górze</td><td>Warstwy</td><td>Ustawienia › Warstwy</td></tr>
+   <tr><td>Modele 3D, kolor OSM, kolor auta</td><td>arkusz, góra</td><td>Warstwy / Widok</td><td>Ustawienia › Warstwy</td></tr>
+   <tr><td>Podkłady, ortofoto, WMS, obrazy*</td><td>arkusz, góra</td><td>Warstwy</td><td>Ustawienia › Podkład</td></tr>
+   <tr><td>Wyszukiwarka</td><td>pole na górze arkusza</td><td>zakładka Szukaj</td><td>Ustawienia › Szukaj</td></tr>
+   <tr><td>Szczegóły auta/drogi, oś czasu osoby</td><td>arkusz po kliknięciu</td><td>Szukaj (otwiera się po kliknięciu)</td><td>karta nad kapsułą + arkusz</td></tr>
+   <tr><td>Legenda</td><td colspan="3">mała kapsuła nad dolnym elementem, dotknięcie rozwija pełną legendę</td></tr>
+   <tr><td>Język, otwórz run, plik OSM*</td><td>arkusz, na dole</td><td>Szukaj, na dole</td><td>Ustawienia › Inne</td></tr>
+  </table></div>
+  <p class="mut" style="font-size:13px;margin-top:8px">* Otwieranie runów, plik OSM, WMS/WMTS i obrazy działają tylko w aplikacji desktop (na stronie są dziś ukryte), więc na telefonie z przeglądarki ich nie będzie.</p>
+ </section>
+
+ <section class="prop">
+  <h2>Porównanie</h2>
+  <div class="tw"><table>
+   <tr><th></th><th>A · arkusz</th><th>B · zakładki</th><th>C · kapsuła</th></tr>
+   <tr><td>Ile mapy na ekranie</td><td>duża (arkusz zmienny)</td><td>średnia (stałe ~190 px u dołu)</td><td><b>największa</b></td></tr>
+   <tr><td>Dostęp do funkcji jednym dotknięciem</td><td>średni</td><td><b>najlepszy</b> (zakładki)</td><td>najsłabszy</td></tr>
+   <tr><td>Zgodność z wzorcami Apple</td><td><b>wysoka</b> (arkusz z detentami)</td><td>wysoka (pasek zakładek)</td><td>średnia (modal Ustawień)</td></tr>
+   <tr><td>Nakład kodu</td><td>średni (przeciąganie arkusza)</td><td>średni</td><td><b>najmniejszy</b></td></tr>
+   <tr><td>Ryzyko</td><td>przewijanie listy vs przeciąganie arkusza</td><td>mała mapa na niskich telefonach</td><td>funkcje „ukryte” za ⋯</td></tr>
+  </table></div>
+ </section>
+
+ <section class="prop">
+  <div class="card rec">
+   <h3>Moja rekomendacja</h3>
+   <p style="font-size:18px"><b>A</b>, z jednym zapożyczeniem z C: pływająca pigułka zegara u góry (jest już w A) i chowanie szkła po bezczynności w trybie „tylko mapa”.</p>
+   <p class="mut">Powód: to wzorzec, który wszyscy znają z Map, mapa jest widoczna na każdej wysokości, a jeden arkusz zastępuje cały panel boczny. C jest najtańsze, jeśli chcesz szybko mieć działającą wersję i dopracować później. B wygrywa, gdyby priorytetem był szybki dostęp do widoku i warstw bez przeciągania.</p>
+   <p class="mut" style="margin-bottom:0">Odpowiedz np. „A”, „C z zakładkami z B” albo „A, ale bez licznika u góry”. Zakoduję to w <code>shell.html</code> jako układ dla szerokości ≤ 700 px i sprawdzę w przeglądarce.</p>
+  </div>
+ </section>
+
+ <section class="prop">
+  <h3>Źródła</h3>
+  <ul style="font-size:14px" class="mut">
+   <li>Apple Human Interface Guidelines, <i>Sheets</i>: detenty <i>medium</i> i <i>large</i>, grabber, stopniowe ujawnianie treści (<a href="https://unpkg.com/apple-hig-mcp@1.1.3/content/sheets.md">kopia treści HIG</a>; <a href="https://developer.apple.com/kr/videos/play/wwdc2021/10063/">WWDC21 „Customize and resize sheets”</a>).</li>
+   <li>Cel dotyku min. 44×44 pt, materiały (rozmycie) i pasek zakładek: z mojej wiedzy o HIG, <b>nie zweryfikowane w tym wyszukiwaniu</b>.</li>
+   <li>Ten plik to szkic w HTML, nie ma żadnych zależności zewnętrznych.</li>
+  </ul>
+ </section>
+</div>
+</body>
+</html>

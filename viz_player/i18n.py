@@ -171,6 +171,8 @@ EN = {
     "dodaj WMS / WMTS / XYZ…": "add WMS / WMTS / XYZ…",
     "dodaj obraz…": "add image…",
     "Kliknij auto albo drogę.": "Click a car or a road.",
+    "Ustawienia": "Settings",
+    "Dotknij auta albo drogi. Dwa palce: obrót i pochylenie mapy.": "Tap a car or a road. Two fingers: rotate and tilt the map.",
     "← scenariusze": "← scenarios",
     "Podkłady": "Basemaps",
     "Ortofotomapa (GUGiK)": "Orthophoto (GUGiK)",

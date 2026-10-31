@@ -698,6 +698,15 @@ def smoke(run):
             if not _wait_js(window, "roadMode === 'type' && window.layerIds.indexOf('cars') >= 0 && !window.drawError", 15):
                 result["error"] = f"widok „auta”: {js('window.drawError')}"
                 return
+            # okno 1440 px to układ desktopowy: elementy telefonu ukryte, panel boczny 320 px, pasek w siatce (nie pływający)
+            desk = js(
+                "(function(){var s=function(i){return getComputedStyle(document.getElementById(i));};"
+                "return [s('mpill').display,s('mstack').display,s('grab').display,s('panel').position,s('bar').position,"
+                "Math.round(document.getElementById('panel').getBoundingClientRect().width)];})()"
+            )
+            if desk != ["none", "none", "none", "static", "static", 320]:
+                result["error"] = f"układ desktopowy zmieniony przez styl telefonu: {desk}"
+                return
             result["load_links"] = int((ref_stats["n"] > 0).sum())
             mult_seq = js(
                 "(function(){var g=function(){return document.getElementById('mval').textContent;};var o=[g()];"

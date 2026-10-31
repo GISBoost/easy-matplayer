@@ -2,6 +2,7 @@
 <html lang="pl">
 <head>
 <meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>easy-matplayer</title>
 <link rel="stylesheet" href="vendor/maplibre/maplibre-gl.css">
 <style>
@@ -137,6 +138,105 @@ body.panel-off #panel { display: none; }
 #fit { background-repeat: no-repeat; background-position: center; background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='29' height='29' viewBox='0 0 29 29' fill='none' stroke='black' stroke-width='2'><path d='M8 12V8h4M17 8h4v4M21 17v4h-4M12 21H8v-4'/></svg>"); }
 .maplibregl-ctrl-attrib { background: rgba(18, 20, 24, .75) !important; color: #9aa3b2; }
 .maplibregl-ctrl-attrib a { color: #7eb6ff; }
+/* Telefon (≤ 700 px): mapa na cały ekran, pływający odtwarzacz ze szkła, pigułka zegara, stos przycisków i panel jako arkusz.
+   Desktop: te elementy są ukryte, a wrappery #mspeeds i #binfo nic nie zmieniają. */
+#mpill, #mstack, #grab, #mhint { display: none; }
+#mspeeds, #binfo { display: contents; }
+@media (max-width: 700px) {
+  :root { --dock: 110px; --glass: rgba(44, 44, 46, .72); }
+  html, body { height: 100dvh; }
+  body { display: block; font-size: 16px; -webkit-tap-highlight-color: transparent;
+    font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", Roboto, system-ui, sans-serif; }
+  #stage { position: fixed; inset: 0; }
+  .maplibregl-ctrl-top-left { display: none; }
+  .maplibregl-ctrl-bottom-right { bottom: var(--dock); }
+  #legend { bottom: calc(var(--dock) + 8px); }
+  #bleg { max-width: calc(100vw - 110px); }
+  #mpill, #mstack, #bar { background: var(--glass); -webkit-backdrop-filter: blur(24px) saturate(1.8); backdrop-filter: blur(24px) saturate(1.8);
+    border: .5px solid rgba(255, 255, 255, .14); }
+  #mpill { display: flex; align-items: center; gap: 6px; position: fixed; z-index: 500; left: 12px; top: calc(12px + env(safe-area-inset-top));
+    height: 36px; padding: 0 14px; border-radius: 18px; font-size: 15px; font-weight: 600; font-variant-numeric: tabular-nums; }
+  #mcount { font-weight: 400; color: rgba(235, 235, 245, .65); }
+  #mcount::before { content: "· "; }
+  #mstack { display: flex; flex-direction: column; position: fixed; z-index: 500; right: 12px; top: calc(12px + env(safe-area-inset-top));
+    border-radius: 22px; overflow: hidden; }
+  #mstack button { display: grid; place-items: center; width: 44px; height: 44px; padding: 0; border: 0; background: none; color: #fff; }
+  #mstack button + button { border-top: .5px solid rgba(255, 255, 255, .14); }
+  #mstack button.on { color: #0a84ff; }
+  #mstack svg { width: 24px; height: 24px; stroke: currentColor; fill: none; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+
+  /* odtwarzacz: jedna karta, w drugim rzędzie wybór mnożnika, w trzecim próbka i ostrzeżenia z runu */
+  #bar { position: fixed; z-index: 700; left: 12px; right: 12px; bottom: calc(12px + env(safe-area-inset-bottom));
+    display: grid; grid-template-columns: 48px 1fr auto; gap: 8px 12px; align-items: center; padding: 12px 14px; border-radius: 28px; }
+  #bar #mdn, #bar #mup, #bar #clock, #bar #count, #bar #three, #bar #hide { display: none; }
+  #bar #play { grid-column: 1; grid-row: 1; width: 48px; height: 48px; padding: 0; border: 0; border-radius: 50%; background: #0a84ff;
+    font-size: 0; position: relative; }
+  #bar #play::before { content: ""; position: absolute; inset: 0; background: center / 24px no-repeat url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'><path d='M8 5.5v13l11-6.5z' fill='white'/></svg>"); }
+  #bar #play.on::before { background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'><path d='M7 5h3.5v14H7zM13.5 5H17v14h-3.5z' fill='white'/></svg>"); }
+  #bar #slider { grid-column: 2; grid-row: 1; width: 100%; min-width: 0; height: 32px; margin: 0; }
+  #bar #mval { grid-column: 3; grid-row: 1; display: block; min-width: 64px; line-height: 44px; border-radius: 22px; background: rgba(118, 118, 128, .28);
+    font-weight: 600; font-size: 17px; text-align: center; cursor: pointer; }
+  #mspeeds { grid-column: 1 / -1; grid-row: 2; display: none; gap: 6px; }
+  #bar.spd #mspeeds { display: flex; }
+  #mspeeds button { flex: 1; min-height: 40px; border: 0; border-radius: 12px; background: rgba(118, 118, 128, .24); font-size: 16px; }
+  #mspeeds button.on { background: #636366; color: #fff; }
+  #binfo { grid-column: 1 / -1; grid-row: 3; display: flex; flex-wrap: wrap; gap: 2px 10px; font-size: 12px; }
+  #binfo span { white-space: normal; }
+
+  /* panel jako arkusz nad odtwarzaczem: wysokość --sh ustawia JS (zamknięty, środek, wysoko) */
+  #panel { position: fixed; z-index: 600; left: 8px; right: 8px; bottom: var(--dock); height: var(--sh, 0px);
+    display: flex; flex-direction: column; gap: 12px; padding: 0 16px 20px; border-radius: 26px; background: #1c1c1e;
+    border: .5px solid rgba(255, 255, 255, .14);
+    overflow: auto; overscroll-behavior: contain; opacity: 0; visibility: hidden; pointer-events: none;
+    transition: height .32s cubic-bezier(.2, .8, .2, 1), opacity .2s, visibility 0s linear .32s; }
+  #panel.open { opacity: 1; visibility: visible; pointer-events: auto; transition: height .32s cubic-bezier(.2, .8, .2, 1), opacity .2s; }
+  #panel.drag { transition: none; }
+  body.panel-off #panel { display: flex; }
+  #panel > * { flex: none; margin: 0 !important; }
+  #grab { display: block; position: sticky; top: 0; z-index: 2; height: 30px; margin: 0 -16px !important; cursor: grab; touch-action: none;
+    background: #1c1c1e; border-radius: 26px 26px 0 0; }
+  .maplibregl-ctrl-scale { background: rgba(18, 20, 24, .75); color: #9aa3b2; border-color: #9aa3b2; }
+  #grab::before { content: ""; position: absolute; left: 50%; top: 9px; width: 36px; height: 5px; margin-left: -18px; border-radius: 3px; background: rgba(235, 235, 245, .3); }
+  #crsnote, #runmsg, #runbar { order: 1; }
+  #detail { order: 2; font-size: 15px; }
+  #axis { order: 3; }
+  #loadbox { order: 4; }
+  #chips { order: 5; }
+  #opts { order: 6; }
+  #find { order: 7; }
+  #hits { order: 8; }
+  #webbase { order: 9; }
+  #svc { order: 10; }
+  #osm { order: 11; }
+  #openrun, #lang { order: 12; align-self: flex-start; }
+  #panel h1 { order: 13; }
+  #weblinks { order: 14; }
+  #run { order: 15; }
+  #credit { order: 16; }
+  #hint { display: none; }
+  #mhint { display: block; order: 17; color: #9aa3b2; font-size: 13px; line-height: 1.4; }
+  #panel .chip { min-height: 40px; padding: 6px 14px; font-size: 15px; color: rgba(235, 235, 245, .8); border-color: rgba(255, 255, 255, .18); }
+  #panel .chip.on { color: #fff; border-color: #0a84ff; background: rgba(10, 132, 255, .22); }
+  #loadbox .seg:not(#loadwin) { flex-wrap: nowrap; gap: 2px; padding: 2px; border-radius: 10px; background: rgba(118, 118, 128, .24); }
+  #loadbox .seg:not(#loadwin) .chip { flex: 1; min-height: 36px; padding: 0 6px; border: 0; border-radius: 8px; background: none; font-size: 14px; }
+  #loadbox .seg:not(#loadwin) .chip.on { background: #636366; color: #fff; }
+  #find input { min-height: 44px; border: 0; border-radius: 12px; background: rgba(118, 118, 128, .24); font-size: 16px; }
+  #hits button { min-height: 44px; }
+  #opts label, #flash-kinds label, #flash-types label, .wbrow label { display: flex; flex-direction: row-reverse; align-items: center;
+    justify-content: space-between; gap: 10px; min-height: 44px; font-size: 16px; color: rgba(235, 235, 245, .85); }
+  #flash-types label { flex-direction: row; justify-content: flex-start; }
+  #flash-types label i { order: -1; }
+  #flash-types label input[type=checkbox] { order: 1; margin-left: auto; }
+  .wbrow label { flex: 1; }
+  .wbrow input[type=range] { width: 120px; height: 32px; }
+  #flash-kinds, #flash-types { margin-left: 0; padding-left: 12px; }
+  #panel input[type=checkbox] { -webkit-appearance: none; appearance: none; position: relative; flex: none; width: 46px; height: 28px; margin: 0;
+    border-radius: 14px; background: #39393d; transition: background .2s; }
+  #panel input[type=checkbox]::after { content: ""; position: absolute; left: 2px; top: 2px; width: 24px; height: 24px; border-radius: 50%;
+    background: #fff; box-shadow: 0 2px 4px rgba(0, 0, 0, .4); transition: left .2s; }
+  #panel input[type=checkbox]:checked { background: #30d158; }
+  #panel input[type=checkbox]:checked::after { left: 20px; }
+}
 </style>
 </head>
 <body>
@@ -151,7 +251,14 @@ body.panel-off #panel { display: none; }
     <span id="bleg"></span>
   </div>
 </div>
+<div id="mpill"><span id="mclock"></span><span id="mcount"></span></div>
+<div id="mstack">
+  <button id="m3d" type="button" aria-label="3D"><svg viewBox="0 0 24 24"><path d="M12 3l8 4.5v9L12 21l-8-4.5v-9z"/><path d="M12 12l8-4.5M12 12L4 7.5M12 12v9"/></svg></button>
+  <button id="mfit" type="button" aria-label="Pokaż cały obszar sieci"><svg viewBox="0 0 24 24"><path d="M4 9V4h5M15 4h5v5M20 15v5h-5M9 20H4v-5"/></svg></button>
+  <button id="msheet" type="button" aria-label="Ustawienia"><svg viewBox="0 0 24 24"><path d="M4 7h10M18 7h2M4 17h2M10 17h10"/><circle cx="16" cy="7" r="2"/><circle cx="8" cy="17" r="2"/></svg></button>
+</div>
 <aside id="panel">
+  <div id="grab" role="button" aria-label="Ustawienia"></div>
   <h1>easy-matplayer <small id="ver"></small></h1>
   <p id="weblinks"><a href="../">← scenariusze</a> · <a href="https://gisboost.github.io/mapy-analizy/">GISBoost · analizy mapowe</a></p>
   <p class="run" id="run"></p>
@@ -218,22 +325,27 @@ body.panel-off #panel { display: none; }
   </div>
   <p id="credit" class="muted" hidden>Modele aut: Quaternius (CC0).</p>
   <p id="hint">Spacja: start. Strzałki: ±1 min. F: śledź. Esc: wyczyść. Prawy przycisk myszy: obrót i pochylenie mapy.</p>
+  <p id="mhint">Dotknij auta albo drogi. Dwa palce: obrót i pochylenie mapy.</p>
 </aside>
 <div id="bar">
   <button id="play" type="button">start</button>
   <button id="mdn" type="button" title="mnożnik −1">◀</button>
   <span id="mval">1×</span>
   <button id="mup" type="button" title="mnożnik +1">▶</button>
+  <span id="mspeeds">
   <button type="button" data-m="1" class="on">1×</button>
   <button type="button" data-m="10">10×</button>
   <button type="button" data-m="60">60×</button>
   <button type="button" data-m="300">300×</button>
+  </span>
   <input id="slider" type="range">
   <span id="clock">00:00:00</span>
   <span id="count">0 aut</span>
+  <span id="binfo">
   <span id="sample"></span>
   <span id="base">Podkład wyłączony.</span>
   <span id="curves"></span>
+  </span>
   <button id="three" type="button">3D</button>
   <button id="hide" type="button">ukryj</button>
 </div>
@@ -303,6 +415,69 @@ function translateStatic() {
     });
   });
 }
+// Telefon (CSS w @media max-width 700px): panel to arkusz o trzech wysokościach (0 zamknięty, 1 środek, 2 wysoko), przeciągany za uchwyt.
+const mobileMQ = window.matchMedia("(max-width: 700px)");
+const panelEl = document.getElementById("panel"), barEl = document.getElementById("bar"), grabEl = document.getElementById("grab");
+const sheet = {d: 0};
+// Miejsce nad odtwarzaczem, z zapasem na pigułkę zegara u góry; --dock przesuwa nad odtwarzacz arkusz, legendę i prawa autorów mapy.
+function sheetRoom() { return Math.max(0, barEl.getBoundingClientRect().top - 8 - 64); }
+function sheetH(d) { return d === 0 ? 0 : d === 1 ? Math.min(sheetRoom(), Math.round(innerHeight * 0.46)) : sheetRoom(); }
+function setSheet(d) {
+  sheet.d = d;
+  panelEl.style.setProperty("--sh", sheetH(d) + "px");
+  panelEl.classList.toggle("open", d > 0);
+  document.getElementById("msheet").classList.toggle("on", d > 0);
+}
+function layoutDock() {
+  document.documentElement.style.setProperty("--dock", (innerHeight - barEl.getBoundingClientRect().top + 8) + "px");
+  if (!drag) setSheet(sheet.d);
+}
+let drag = null;
+grabEl.addEventListener("pointerdown", (ev) => {
+  drag = {y: ev.clientY, h: panelEl.offsetHeight, moved: false, last: ev.clientY, dir: 0};
+  grabEl.setPointerCapture(ev.pointerId);
+  panelEl.classList.add("drag");
+});
+window.addEventListener("pointermove", (ev) => {
+  if (!drag) return;
+  const dy = drag.y - ev.clientY;
+  if (Math.abs(dy) > 4) drag.moved = true;
+  if (ev.clientY !== drag.last) drag.dir = ev.clientY < drag.last ? 1 : -1;
+  drag.last = ev.clientY;
+  panelEl.style.setProperty("--sh", Math.max(0, Math.min(sheetRoom(), drag.h + dy)) + "px");
+});
+function sheetDragEnd() {
+  if (!drag) return;
+  const d0 = drag;
+  drag = null;
+  panelEl.classList.remove("drag");
+  if (!d0.moved) { setSheet(sheet.d === 2 ? 1 : 2); return; }
+  const h = panelEl.offsetHeight + d0.dir * 50;  // dosuwa do najbliższej wysokości, z lekkim wyprzedzeniem kierunku ruchu
+  let best = 0;
+  [1, 2].forEach((d) => { if (Math.abs(sheetH(d) - h) < Math.abs(sheetH(best) - h)) best = d; });
+  setSheet(best);
+}
+window.addEventListener("pointerup", sheetDragEnd);
+window.addEventListener("pointercancel", sheetDragEnd);
+grabEl.addEventListener("lostpointercapture", sheetDragEnd);
+document.getElementById("msheet").addEventListener("click", () => setSheet(sheet.d ? 0 : 1));
+document.getElementById("m3d").addEventListener("click", () => setThreeD(!threeD));
+document.getElementById("mfit").addEventListener("click", () => fitNetwork());
+// Pigułka mnożnika rozwija wybór 1/10/60/300; wybór albo dotknięcie poza kartą zwija go.
+document.getElementById("mval").addEventListener("click", () => barEl.classList.toggle("spd"));
+document.getElementById("mspeeds").addEventListener("click", () => barEl.classList.remove("spd"));
+document.addEventListener("pointerdown", (ev) => { if (!barEl.contains(ev.target)) barEl.classList.remove("spd"); });
+// Zegar i licznik z paska (pisane w wielu miejscach) lustrzanie w pigułce u góry.
+[["clock", "mclock"], ["count", "mcount"]].forEach(([from, to]) => {
+  const src = document.getElementById(from), dst = document.getElementById(to);
+  const copy = () => { dst.textContent = src.textContent; };
+  new MutationObserver(copy).observe(src, {childList: true, characterData: true, subtree: true});
+  copy();
+});
+new ResizeObserver(layoutDock).observe(barEl);
+window.addEventListener("resize", layoutDock);
+mobileMQ.addEventListener("change", layoutDock);
+layoutDock();
 const VMAX = 14;
 const ROAD = {
   motorway: "#d5dde6", motorway_link: "#d5dde6",
@@ -770,6 +945,7 @@ function showAxis(segments) {
 function showPanel(p) {
   const el = document.getElementById("detail");
   if (!p || p.kind === "miss") return;
+  if (p.kind !== "empty" && mobileMQ.matches && sheet.d === 0) setSheet(1);  // telefon: szczegóły są w arkuszu, więc dotknięcie auta go otwiera
   el.className = p.kind === "empty" ? "muted" : "";
   el.replaceChildren();
   const lines = (p.lines && p.lines.length) ? p.lines : (p.kind === "empty" ? [T("Kliknij auto albo drogę.")] : []);
@@ -878,6 +1054,7 @@ function buildBuildings() {
 function setThreeD(on) {
   threeD = on;
   document.getElementById("three").classList.toggle("on", on);
+  document.getElementById("m3d").classList.toggle("on", on);
   document.getElementById("bleg").style.display = on && boot.bld ? "inline" : "none";
   if (map) map.easeTo({pitch: on ? 55 : 0, duration: 600});
   dirty = true;

@@ -82,6 +82,17 @@ Panel „Widok” ma trzy ustawienia: `auta` (domyślnie, drogi w zwykłych kolo
 - Statystyki z próbki 25% są szumne na pojedynczych linkach (kilka aut w oknie): dłuższe okno wygładza. W widoku `auta + drogi` auta są kolorowane klasą (po powrocie do `auta` wraca poprzedni wybór), żeby nie zlewały się z drogą. Kolor dróg liczy cały ruch: przyciski klas aut ukrywają auta, ale nie zmieniają koloru dróg.
 - Panel zaznaczonego linku ma dodatkowy wiersz z wartościami z okna, np. „ostatnie 5 min: 13 km/h (swobodna 42 km/h), 156 poj/h (104% przepustowości, w skali próbki)”.
 
+## Telefon (strona w przeglądarce)
+
+Przy szerokości okna do 700 px (telefon w pionie) strona przełącza się na układ dotykowy. Na komputerze i w aplikacji okienkowej nic się nie zmienia.
+
+- Mapa jest na cały ekran. Dwa palce: obrót i pochylenie.
+- U góry po lewej pigułka z czasem i liczbą aut, po prawej szklany stos przycisków: 3D, pokaż cały obszar, ustawienia.
+- Na dole pływająca karta odtwarzacza: start/pauza, suwak czasu i mnożnik. Dotknięcie „60×” rozwija wybór 1, 10, 60, 300×. Pod spodem próbka i uwagi o runie (np. pokrycie OSM).
+- Panel boczny to arkusz nad odtwarzaczem o trzech wysokościach: zamknięty, środek, wysoko. Przeciągasz go za uchwyt u góry (albo dotykasz uchwytu: środek ↔ wysoko), przycisk ustawień otwiera i zamyka. Dotknięcie auta lub drogi otwiera arkusz ze szczegółami. Mapa zostaje widoczna nad arkuszem.
+- W arkuszu: szczegóły, widok (auta, tylko drogi, auta + drogi), klasy aut, przełączniki (kolor dróg OSM, modele 3D, błyski), wyszukiwarka, podkłady.
+- Granice: tylko układ pionowy (poziomo telefon dostaje układ komputerowy), arkusz przeciąga się tylko za uchwyt, skróty klawiszowe nie dotyczą telefonu, a WMS, obrazy i otwieranie runów są tylko w aplikacji.
+
 ## Znane ograniczenia
 
 - Tylko Windows, bez podpisu kodu i instalatora.
