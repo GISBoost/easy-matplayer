@@ -259,16 +259,16 @@ body.panel-off #panel { display: none; }
   #stage { position: fixed; inset: 0; }
   /* nie chowaj kontenera: deck.gl montuje w nim kanwę (patrz telefon) */
   .maplibregl-ctrl-top-left .maplibregl-ctrl-group { display: none; }
-  /* wyspa po otwarciu zajmuje prawą kolumnę (szyna 40 px + odstęp + --pw): kapsuła, legenda i skala schodzą jej z drogi, więc układ trzyma się
+  /* wyspa po otwarciu zajmuje prawą kolumnę (szyna 40 px + odstęp + --pw): kapsuła schodzi jej z drogi, więc układ trzyma się
      także w oknie prawie kwadratowym (--bo = zajęta szerokość z prawej) */
   body:has(#panel.open) { --bo: calc(var(--pw) + 68px); }
-  .maplibregl-ctrl-bottom-right { right: auto; left: 16px; bottom: var(--dock); }
   .maplibregl-ctrl-attrib { display: none; }  /* atrybucja jest w kapsule (#mattr), pełna na dole panelu (#attrfull) */
   #bar #mattr { display: inline; }
   #attrfull { display: block; font-size: 12px; }
-  #legend { left: auto; right: calc(68px + var(--bo)); top: 16px; bottom: auto; padding: 8px 12px; border-radius: 14px; background: var(--glass);
+  /* legenda i skala mapy w jednym szklanym polu w lewym górnym rogu (skala przeniesiona tu w bootMap) */
+  #legend { left: 16px; top: 16px; bottom: auto; padding: 8px 12px; border-radius: 14px; background: var(--glass);
     -webkit-backdrop-filter: blur(24px) saturate(1.8); backdrop-filter: blur(24px) saturate(1.8); border: var(--edge); }
-  .maplibregl-ctrl-scale { background: rgba(18, 20, 24, .75); color: #9aa3b2; border-color: #9aa3b2; }
+  #legend .maplibregl-ctrl-scale { margin: 0; background: none; color: rgba(235, 235, 245, .7); border-color: rgba(235, 235, 245, .5); }
   :is(button, input, #grab):focus-visible { outline: 2px solid #0a84ff; outline-offset: 2px; }
 
   /* stos przycisków: 3D, dopasuj, ustawienia (ten sam co na telefonie, 40 px pod wskaźnik) */
@@ -2011,6 +2011,8 @@ async function bootMap() {
   map.addControl(new maplibregl.NavigationControl({visualizePitch: true}), "top-left");
   map.addControl(new FitControl(), "top-left");
   map.addControl(new maplibregl.ScaleControl({maxWidth: mobileMQ.matches ? 90 : 140, unit: "metric"}), "bottom-right");
+  // komputer: skala mieszka w polu legendy (lewy górny róg), nie jako osobna tabliczka w rogu mapy
+  if (!mobileMQ.matches) document.getElementById("legend").appendChild(document.querySelector(".maplibregl-ctrl-scale"));
   overlay = new deck.MapboxOverlay({interleaved: false, layers: []});
   map.addControl(overlay);
   map.on("click", (ev) => {

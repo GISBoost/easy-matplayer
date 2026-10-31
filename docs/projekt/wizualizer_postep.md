@@ -469,3 +469,9 @@ Otwarte, w kolejności:
 - Zmiana: szyna po prawej z ikonami sekcji (`#mstack [data-go]`, otwierają wyspę na jednej sekcji, ponowne kliknięcie zamyka, aktywna świeci); wyspa `top/bottom: 16px` na lewo od szyny; zmienna `--bo` (szerokość zajęta przez otwartą wyspę, `body:has(#panel.open)`) przesuwa i zwęża kapsułę i legendę; legenda u góry na lewo od szyny; skala przeniesiona w lewy dolny róg nad kapsułę.
 - Dowody: `pytest` 132 passed, `--smoke` OK (jak wyżej); przeglądarka 1230×1000: wyspa 16–984 px (do dołu), kapsuła 91–731 px mieści się na lewo od wyspy (822 px), legenda 507–754 px u góry, szyna 1173–1214 px.
 - Nie sprawdzone: ikony sekcji w WebView2 (smoke ich nie klika), skala i legenda przy bardzo wąskim oknie (701–800 px) z otwartą wyspą.
+
+### Legenda i skala; trzy warianty prawej strony (2026-10-31, uwagi właściciela)
+
+- Uwagi: legenda ze złej strony (ma być w lewym górnym rogu), skala „dziwnie”, po wysunięciu panelu zostaje pusta szpara po prawej; kapsuła nie animuje się przy wysuwaniu panelu (do polerki).
+- Zrobione: legenda i skala mapy w jednym szklanym polu w lewym górnym rogu (skala przenoszona do `#legend` w `bootMap` tylko na komputerze). Dowód: przeglądarka 1440×900, `#legend` 16,16 (248×54 px) zawiera skalę „5 km”; pytest 132 passed.
+- Warianty prawej strony (1 mało ikon i panel pod szyną, 2 dużo ikon i panel pod ikonami, 3 pasek poziomy w rogu): makieta `docs/projekt/desktop_prawa_strona.html`, kod po wyborze właściciela.

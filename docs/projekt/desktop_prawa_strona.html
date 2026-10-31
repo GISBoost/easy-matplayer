@@ -1,0 +1,117 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>easy-matplayer: prawa strona, 3 warianty</title>
+<style>
+:root{--bg:#0b0b0d;--card:#151518;--line:rgba(255,255,255,.09);--tx:#f2f2f7;--mut:#9b9ba3;--acc:#0a84ff}
+*{box-sizing:border-box}
+html{background:var(--bg)}
+body{margin:0;color:var(--tx);font:16px/1.5 -apple-system,BlinkMacSystemFont,"SF Pro Text","Segoe UI",system-ui,sans-serif}
+.wrap{max-width:1360px;margin:0 auto;padding:36px 20px 70px}
+h1{font-size:34px;margin:0 0 6px;letter-spacing:-.02em}h2{font-size:24px;margin:0 0 4px}
+p{margin:0 0 10px}.mut{color:var(--mut)}.lead{color:var(--mut);max-width:820px;margin-bottom:22px}
+section{margin-top:46px;padding-top:24px;border-top:1px solid var(--line)}
+.tag{display:inline-block;font-size:12px;font-weight:700;padding:3px 10px;border-radius:999px;background:var(--acc);margin-bottom:8px}
+.row{display:flex;gap:18px;flex-wrap:wrap;align-items:flex-start;margin-top:14px}
+figure{margin:0}figcaption{font-size:13px;color:var(--mut);margin-top:6px;max-width:440px;line-height:1.35}figcaption b{color:var(--tx)}
+.fw{position:relative;overflow:hidden;border-radius:12px;border:1px solid #2a2a2e;box-shadow:0 14px 34px rgba(0,0,0,.5)}
+.fr{position:absolute;left:0;top:0;transform-origin:0 0;overflow:hidden;background:#121418;color:#f2f2f7;font:15px/1.3 -apple-system,BlinkMacSystemFont,"SF Pro Text","Segoe UI",system-ui,sans-serif}
+.fr svg.map{position:absolute;inset:0;width:100%;height:100%}
+.fr .i{width:22px;height:22px;stroke:currentColor;fill:none;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round;flex:none}
+.g{background:rgba(44,44,46,.72);backdrop-filter:blur(24px) saturate(1.8);border:.5px solid rgba(255,255,255,.14)}
+.gp{background:rgba(38,38,40,.76);backdrop-filter:blur(30px) saturate(1.8);border:.5px solid rgba(255,255,255,.14)}
+.ab{position:absolute}
+.btn{width:40px;height:40px;display:grid;place-items:center;color:#fff;flex:none}.btn.on{color:#0a84ff}
+.rail{display:flex;flex-direction:column;border-radius:20px;overflow:hidden}.rail .btn+.btn{border-top:.5px solid rgba(255,255,255,.14)}
+.rail.h{flex-direction:row}.rail.h .btn+.btn{border-top:0;border-left:.5px solid rgba(255,255,255,.14)}
+.play{width:44px;height:44px;border-radius:50%;background:#0a84ff;display:grid;place-items:center;flex:none}
+.scrub{height:5px;border-radius:3px;background:rgba(235,235,245,.22);position:relative;flex:1}.scrub i{position:absolute;left:0;top:0;bottom:0;border-radius:3px;background:#fff}
+.speed{height:36px;min-width:60px;border-radius:18px;display:flex;align-items:center;justify-content:center;font-weight:600;background:rgba(118,118,128,.28)}
+.cap{display:flex;align-items:center;gap:14px;padding:10px 16px;border-radius:30px;flex-wrap:wrap}
+.clk{font-size:22px;font-weight:700}.sub{font-size:12px;color:rgba(235,235,245,.6)}
+.panel{padding:16px;border-radius:24px;display:flex;flex-direction:column;gap:6px;overflow:hidden;font-size:14px}
+.panel h4{margin:0;font-size:15px}
+.grp{font-size:11px;font-weight:700;letter-spacing:.07em;text-transform:uppercase;color:rgba(235,235,245,.55);display:flex;justify-content:space-between;padding:10px 0 2px}
+.seg{display:flex;gap:2px;padding:2px;border-radius:10px;background:rgba(118,118,128,.24)}.seg span{flex:1;text-align:center;padding:5px 6px;border-radius:8px;font-size:13px;white-space:nowrap}.seg span.on{background:#636366}
+.chips{display:flex;flex-wrap:wrap;gap:6px}.chip{padding:4px 12px;border-radius:999px;border:1px solid rgba(255,255,255,.18);font-size:13px}.chip.on{border-color:#0a84ff;background:rgba(10,132,255,.22)}
+.sw{display:flex;justify-content:space-between;align-items:center;min-height:32px;color:rgba(235,235,245,.85)}
+.sw i{width:40px;height:24px;border-radius:12px;background:#39393d;position:relative}.sw i::after{content:"";position:absolute;left:2px;top:2px;width:20px;height:20px;border-radius:50%;background:#fff}.sw i.on{background:#30d158}.sw i.on::after{left:18px}
+.leg{border-radius:14px;padding:8px 12px;font-size:12px;display:flex;flex-direction:column;gap:6px}.leg div{display:flex;gap:8px;align-items:center}.leg b{display:block;width:110px;height:7px;border-radius:4px;background:linear-gradient(90deg,#ff1f0d,#ffb31a 40%,#1ae6ff)}
+.sc{border:1px solid rgba(235,235,245,.5);border-top:0;height:8px;width:70px;font-size:10px;line-height:18px;padding-left:3px}
+table{border-collapse:collapse;width:100%;font-size:14px}th,td{border-bottom:1px solid var(--line);padding:8px 10px;text-align:left;vertical-align:top}th{color:var(--mut);font-size:12px;text-transform:uppercase}
+.card{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:18px}
+</style>
+</head>
+<body>
+<div class="wrap">
+<h1>Prawa strona: bez szpary</h1>
+<p class="lead">Trzy warianty, w których po otwarciu panelu nie zostaje pusty pas po prawej. W każdym legenda i skala są w lewym górnym rogu (to już poprawione w kodzie). Makiety (nie zrzuty z programu), dane przykładowe. Każdy wariant: zamknięty 1440×900, otwarty 1440×900 i otwarty w oknie prawie kwadratowym 1100×1100. Kapsuła odtwarzacza zawsze mieści się w wolnej części dołu.</p>
+
+<section><span class="tag">1</span><h2>Mało ikon, panel „pod” szyną</h2>
+<p class="mut">Szyna ma tylko 3D, dopasuj, ustawienia. Panel wysuwa się spod niej na całą wysokość prawej krawędzi, więc szyna leży na panelu i nie ma pasa obok. Wszystkie sekcje są w panelu (więcej w środku), bez ikon sekcji.</p>
+<div class="row"><figure><div class="fw" data-s=".3" data-w="1440" data-h="900" data-m="1:closed"></div><figcaption><b>Zamknięty.</b> Szyna z trzema przyciskami.</figcaption></figure>
+<figure><div class="fw" data-s=".3" data-w="1440" data-h="900" data-m="1:open"></div><figcaption><b>Otwarty.</b> Panel do samego dołu i prawej krawędzi, szyna na nim.</figcaption></figure>
+<figure><div class="fw" data-s=".3" data-w="1100" data-h="1100" data-m="1:sq"></div><figcaption><b>Okno prawie kwadratowe.</b></figcaption></figure></div></section>
+
+<section><span class="tag">2</span><h2>Dużo ikon (jak dziś), ale panel „pod” ikonami</h2>
+<p class="mut">Szyna ikon sekcji jak teraz. Panel wysuwa się tak, że ikony leżą na jego prawym brzegu (jedna wspólna kolumna do dołu), a ikona otwiera sekcję. Pod ikonami panel jest po prostu powierzchnią panelu, nie pusty pas mapy.</p>
+<div class="row"><figure><div class="fw" data-s=".3" data-w="1440" data-h="900" data-m="2:closed"></div><figcaption><b>Zamknięty.</b> Szyna z ikonami sekcji.</figcaption></figure>
+<figure><div class="fw" data-s=".3" data-w="1440" data-h="900" data-m="2:open"></div><figcaption><b>Otwarty.</b> Jedna kolumna: ikony po prawej, treść po lewej, tło ciągłe do dołu.</figcaption></figure>
+<figure><div class="fw" data-s=".3" data-w="1100" data-h="1100" data-m="2:sq"></div><figcaption><b>Okno prawie kwadratowe.</b></figcaption></figure></div></section>
+
+<section><span class="tag">3</span><h2>Pasek ikon poziomo w prawym górnym rogu</h2>
+<p class="mut">Ikony ułożone poziomo, pod nimi panel o tej samej szerokości, wysuwany w dół do końca okna. Prawa krawędź jest wspólna, więc nie ma szpary. Najmniej zabiera szerokości mapie.</p>
+<div class="row"><figure><div class="fw" data-s=".3" data-w="1440" data-h="900" data-m="3:closed"></div><figcaption><b>Zamknięty.</b> Poziomy pasek w rogu.</figcaption></figure>
+<figure><div class="fw" data-s=".3" data-w="1440" data-h="900" data-m="3:open"></div><figcaption><b>Otwarty.</b> Panel pod paskiem, ta sama szerokość.</figcaption></figure>
+<figure><div class="fw" data-s=".3" data-w="1100" data-h="1100" data-m="3:sq"></div><figcaption><b>Okno prawie kwadratowe.</b></figcaption></figure></div></section>
+
+<section><h2>Porównanie</h2><div class="card" style="overflow-x:auto"><table>
+<tr><th></th><th>1: mało ikon</th><th>2: dużo ikon</th><th>3: poziomo</th></tr>
+<tr><td>Szpara po prawej</td><td>brak (szyna na panelu)</td><td>brak (ikony na panelu)</td><td>brak (wspólna prawa krawędź)</td></tr>
+<tr><td>Szybki dostęp do sekcji</td><td>nie, sekcje w panelu</td><td>tak, jedna ikona = jedna sekcja</td><td>tak</td></tr>
+<tr><td>Szerokość zabierana mapie</td><td>panel + 0</td><td>panel + ok. 56 px</td><td>tylko panel</td></tr>
+<tr><td>Zgodność z wariantem C z moodboardu</td><td>mała</td><td>duża</td><td>średnia</td></tr>
+<tr><td>Nakład kodu</td><td>najmniejszy (usuwam ikony sekcji)</td><td>średni (panel pod ikonami)</td><td>średni (szyna pozioma, panel pod nią)</td></tr>
+<tr><td>Ryzyko</td><td>szyna przykrywa tytuł panelu: zostawiam mu miejsce</td><td>szyna przykrywa wiersze: treść ma margines po prawej</td><td>ikon 8 × 40 px = 320 px szerokości w wąskim oknie</td></tr>
+</table></div>
+<p class="mut" style="margin-top:14px">Rekomendacja: <b>2</b>, bo spełnia „więcej opcji jak w C” i nie zostawia szpary; <b>3</b>, jeśli ważniejsza jest szerokość mapy. Wybierz numer.</p></section>
+</div>
+<script>
+const I={play:'<svg class="i" viewBox="0 0 24 24"><path d="M8 5.5v13l11-6.5z" fill="currentColor" stroke="none"/></svg>',
+d3:'<svg class="i" viewBox="0 0 24 24"><path d="M12 3l8 4.5v9L12 21l-8-4.5v-9z"/><path d="M12 12l8-4.5M12 12L4 7.5M12 12v9"/></svg>',
+fit:'<svg class="i" viewBox="0 0 24 24"><path d="M4 9V4h5M15 4h5v5M20 15v5h-5M9 20H4v-5"/></svg>',
+set:'<svg class="i" viewBox="0 0 24 24"><path d="M4 7h10M18 7h2M4 17h2M10 17h10"/><circle cx="16" cy="7" r="2"/><circle cx="8" cy="17" r="2"/></svg>',
+eye:'<svg class="i" viewBox="0 0 24 24"><path d="M2 12s4-7 10-7 10 7 10 7-4 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/></svg>',
+car:'<svg class="i" viewBox="0 0 24 24"><path d="M5 16V11l2-4h10l2 4v5M3 16h18M7 19v-3M17 19v-3"/></svg>',
+lay:'<svg class="i" viewBox="0 0 24 24"><path d="M12 4l8 4-8 4-8-4z"/><path d="M4 12l8 4 8-4M4 16l8 4 8-4"/></svg>',
+find:'<svg class="i" viewBox="0 0 24 24"><circle cx="11" cy="11" r="6"/><path d="M20 20l-4.5-4.5"/></svg>',
+map:'<svg class="i" viewBox="0 0 24 24"><path d="M3 6l6-2 6 2 6-2v14l-6 2-6-2-6 2zM9 4v14M15 6v14"/></svg>'};
+function mapSvg(W,H){const L=[[.1,.6,.9,.3],[.2,.2,.7,.9],[.05,.35,.95,.55],[.45,.05,.55,.95],[.3,.8,.85,.15]].map(r=>`<path d="M${r[0]*W} ${r[1]*H}L${r[2]*W} ${r[3]*H}" stroke="#2c3340" stroke-width="3" fill="none"/>`).join('');
+const h=[[.45,.38,.62,.52],[.3,.55,.5,.5],[.5,.5,.72,.7]].map(r=>`<path d="M${r[0]*W} ${r[1]*H}L${r[2]*W} ${r[3]*H}" stroke="#1ae6ff" stroke-width="5" opacity=".75" fill="none" stroke-linecap="round"/>`).join('');
+return `<svg class="map" viewBox="0 0 ${W} ${H}" preserveAspectRatio="none"><rect width="${W}" height="${H}" fill="#121418"/><circle cx="${.5*W}" cy="${.5*H}" r="${.3*Math.min(W,H)}" fill="#161a21"/>${L}${h}</svg>`}
+const sw=(t,on)=>`<div class="sw"><span>${t}</span><i class="${on?'on':''}"></i></div>`;
+const grp=(t,o)=>`<div class="grp"><span>${t}</span><span>${o?'⌄':'›'}</span></div>`;
+const body=(many)=>`${grp('Widok',1)}<div class="seg"><span class="on">auta</span><span>tylko drogi</span><span>auta + drogi</span></div>${grp('Klasy',1)}<div class="chips"><span class="chip on">mieszkaniec</span><span class="chip on">przyjeżdżający</span><span class="chip on">wyjeżdżający</span><span class="chip on">tło lekkie</span></div>${grp('Warstwy',many)}${many?sw('Kolor dróg OSM',0)+sw('Modele 3D pojazdów',0)+sw('Błyski aktywności',1):''}${grp('Szukaj',0)}${grp('Podkłady',many)}${many?sw('OpenStreetMap',1)+sw('Ortofotomapa (GUGiK)',0):''}<div class="sub" style="margin-top:8px">© OpenStreetMap contributors · Spacja: start · ← →: ±1 min · F: śledź · Esc: wyczyść</div>`;
+const head=(mr)=>`<div style="margin-right:${mr}px"><h4>easy-matplayer <span class="sub">v0.1.0</span></h4><div class="sub">demo-kutno · English</div><div style="margin:6px 0;color:rgba(235,235,245,.6)">Kliknij auto albo drogę.</div></div>`;
+function mock(spec){const[v,st]=spec.split(':');const sq=st==='sq',W=sq?1100:1440,H=sq?1100:900,open=st!=='closed',pw=sq?320:360;
+let h=mapSvg(W,H);
+h+=`<div class="ab g leg" style="left:16px;top:16px"><div><b></b><span>0 / 20 / 50 km/h</span></div><div class="sc">5 km</div></div>`;
+let bo=0;const set=(on)=>`<div class="btn${on?' on':''}">${I.set}</div>`;
+if(v==='1'){const pwid=pw+16;
+ if(open){bo=pwid+16;h+=`<div class="ab gp panel" style="right:16px;top:16px;bottom:16px;width:${pwid+24}px;padding-right:16px">${head(56)}${body(1)}</div>`;}
+ h+=`<div class="ab g rail" style="right:${open?28:16}px;top:16px"><div class="btn">${I.d3}</div><div class="btn">${I.fit}</div>${set(open)}</div>`;
+ if(open)bo=pwid+40;}
+if(v==='2'){const pwid=pw+56;
+ if(open){bo=pwid+16;h+=`<div class="ab gp panel" style="right:16px;top:16px;bottom:16px;width:${pwid}px;padding-right:64px">${head(0)}${body(1)}</div>`;}
+ h+=`<div class="ab g rail" style="right:${open?24:16}px;top:${open?24:16}px;${open?'background:rgba(60,60,64,.8)':''}"><div class="btn">${I.d3}</div><div class="btn">${I.fit}</div><div class="btn">${I.eye}</div><div class="btn on">${I.car}</div><div class="btn">${I.lay}</div><div class="btn">${I.find}</div><div class="btn">${I.map}</div>${set(0)}</div>`;}
+if(v==='3'){const pwid=Math.max(pw,320);
+ h+=`<div class="ab g rail h" style="right:16px;top:16px;width:${pwid}px"><div class="btn">${I.d3}</div><div class="btn">${I.fit}</div><div class="btn">${I.eye}</div><div class="btn on">${I.car}</div><div class="btn">${I.lay}</div><div class="btn">${I.find}</div><div class="btn">${I.map}</div></div>`;
+ if(open){bo=pwid+16;h+=`<div class="ab gp panel" style="right:16px;top:68px;bottom:16px;width:${pwid}px">${head(0)}${body(1)}</div>`;}}
+const cw=Math.min(720,W-32-bo);
+h+=`<div class="ab g cap" style="left:${16+(W-32-bo-cw)/2}px;width:${cw}px;bottom:16px"><div><div class="clk">06:00</div><div class="sub">277 aut</div></div><div class="play">${I.play}</div><div class="scrub"><i style="width:26%"></i></div><div class="speed">1×</div><div class="sub" style="flex-basis:100%;display:flex;justify-content:space-between"><span>próbka 0,25 · © OpenStreetMap</span><span>Spacja: start · ← →: ±1 min · F · Esc</span></div></div>`;
+return[h,W,H]}
+document.querySelectorAll('.fw').forEach(el=>{const[h,W,H]=mock(el.dataset.m),s=parseFloat(el.dataset.s);el.style.width=W*s+'px';el.style.height=H*s+'px';el.innerHTML=`<div class="fr" style="width:${W}px;height:${H}px;transform:scale(${s})">${h}</div>`});
+</script>
+</body></html>
