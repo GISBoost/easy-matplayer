@@ -390,3 +390,8 @@ Wszystkie trzy części (A2a, A2b, A2c) przeszły: 96 testów i smoke w prawdziw
 ## Kształt błysku: start = rdzeń, koniec = pierścień (2026-10-31, decyzja właściciela)
 
 - Zastępuje wygląd z poprzedniej sekcji. Start aktywności: sam rdzeń, bez pierścienia (gaśnie). Koniec: sam pierścień rozchodzący się od środka, bez rdzenia. Oba w kolorze typu, bez rozjaśniania (stała `FLASH.endMix` usunięta), więc start od końca odróżnia kształt. Zmiana tylko w rysowaniu (`shell.html`), dane, eksport i `Engine.flashes` bez zmian.
+
+## Wdrożenie na Pages (2026-10-31, na polecenie właściciela)
+
+- Push `main` (`219827e..bf69ff7`) i `web_pages.yml` z tagiem `viz-v0.1.0` (run 41200533242, build 40 s, deploy 34 s, sukces).
+- Strona `https://gisboost.github.io/easy-matplayer/player/?run=demo-kutno`: błyski z `act_*` (`hasActs`), `flowFactor` 0,25, widoki auta / tylko drogi / auta + drogi (warstwy `cars` tylko w widokach z autami), natężenie koloruje 2 401 linków, `flashN`=32 o 06:18 przy 60×, bez błędów rysowania. Lokalna kopia tej samej strony (`web_build.py`) dała to samo, także `flash_off` (`tlo_*` wyłączone domyślnie).
