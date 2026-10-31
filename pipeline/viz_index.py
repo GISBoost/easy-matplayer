@@ -45,7 +45,7 @@ CONFIG_NAME = "output_config.xml"
 BUCKET_SEC = 60
 WIN0, WIN1 = 6 * 3600.0, 9 * 3600.0
 MOVEMENT = ("vehicle enters traffic", "entered link", "left link", "vehicle leaves traffic")
-FORMAT = 3
+FORMAT = 4
 # Początek lokalnego układu (m): środek bbox węzłów sieci, zaokrąglony do ORIGIN_SNAP_M.
 ORIGIN_SNAP_M = 1000.0
 FILE_BUDGET = 200 * 1024 * 1024
@@ -108,6 +108,21 @@ def field(line, name):
     return line[i + len(key):j]
 
 
+def read_qsim_param(run, name):
+    """Wartość param <name> z modułu qsim w output_config.xml (hermes ma własne flowCapacityFactor, więc nie pierwsze trafienie). Brak: None."""
+    path = run / CONFIG_NAME
+    if not path.exists():
+        return None
+    m = re.search(r'<module name="qsim"\s*>(.*?)</module>', path.read_text(encoding="utf-8"), re.S)
+    if not m:
+        return None
+    p = re.search(rf'name="{name}"\s+value="([^"]*)"', m.group(1))
+    try:
+        return float(p.group(1)) if p else None
+    except ValueError:
+        return None
+
+
 def read_sample_size(run):
     """Pierwsze name=\"sampleSize\", jak convergence.sample_size. Brak: None.
 
@@ -168,13 +183,26 @@ def network_origin(path):
     return (round((min(xs) + max(xs)) / 2 / snap) * snap, round((min(ys) + max(ys)) / 2 / snap) * snap)
 
 
+def parse_capperiod(text):
+    """capperiod sieci ("01:00:00") w sekundach; brak albo błąd: godzina, domyślna wartość MATSim."""
+    try:
+        h, m, s = (float(x) for x in text.split(":"))
+        return h * 3600 + m * 60 + s if h + m + s > 0 else 3600.0
+    except (AttributeError, ValueError):
+        return 3600.0
+
+
 def read_network(path, origin):
     """Węzły i linki. xy to metry względem origin, jeszcze w float64."""
     nodes = {}
-    ids, xy, length, freespeed, types = [], [], [], [], []
+    ids, xy, length, freespeed, types, capacity, lanes = [], [], [], [], [], [], []
+    period = 3600.0
     stream = zstandard.ZstdDecompressor().stream_reader(path.open("rb"))
-    for _, el in etree.iterparse(stream, tag=("node", "link"), load_dtd=False, no_network=True):
+    for _, el in etree.iterparse(stream, tag=("node", "link", "links"), load_dtd=False, no_network=True):
         a = el.attrib
+        if el.tag == "links":
+            period = parse_capperiod(a.get("capperiod"))
+            continue
         if el.tag == "node":
             nodes[a["id"]] = (float(a["x"]) - origin[0], float(a["y"]) - origin[1])
         else:
@@ -184,6 +212,8 @@ def read_network(path, origin):
             xy.append((x0, y0, x1, y1))
             length.append(float(a["length"]))
             freespeed.append(float(a["freespeed"]))
+            capacity.append(float(a.get("capacity", "nan")))
+            lanes.append(float(a.get("permlanes", "nan")))
             types.append(next((x.text or "" for x in el.iter("attribute") if x.get("name") == "type"), ""))
         el.clear()
     names = sorted(set(types))
@@ -195,6 +225,8 @@ def read_network(path, origin):
         "xy": np.asarray(xy, dtype=np.float64).reshape(-1, 4),
         "length": np.asarray(length, dtype=np.float64),
         "freespeed": np.asarray(freespeed, dtype=np.float64),
+        "capacity": np.asarray(capacity, dtype=np.float64) * 3600.0 / period,  # pojazdy na godzinę (capacity jest na capperiod sieci)
+        "lanes": np.asarray(lanes, dtype=np.float64),
         "type": np.asarray([code[name] for name in types], dtype=np.uint8),
         "type_legend": {str(i): name for i, name in enumerate(names)},
         "index": {link_id: i for i, link_id in enumerate(ids)},
@@ -409,6 +441,8 @@ def pack(built, run_name, by_person):
         "link_length": net["length"].astype(np.float32),
         "link_freespeed": net["freespeed"].astype(np.float32),
         "link_type": net["type"],
+        "link_capacity": net["capacity"].astype(np.float32),
+        "link_lanes": net["lanes"].astype(np.float32),
         "ids": np.asarray(id_list, dtype=str),
         "track_id": np.asarray(vids, dtype=str),
         "track_person_i": np.asarray([id_of[p] for p in persons], dtype=np.int32),
@@ -612,6 +646,7 @@ def write_meta(path, run, ev_sha, net_sha, script_sha, plans_sha, origin, arrays
         "crs": crs_info(run)[0],
         "crs_declared": crs_info(run)[1],
         "sample_size": read_sample_size(run),
+        "flow_capacity_factor": read_qsim_param(run, "flowCapacityFactor"),
         "t_min": info["t_min"],
         "t_max": info["t_max"],
         "n_tracks": int(len(arrays["track_id"])),

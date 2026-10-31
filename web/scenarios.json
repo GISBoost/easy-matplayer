@@ -6,6 +6,7 @@
       "pl": "Jedna doba ruchu samochodów w Kutnie (symulacja MATSim): 24 tys. przejazdów, drogi z OSM, budynki 3D.",
       "en": "One day of car traffic in Kutno (MATSim simulation): 24k trips, OSM roads, 3D buildings."
     },
+    "flash_off": ["tlo_start", "tlo_end"],
     "license": "CC BY 4.0 (wyniki, plany GUS), ODbL 1.0 (OpenStreetMap)"
   }
 ]

@@ -205,13 +205,13 @@ def test_site_files(player, tmp_path):
     assert boot["nLinks"] == 6 and boot["run"] == "mini" and boot["error"] is None
     assert boot["basemap"] is None or str(boot["basemap"]["url"]).startswith(pl.CARTO)
     assert (site_dir / "link_ll.bin").stat().st_size == 6 * 4 * 8
-    assert (site_dir / "link_type.bin").stat().st_size == 6
+    assert (site_dir / "link_type.bin").stat().st_size == 6 and (site_dir / "link_attr.bin").stat().st_size == 6 * 16
     assert (site_dir / "vendor" / "maplibre" / "maplibre-gl.mjs").is_file() and (site_dir / "vendor" / "deck.min.js").is_file() and (site_dir / "engine.js").is_file()
     assert not (site_dir / "curve_off.bin").exists(), "mini-run nie ma łamanych"
     name, query = boot["data"].split("?v=")
     manifest = json.loads((site_dir / name).read_text(encoding="utf-8"))
     assert query == manifest["source_key"][:12] != "", "adres z kluczem eksportu omija stary cache przeglądarki"
-    assert manifest["format"] == 1 and (site_dir / "data" / manifest["chunks"][0]["file"]).is_file()
+    assert manifest["format"] == 2 and (site_dir / "data" / manifest["chunks"][0]["file"]).is_file()
     # Aplikacja nie dostarcza kafelków. Adres OSM jest w jednym miejscu (WEB_BASE), używanym tylko w trybie web (?run=).
     assert index.read_text(encoding="utf-8").count("tile.openstreetmap.org") == 1 and boot["basemap"] is None
 

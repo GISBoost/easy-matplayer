@@ -7,8 +7,9 @@
 const SPEED_CAP = 30;       // m/s, jak w pipeline/viz_engine.py
 const DT_FLOOR = 1e-3;
 const M_PER_DEG = 111194.93; // sfera R = 6371008,8 m; tylko do prędkości zapasowej i długości śladu
-const KEEP = 6;             // ile porcji zostaje w pamięci po obu stronach bieżącej
-const TYPES = {"<i4": Int32Array, "<f4": Float32Array, "<f8": Float64Array, "u1": Uint8Array};
+const KEEP = 6;
+const MAX_FLASH = 5000;     // najnowsze błyski aktywności w jednej klatce; reszta jest pomijana (Engine.flashes zwraca truncated)             // ile porcji zostaje w pamięci po obu stronach bieżącej
+const TYPES = {"<i4": Int32Array, "<f4": Float32Array, "<f8": Float64Array, "<u2": Uint16Array, "u1": Uint8Array};
 
 function readColumns(buf, columns, counts, align) {
   const out = {};
@@ -24,7 +25,7 @@ function readColumns(buf, columns, counts, align) {
 }
 
 function counts(spec, chunk) {
-  const v = {"n": chunk.n_tracks, "n+1": chunk.n_tracks + 1, "k": chunk.n_knots};
+  const v = {"n": chunk.n_tracks, "n+1": chunk.n_tracks + 1, "k": chunk.n_knots, "a": chunk.n_acts || 0};
   return spec.map((s) => v[s]);
 }
 
@@ -42,6 +43,11 @@ class Engine {
     this.cosLat = Math.cos(this.lat0 * Math.PI / 180);
     this.classKeys = manifest.classes.map((c) => c.key);
     this.classHeavy = Uint8Array.from(manifest.classes.map((c) => (c.heavy ? 1 : 0)));
+    this.actTypes = manifest.act_types || [];
+    this.actStarts = manifest.act_start_counts || [];     // ile startów ma każdy typ (lista typów w oknie pokazuje te, które błyskają)
+    this.hasActs = manifest.chunk_columns.some((c) => c[0] === "act_t");
+    this.back = 1;          // ile porcji przed bieżącą trzymać w pamięci (błyski i statystyki linków patrzą wstecz, okno i życie błysku < porcja)
+    this.fl = null;
     this.chunks = new Map();
     this.pending = new Map();
     this.first = manifest.chunks[0].t0;
@@ -59,7 +65,7 @@ class Engine {
 
   static async load(base, get, curves, linkLL, manifestName) {
     const manifest = await get(base + (manifestName || "manifest.json"), "json");
-    if (manifest.format !== 1) throw new Error("nieznany format eksportu " + manifest.format);
+    if (manifest.format !== 1 && manifest.format !== 2) throw new Error("nieznany format eksportu " + manifest.format);
     // ?v=klucz: serwer pywebview nie ustawia Cache-Control, a pliki danych zmieniają się bez zmiany adresu
     const q = "?v=" + manifest.source_key.slice(0, 12);
     const persons = await get(base + manifest.persons + q, "json");
@@ -93,7 +99,7 @@ class Engine {
   // Zamawia porcje wokół t (i opcjonalnie od porcji `since`, do śladu) i zwalnia dalekie.
   want(t, since) {
     const ci = this.chunkIndex(t);
-    const lo = since == null ? ci : Math.min(ci, this.chunkIndex(since));
+    const lo = Math.max(0, since == null ? ci - this.back : Math.min(ci - this.back, this.chunkIndex(since)));
     const jobs = [];
     for (let i = lo; i <= ci + 1; i++) jobs.push(this.need(i));
     for (const i of [...this.chunks.keys()]) if (i < lo - KEEP || i > ci + KEEP) this.chunks.delete(i);
@@ -153,6 +159,95 @@ class Engine {
     }
     o.n = n;
     return o;
+  }
+
+  // ---- błyski aktywności ----
+  // Starty aktywności z (t - life, t] z załadowanych porcji, najnowsze najpierw (do MAX_FLASH).
+  // typeOn: Uint8Array(len act_types) z 1 dla widocznych typów. Zwraca bufory do następnej klatki:
+  // {n, truncated, lon, lat, age (s symulacji od startu), type}.
+  flashes(t, life, typeOn) {
+    if (!this.fl) {
+      this.fl = {n: 0, truncated: false, lon: new Float64Array(MAX_FLASH), lat: new Float64Array(MAX_FLASH),
+                 age: new Float32Array(MAX_FLASH), type: new Uint16Array(MAX_FLASH)};
+    }
+    const o = this.fl;
+    o.n = 0;
+    o.truncated = false;
+    if (!this.hasActs) return o;
+    const hiT = Math.fround(t), loT = Math.fround(t - life);
+    const ci = this.chunkIndex(t);
+    for (let c = ci; c >= Math.max(0, ci - 1) && !o.truncated; c--) {
+      const ch = this.chunks.get(c);
+      if (!ch || !ch.act_t.length) continue;
+      const at = ch.act_t;
+      let a = 0, b = at.length;                       // pierwszy indeks z act_t > t
+      while (a < b) { const mid = (a + b) >> 1; if (at[mid] <= hiT) a = mid + 1; else b = mid; }
+      for (let i = a - 1; i >= 0 && at[i] > loT; i--) {
+        if (!ch.act_kind[i] || !typeOn[ch.act_type[i]]) continue;
+        if (o.n >= MAX_FLASH) { o.truncated = true; break; }
+        o.lon[o.n] = this.lon0 + ch.act_dlon[i];
+        o.lat[o.n] = this.lat0 + ch.act_dlat[i];
+        o.age[o.n] = t - at[i];
+        o.type[o.n] = ch.act_type[i];
+        o.n++;
+      }
+    }
+    return o;
+  }
+
+  // ---- obciążenie linków ----
+  // Statystyki z węzłów tras w oknie (t - W, t]: wyjazd z linku to węzeł z knot_len > 0 po węźle wjazdu (knot_len = 0) tego samego linku; liczy się czasem wyjazdu
+  // i tylko w porcji, w której ten czas leży w [t0, t1) (porcje powtarzają węzły graniczne). out.n: wszystkie wyjazdy (natężenie).
+  // Pełny przejazd (poprzedni węzeł leży w początku linku, więc nie jest to wjazd w środek linku) daje out.nf, out.len, out.tt (prędkość).
+  linkStats(t, W, on) {
+    const nL = this.linkLL ? this.linkLL.length / 4 : 0;
+    if (!this.ls || this.ls.n.length !== nL) {
+      this.ls = {n: new Uint32Array(nL), nf: new Uint32Array(nL), len: new Float64Array(nL), tt: new Float64Array(nL)};
+    }
+    const o = this.ls, tr = this.tr, ll = this.linkLL;
+    o.n.fill(0); o.nf.fill(0); o.len.fill(0); o.tt.fill(0);
+    const hi = Math.fround(t), lo = Math.fround(t - W), ci = this.chunkIndex(t);
+    const tol = 1.5 / M_PER_DEG, tolX = tol / this.cosLat;
+    for (let c = ci; c >= Math.max(0, ci - 1); c--) {
+      const ch = this.chunks.get(c);
+      if (!ch) continue;
+      const c0 = this.m.chunks[c].t0, c1 = this.m.chunks[c].t1;
+      const kt = ch.knot_t, kx = ch.knot_dlon, ky = ch.knot_dlat, kl = ch.knot_len, ki = ch.knot_link, off = ch.knot_off;
+      for (let j = 0; j < ch.track.length; j++) {
+        const id = ch.track[j];
+        if (!on[tr.cls[id]] || tr.t1[id] < lo || tr.t0[id] > hi) continue;
+        for (let q = off[j] + 1; q < off[j + 1]; q++) {
+          const te = kt[q];
+          if (te <= lo || te > hi || te < c0 || te >= c1 || kl[q] <= 0 || kl[q - 1] !== 0) continue;   // wyjazd po wjeździe (nie po innym wyjeździe)
+          const l = ki[q];
+          if (l < 0 || l !== ki[q - 1]) continue;
+          o.n[l]++;
+          if (Math.abs(this.lon0 + kx[q - 1] - ll[4 * l]) < tolX && Math.abs(this.lat0 + ky[q - 1] - ll[4 * l + 1]) < tol) {
+            o.nf[l]++;
+            o.len[l] += kl[q];
+            o.tt[l] += Math.max(te - kt[q - 1], 0.1);
+          }
+        }
+      }
+    }
+    return o;
+  }
+
+  // Wskaźnik na link do koloru. attr: Float32Array po 4 na link [długość, swobodna m/s, przepustowość poj/h, pasy].
+  // "speed": średnia przestrzenna prędkość / swobodna; "flow": natężenie / (przepustowość × flowFactor). NaN: brak ruchu w oknie
+  // (albo brak przepustowości), nie „swobodnie”. Zwraca out (Float32Array na link).
+  loadValues(ls, attr, mode, W, flowFactor, out) {
+    for (let l = 0; l < out.length; l++) {
+      let v = NaN;
+      if (mode === "speed") {
+        if (ls.nf[l] > 0 && attr[4 * l + 1] > 0) v = ls.len[l] / ls.tt[l] / attr[4 * l + 1];
+      } else {
+        const cap = attr[4 * l + 2] * flowFactor;
+        if (ls.n[l] > 0 && cap > 0) v = (ls.n[l] * 3600 / W) / cap;
+      }
+      out[l] = v;
+    }
+    return out;
   }
 
   // ---- łamane OSM (tylko rysunek): pozycja z cięciwy przenoszona na łamaną tym samym ułamkiem ----

@@ -54,6 +54,29 @@ The base map loads tiles from public WMS/WMTS services (addresses in the map pan
 - Demo: simulation results CC BY 4.0, plans derived from GUS data (CC BY 4.0), network and buildings © OpenStreetMap contributors (ODbL 1.0). Details: `LICENSE-DATA.md` in the demo zip. The demo contains no commercial data.
 - Car models: Quaternius, CC0.
 
+## Activity flashes
+
+When a person starts an activity (an `actstart` event), a short flash appears at that place on the map: a ring and a core in the colour of the activity type. Use the "flashes: activity start" toggle in the panel; below it is a list of types with checkboxes (for example to switch off the technical `tlo_end` of background traffic). Colours: `home` orange, `work` blue, `edu`/`school` purple, `shop` green, `leis…` pink, other types from a palette.
+
+- The place and time of a flash are the `x`, `y` and time of the `actstart` event. The car disappears earlier (end of the trip) and MATSim adds the walk to the activity as a teleported `walk` leg, which the program does not draw (the result has no route for it). That gap is real.
+- Flashes show activity starts of everybody in the events, also people travelling by other modes who have no vehicle on the map. The class filter does not apply to them.
+- A flash lasts about 1.5 s on screen at any playback speed (at least 3 s of simulation time at 1×). Dragging the slider works; when paused the flashes stay in their phase. At most the 5,000 newest flashes are drawn per frame.
+
+## Road colour: load
+
+Panel "Road color": `road type` (default), `speed` or `flow`, and a window of 1, 5 (default) or 15 simulated minutes. Values come from the traffic events in the window `(t − window, t]`, refreshed 4 times a second.
+
+| Mode | What it shows | Scale |
+|---|---|---|
+| speed | mean speed on the link (sum of lengths / sum of travel times) divided by the link's free speed | red ≤ 30%, yellow 60%, green ≥ 90% |
+| flow | link exits per hour divided by `capacity × flowCapacityFactor` | blue 0, orange 50%, red ≥ 100% |
+
+- A link with no exit in the window is grey: no traffic is not "free flow".
+- Flow is in sample scale. The network capacity is full, the simulation scales it by `flowCapacityFactor` from `output_config.xml` (`qsim` module), so we divide by that product and do not extrapolate to the full population. Without `flowCapacityFactor` in the config the "flow" mode is disabled with a message.
+- Speed uses only complete link traversals (starting at the start of the link). Entering mid-link (start and end of a trip) counts towards flow, not speed. All vehicles count as one vehicle (transit vehicles have a larger PCE in MATSim).
+- Statistics from a 25% sample are noisy on single links (a few cars in the window): a longer window smooths them. In load mode cars are coloured by class (back in "road type" the previous choice returns) so they do not blend into the road.
+- The selected-link panel has an extra line with the window values, e.g. "last 5 min: 13 km/h (free 42 km/h), 156 veh/h (104% of capacity, sample scale)".
+
 ## Known limitations
 
 - Windows only, no code signature and no installer.

@@ -18,7 +18,7 @@ from pathlib import Path
 import numpy as np
 from pyproj import Transformer
 
-FORMAT = 1
+FORMAT = 2
 CHUNK_SEC = 900
 ALIGN = 8
 KEY_STEP = 1 << 20  # większe niż czas w s (t_max < 1 048 576), więc klucz track*KEY_STEP + t jest rosnący
@@ -28,11 +28,12 @@ TRACK_COLUMNS = [("person_i", "<i4"), ("cls", "u1"), ("mode", "u1"), ("t0", "<f4
 CHUNK_COLUMNS = [
     ("track", "<i4"), ("g0", "<i4"), ("knot_off", "<i4"), ("knot_t", "<f4"), ("knot_dlon", "<f4"),
     ("knot_dlat", "<f4"), ("knot_len", "<f4"), ("knot_link", "<i4"),
+    ("act_t", "<f4"), ("act_dlon", "<f4"), ("act_dlat", "<f4"), ("act_type", "<u2"), ("act_kind", "u1"), ("act_person_i", "<i4"),
 ]
 
 
-# liczba elementów kolumn porcji: n = przejazdy porcji, k = jej węzły
-CHUNK_COUNTS = ["n", "n", "n+1", "k", "k", "k", "k", "k"]
+# liczba elementów kolumn porcji: n = przejazdy porcji, k = jej węzły, a = jej zdarzenia aktywności (actstart/actend, czas w [t0, t1))
+CHUNK_COUNTS = ["n", "n", "n+1", "k", "k", "k", "k", "k", "a", "a", "a", "a", "a", "a"]
 
 
 class ExportFailed(Exception):
@@ -107,6 +108,11 @@ def build(run_dir, out=None, chunk_sec=CHUNK_SEC):
     lon, lat = to_ll.transform(a["knot_x"].astype(np.float64) + ox, a["knot_y"].astype(np.float64) + oy)
     dlon = (np.asarray(lon) - lon0).astype(np.float32)
     dlat = (np.asarray(lat) - lat0).astype(np.float32)
+    alon, alat = to_ll.transform(a["act_x"].astype(np.float64) + ox, a["act_y"].astype(np.float64) + oy)
+    act_dlon = (np.asarray(alon) - lon0).astype(np.float32)
+    act_dlat = (np.asarray(alat) - lat0).astype(np.float32)
+    act_order = np.argsort(a["act_t"], kind="stable")  # w porcji zdarzenia rosną w czasie (klient szuka binarnie)
+    act_sorted_t = a["act_t"][act_order]
 
     out.mkdir(parents=True, exist_ok=True)
     for old_file in out.glob("chunk_*.bin"):
@@ -139,10 +145,15 @@ def build(run_dir, out=None, chunk_sec=CHUNK_SEC):
             "track": sel, "g0": first_k, "knot_off": off, "knot_t": a["knot_t"][idx], "knot_dlon": dlon[idx],
             "knot_dlat": dlat[idx], "knot_len": a["knot_len"][idx], "knot_link": a["knot_link"][idx],
         }
+        ai = act_order[np.searchsorted(act_sorted_t, np.float32(c0), side="left"):np.searchsorted(act_sorted_t, np.float32(c1), side="left")]
+        data.update({
+            "act_t": a["act_t"][ai], "act_dlon": act_dlon[ai], "act_dlat": act_dlat[ai], "act_type": a["act_type"][ai],
+            "act_kind": a["act_kind"][ai], "act_person_i": a["act_id"][ai],
+        })
         name = f"chunk_{c - first:03d}.bin"
         sizes = write_columns(out / name, CHUNK_COLUMNS, data)
         chunks.append({
-            "file": name, "t0": c0, "t1": c1, "n_tracks": int(len(sel)), "n_knots": int(len(idx)),
+            "file": name, "t0": c0, "t1": c1, "n_tracks": int(len(sel)), "n_knots": int(len(idx)), "n_acts": int(len(ai)),
             "bytes": int(sum(sizes) + sum(_pad(s) for s in sizes)),
         })
         total_knots += int(len(idx))
@@ -161,6 +172,9 @@ def build(run_dir, out=None, chunk_sec=CHUNK_SEC):
         "n_tracks": n_tracks,
         "n_persons": int(len(a["ids"])),
         "n_knots_unique": int(len(a["knot_t"])),
+        "n_acts": int(len(a["act_t"])),
+        "act_types": [meta["act_type_legend"][str(i)] for i in range(len(meta["act_type_legend"]))],
+        "act_start_counts": np.bincount(a["act_type"][a["act_kind"] == 1], minlength=len(meta["act_type_legend"])).astype(int).tolist(),
         "n_knots_in_chunks": total_knots,
         "tracks": {"file": "tracks.bin", "columns": TRACK_COLUMNS},
         "persons": "persons.json",
@@ -175,7 +189,7 @@ def build(run_dir, out=None, chunk_sec=CHUNK_SEC):
 
 def column_counts(chunk):
     """Liczby elementów kolumn porcji w kolejności CHUNK_COLUMNS."""
-    value = {"n": chunk["n_tracks"], "n+1": chunk["n_tracks"] + 1, "k": chunk["n_knots"]}
+    value = {"n": chunk["n_tracks"], "n+1": chunk["n_tracks"] + 1, "k": chunk["n_knots"], "a": chunk["n_acts"]}
     return [value[spec] for spec in CHUNK_COUNTS]
 
 

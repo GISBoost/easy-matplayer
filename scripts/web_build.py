@@ -20,7 +20,7 @@ def dir_mb(path):
     return round(sum(f.stat().st_size for f in Path(path).rglob("*") if f.is_file()) / 1e6)
 
 
-def build_scenario(run, dest, work):
+def build_scenario(run, dest, work, flash_off=()):
     """boot.<lang>.json dla obu języków (nazwy klas i komunikaty powstają przy otwarciu), dane raz."""
     from viz_player import i18n
     from viz_player.player import Player
@@ -35,7 +35,9 @@ def build_scenario(run, dest, work):
         tmp = Path(work) / lang
         player.write_site(tmp)
         dest.mkdir(parents=True, exist_ok=True)
-        shutil.move(tmp / "boot.json", dest / f"boot.{lang}.json")
+        boot = json.loads((tmp / "boot.json").read_text(encoding="utf-8"))
+        boot["flashOff"] = list(flash_off)  # typy aktywności bez błysku na starcie (scenariusz strony; w aplikacji wszystkie włączone)
+        (dest / f"boot.{lang}.json").write_text(json.dumps(boot, ensure_ascii=False, separators=(",", ":")), encoding="utf-8")
         if lang == "en":
             for f in tmp.glob("*.bin"):
                 shutil.move(f, dest / f.name)
@@ -65,7 +67,7 @@ def main(runs, out):
             if not run.is_dir():
                 print(f"pomijam {s['id']}: brak folderu {run}")
                 continue
-            build_scenario(run, out / "s" / s["id"], work)
+            build_scenario(run, out / "s" / s["id"], work, s.get("flash_off", ()))
             s["size_mb"] = dir_mb(out / "s" / s["id"])
             built.append(s)
             print(f"{s['id']}: {s['size_mb']} MB")

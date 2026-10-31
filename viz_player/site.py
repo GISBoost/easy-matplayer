@@ -10,7 +10,7 @@ from pathlib import Path
 
 HERE = Path(__file__).resolve().parent
 ARRAY_TYPES = {
-    "link_ll": "<f8", "link_type": "u1",
+    "link_ll": "<f8", "link_type": "u1", "link_attr": "<f4",
     "curve_off": "<i4", "curve_lon": "<f8", "curve_lat": "<f8",
 }
 

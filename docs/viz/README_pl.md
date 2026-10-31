@@ -52,6 +52,29 @@ Do działania mapa podkładowa pobiera kafelki z publicznych usług WMS/WMTS (ad
 - Demo: wyniki symulacji CC BY 4.0, plany pochodne danych GUS (CC BY 4.0), sieć i budynki © współtwórcy OpenStreetMap (ODbL 1.0). Szczegóły: `LICENSE-DATA.md` w zipie demo. W demo nie ma danych komercyjnych.
 - Modele samochodów: Quaternius, CC0.
 
+## Błyski aktywności
+
+Gdy osoba zaczyna aktywność (event `actstart`), w tym miejscu mapy pojawia się krótki błysk: pierścień i rdzeń w kolorze typu aktywności. Przełącznik „błyski: start aktywności” w panelu, pod nim lista typów z checkboxami (np. żeby wyłączyć techniczne `tlo_end` ruchu tła). Kolory: `home` pomarańczowy, `work` niebieski, `edu`/`school` fioletowy, `shop` zielony, `leis…` różowy, inne typy z palety.
+
+- Miejsce i czas błysku to współrzędne `x`, `y` i czas z eventu `actstart`. Auto znika wcześniej (koniec jazdy), a MATSim dolicza dojście pieszo jako teleportowaną nogę `walk`, której program nie rysuje (nie ma trasy w wyniku). Ten odstęp jest prawdziwy.
+- Błyski pokazują starty aktywności wszystkich osób z eventów, także tych, które jadą innym trybem niż auto i nie mają pojazdu na mapie. Filtr klas ich nie dotyczy.
+- Błysk trwa ok. 1,5 s na ekranie bez względu na mnożnik odtwarzania (przy 1× co najmniej 3 s symulacji). Przewijanie suwakiem działa, w pauzie błyski stoją w swojej fazie. W jednej klatce rysowanych jest najwyżej 5 000 najnowszych błysków.
+
+## Kolor dróg: obciążenie
+
+Panel „Kolor dróg”: `typ drogi` (domyślnie), `prędkość` albo `natężenie`, oraz okno 1, 5 (domyślnie) lub 15 minut symulacji. Wartości liczone są z eventów ruchu w oknie `(t − okno, t]`, odświeżane 4 razy na sekundę.
+
+| Tryb | Co pokazuje | Skala |
+|---|---|---|
+| prędkość | średnia prędkość na linku (suma długości / suma czasów przejazdu) podzielona przez prędkość swobodną linku | czerwony ≤ 30%, żółty 60%, zielony ≥ 90% |
+| natężenie | liczba wyjazdów z linku na godzinę podzielona przez `capacity × flowCapacityFactor` | niebieski 0, pomarańczowy 50%, czerwony ≥ 100% |
+
+- Link bez wyjazdu w oknie jest szary: brak ruchu to nie „swobodnie”.
+- Natężenie jest w skali próbki. Przepustowość sieci jest pełna, symulacja skaluje ją przez `flowCapacityFactor` z `output_config.xml` (moduł `qsim`), więc dzielimy przez ten iloczyn i nie przeliczamy do pełnej populacji. Bez `flowCapacityFactor` w configu tryb „natężenie” jest wyłączony z komunikatem.
+- Prędkość liczą tylko pełne przejazdy linku (początek w początku linku). Wjazd w środek linku (początek i koniec trasy) liczy się do natężenia, nie do prędkości. Wszystkie pojazdy liczone jako jeden pojazd (pojazdy PT mają w MATSim większy współczynnik PCE).
+- Statystyki z próbki 25% są szumne na pojedynczych linkach (kilka aut w oknie): dłuższe okno wygładza. W trybie obciążenia auta są kolorowane klasą (po powrocie do „typ drogi” wraca poprzedni wybór), żeby nie zlewały się z drogą.
+- Panel zaznaczonego linku ma dodatkowy wiersz z wartościami z okna, np. „ostatnie 5 min: 13 km/h (swobodna 42 km/h), 156 poj/h (104% przepustowości, w skali próbki)”.
+
 ## Znane ograniczenia
 
 - Tylko Windows, bez podpisu kodu i instalatora.

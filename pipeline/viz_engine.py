@@ -265,6 +265,44 @@ def link_now(frame, link):
     return {"n": n, "speed_mean": float(np.mean(sel)), "speed_median": float(np.median(sel))}
 
 
+def link_window_stats(index, t, window, classes_on=None):
+    """Statystyki linków w oknie (t - window, t], wzorzec dla Engine.linkStats w engine.js (z tablic indeksu, nie z porcji).
+
+    Wyjazd z linku to węzeł z knot_len > 0 po węźle wjazdu (knot_len = 0) tego samego linku, liczony czasem wyjazdu: n (natężenie).
+    Pełny przejazd (poprzedni węzeł w początku linku, tolerancja 1,5 m) daje nf, len, tt (prędkość).
+    """
+    n_links = len(index.link_xy)
+    kt, kl, kli = index.knot_t, index.knot_len, index.knot_link
+    out = {"n": np.zeros(n_links, np.int64), "nf": np.zeros(n_links, np.int64), "len": np.zeros(n_links), "tt": np.zeros(n_links)}
+    if len(kt) < 2:
+        return out
+    first = np.zeros(len(kt), dtype=bool)
+    first[index.knot_off[:-1]] = True
+    q = np.flatnonzero(~first)
+    q = q[(kl[q] > 0) & (kl[q - 1] == 0) & (kli[q] == kli[q - 1]) & (kli[q] >= 0) & (kt[q] > np.float32(t - window)) & (kt[q] <= np.float32(t))]
+    allow = _allow(index, classes_on)
+    if allow is not None:
+        track_of = np.repeat(np.arange(len(index.track_t0)), np.diff(index.knot_off))
+        q = q[allow[index.track_class[track_of[q]]]]
+    link = kli[q].astype(np.int64)
+    out["n"] = np.bincount(link, minlength=n_links)
+    xy = index.link_xy.astype(np.float64)
+    near = (np.abs(index.knot_x[q - 1] - xy[link, 0]) < 1.5) & (np.abs(index.knot_y[q - 1] - xy[link, 1]) < 1.5)
+    full, link = q[near], link[near]
+    out["nf"] = np.bincount(link, minlength=n_links)
+    out["len"] = np.bincount(link, weights=kl[full].astype(np.float64), minlength=n_links)
+    out["tt"] = np.bincount(link, weights=np.maximum(kt[full].astype(np.float64) - kt[full - 1], 0.1), minlength=n_links)
+    return out
+
+
+def flash_window(index, t, life, types_on=None):
+    """Starty aktywności z (t - life, t]: indeksy zdarzeń (do act_*), wzorzec dla Engine.flashes. types_on: kody act_type albo None."""
+    pick = (index.act_kind == 1) & (index.act_t > np.float32(t - life)) & (index.act_t <= np.float32(t))
+    if types_on is not None:
+        pick &= np.isin(index.act_type, list(types_on))
+    return np.flatnonzero(pick)
+
+
 def lookup(index, query):
     """Dokładne id pierwsze, potem prefiks. Najwyżej 20 id, każde ze swoimi przejazdami."""
     query = str(query)

@@ -32,7 +32,7 @@ def test_layout(site):
                  "player/vendor/deck.min.js", "player/vendor/maplibre/maplibre-gl.mjs"):
         assert (site / name).is_file(), name
     s = site / "s" / "demo-kutno"
-    for name in ("boot.en.json", "boot.pl.json", "link_ll.bin", "link_type.bin", "data/manifest.json", "data/persons.json"):
+    for name in ("boot.en.json", "boot.pl.json", "link_ll.bin", "link_type.bin", "link_attr.bin", "data/manifest.json", "data/persons.json"):
         assert (s / name).is_file(), name
     assert not (s / "boot.json").exists()
     assert list((s / "data").glob("chunk_*.bin"))
@@ -49,6 +49,7 @@ def test_both_languages(site):
     pl = json.loads((site / "s" / "demo-kutno" / "boot.pl.json").read_text(encoding="utf-8"))
     assert en["lang"] == "en" and pl["lang"] == "pl"
     assert en["strings"] and not pl["strings"]
+    assert en["flashOff"] == pl["flashOff"] == ["tlo_start", "tlo_end"] and en["flowFactor"] == 0.25
     assert en["data"] == pl["data"] and en["nLinks"] == pl["nLinks"]
     assert [c["key"] for c in en["classes"]] == [c["key"] for c in pl["classes"]]
 

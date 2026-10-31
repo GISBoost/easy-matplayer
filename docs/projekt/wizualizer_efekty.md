@@ -137,3 +137,26 @@ Proponowane wartości domyślne, na których zacznę, jeśli nie powiesz inaczej
 - Gęstość błysków przy 300× może zlać się w „mgłę”: skala życia i promień są stałymi do strojenia po obejrzeniu na prawdziwym runie, nie do zgadywania.
 - Statystyki z 25% próbki są szumne na pojedynczych linkach (kilka aut w oknie): legenda i README mówią to wprost; okno 15 min jako remedium.
 - B wprowadza dwa kodowania koloru na mapie (auta i drogi): ocena wzrokowa przez właściciela.
+
+## Wykonanie (2026-10-31)
+
+Decyzje właściciela: D1 tylko start aktywności, D2 `tlo_*` z przełącznikiem (lista typów z checkboxami; strona demo wyłącza `tlo_*` przez `flash_off`), D3 kolor wg typu, D4 prędkość i natężenie, D5 najpierw A, potem B.
+
+- [x] **F0** spike: addytywne mieszanie (`parameters` z `blendColorSrcFactor: "src-alpha"`, `blendColorDstFactor: "one"`) przyjęte przez deck.gl 9.4 w nieprzeplatanym `MapboxOverlay`, bez błędu; zrzut z pierścieniami nad drogami.
+- [x] **F1** eksport format 2 (`viz_export.py`), `Uint16Array` dla `act_type` w `readColumns`. Demo: 48 608 zdarzeń, starty `home` 3 739, `tlo_end` 16 826, `work` 3 739, eksport porcji 70,8 MB (z 70 MB).
+- [x] **F2** `Engine.flashes` + wzorzec `viz_engine.flash_window`.
+- [x] **F3** UI i rysunek (przełącznik, lista typów, dwie warstwy), `--smoke`.
+- [x] **F4** dokumentacja.
+- [x] **L1** `viz_index` (FORMAT 4): `capacity` (poj/h z `capperiod`), `permlanes`, `flowCapacityFactor` z modułu `qsim`; `link_attr.bin`, `flowFactor` w `boot`.
+- [x] **L2** `Engine.linkStats`, `Engine.loadValues` + wzorzec `viz_engine.link_window_stats`.
+- [x] **L3** tryby koloru, okno, legenda, auta w kolorze klasy w trybie obciążenia.
+- [x] **L4** wiersz w panelu zaznaczonego linku (aplikacja i web).
+- [x] **L0** koszt: dla Kutna (10 383 linków) odświeżenie kolorów co 250 ms nie zmienia płynności (w pomiarze w przeglądarce 100 klatek/s w trybach typ, prędkość i natężenie; `linkStats` 0,4 ms). **Nie zmierzone na Wiedniu (375 tys. linków)**; jeśli akcesor `getColor` okaże się za wolny, zostają dane binarne `PathLayer`.
+
+Odstępstwa od planu:
+
+- Wyjazd z linku liczy się tylko po węźle wjazdu (`knot_len = 0`), nie po dowolnym węźle tego samego linku. Powód: fixtura (i potencjalnie dziwny run) dubluje `left link` i `leaves traffic` na ostatnim linku, a podwójne wyjście zawyżałoby natężenie.
+- `Engine.back = 1` jest domyślne (zawsze jedna porcja wstecz), bo trzeba jej i błyskom, i statystykom linków; koszt to jedna dodatkowa porcja na starcie.
+- Wiersz okna w panelu linku dokleja klient (JS), nie `Player.describe` w Pythonie, więc ten sam tekst jest w aplikacji i w web.
+- Wskaźnik okna nie jest zapisywany po odświeżeniu strony (wybór trybu i okna to stan sesji).
+- Skala natężenia zaczyna się od niebieskiego (`rgb(86,150,235)`), nie od jasnego: jasny ginął na podkładzie OSM.

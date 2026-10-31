@@ -24,6 +24,8 @@ from viz_player.i18n import t
 from viz_player.paths import DATA, RES as ROOT, RUNS
 from viz_player.player import Player, clock, note, pick_ident, save_pbf, save_state, saved_pbf, saved_run, scaled
 
+import viz_engine  # po viz_player.player: ten moduł dodaje pipeline/ do sys.path
+
 SERVICES = DATA / "viz_player_services.json"
 RASTERS = DATA / "viz_player_rasters"
 
@@ -630,6 +632,48 @@ def smoke(run):
             if not _wait_js(window, f"window.drawnN === {len(ref)}", 15):
                 result["error"] = f"po chipie {js('window.drawnN')} aut, Python {len(ref)}"
                 return
+            # Błyski aktywności: klient liczy starty z okna czasu jak wzorzec z indeksu, a rysunek ma tyle błysków, ile starty w oknie życia
+            starts = np.flatnonzero(player.index.act_kind == 1)
+            if len(starts):
+                t_f = float(player.index.act_t[starts[len(starts) // 2]]) + 1.0
+                names = [player.index.meta["act_type_legend"][str(i)] for i in range(len(player.index.meta["act_type_legend"]))]
+                want = len(viz_engine.flash_window(player.index, t_f, 300.0))
+                js("window._fl = undefined; window.clientFlashes(" + str(t_f) + ", 300, " + json.dumps(names) + ").then(function(r){window._fl = r;});")
+                if not _wait_js(window, "window._fl !== undefined", 15) or int(js("window._fl.n")) != want or want < 1:
+                    result["error"] = f"błyski klienta {js('window._fl && window._fl.n')}, indeks {want}"
+                    return
+                want_draw = len(viz_engine.flash_window(player.index, t_f, 3.0))
+                js("setMult(1); t = " + str(t_f) + "; change();")
+                if not _wait_js(window, f"window.flashN === {want_draw} && Math.abs(t - {t_f}) < 1e-6", 15) or want_draw < 1:
+                    result["error"] = f"błysków na rysunku {js('window.flashN')}, indeks {want_draw} {js('window.drawError')}"
+                    return
+                result["flashes"] = f"{want}/{want_draw}"
+            # Obciążenie linków: statystyki okna w kliencie (porcje) = wzorzec z indeksu; wyjazdy co do sztuki, pełne przejazdy z tolerancją 1%
+            ref_stats = viz_engine.link_window_stats(player.index, t_win, 300.0)
+            js("window._ls = undefined; window.clientLinkStats(" + str(t_win) + ", 300, " + json.dumps(player.chip_keys) + ").then(function(r){window._ls = r;});")
+            if not _wait_js(window, "window._ls !== undefined", 15):
+                result["error"] = "statystyki linków nie wróciły " + str(js("window.drawError"))
+                return
+            got_ls = js("window._ls")
+            if list(got_ls["n"]) != [int(v) for v in ref_stats["n"]] or int(ref_stats["n"].sum()) < 100:
+                result["error"] = f"wyjazdy z linków: klient {sum(got_ls['n'])}, indeks {int(ref_stats['n'].sum())}"
+                return
+            if abs(sum(got_ls["nf"]) - int(ref_stats["nf"].sum())) > 0.01 * int(ref_stats["nf"].sum()):
+                result["error"] = f"pełne przejazdy: klient {sum(got_ls['nf'])}, indeks {int(ref_stats['nf'].sum())}"
+                return
+            for mode in ("speed", "flow"):
+                if mode == "flow" and not player.boot().get("flowFactor"):
+                    continue
+                js("setRoadMode('" + mode + "'); t = " + str(t_win) + "; change();")
+                if not _wait_js(window, f"window.layerIds && roadMode === '{mode}' && loadT === {t_win} && !window.drawError", 15):
+                    result["error"] = f"tryb dróg {mode}: {js('window.drawError')}"
+                    return
+                grey = js("(function(){var g=0;for(var l=0;l<loadVals.length;l++)if(loadVals[l]!==loadVals[l])g++;return [g,loadVals.length];})()")
+                if grey[0] >= grey[1]:
+                    result["error"] = f"tryb dróg {mode}: wszystkie linki szare"
+                    return
+            js("setRoadMode('type'); setMult(1); change();")
+            result["load_links"] = int((ref_stats["n"] > 0).sum())
             mult_seq = js(
                 "(function(){var g=function(){return document.getElementById('mval').textContent;};var o=[g()];"
                 "document.getElementById('mdn').click();o.push(g());document.getElementById('mup').click();o.push(g());"
@@ -843,7 +887,7 @@ def smoke(run):
     note(
         player.run_dir,
         f"smoke OK n={result['n']} bez_{result['key']}={result['thin']} zegar={result['clock']} "
-        f"mapa={result['size']} klient_vs_python_max={result['worst_m']:.2f} m budynki3D={result.get('buildings', 'brak')} otwarcie_runu={result.get('switched', 'brak')} wms_kafelki={result.get('wms_tiles', 'brak')} {png}",
+        f"mapa={result['size']} klient_vs_python_max={result['worst_m']:.2f} m budynki3D={result.get('buildings', 'brak')} otwarcie_runu={result.get('switched', 'brak')} wms_kafelki={result.get('wms_tiles', 'brak')} blyski={result.get('flashes', 'brak')} linki_z_ruchem={result.get('load_links', 'brak')} {png}",
     )
     return 0
 

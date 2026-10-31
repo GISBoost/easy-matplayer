@@ -25,6 +25,16 @@ body { display: grid; grid-template-columns: 1fr 320px; grid-template-rows: 1fr 
 #opts { margin: 0 0 14px; display: flex; flex-direction: column; gap: 8px; }
 #opts label { color: #9aa3b2; cursor: pointer; }
 #opts .chip { align-self: flex-start; }
+#loadbox { display: flex; flex-direction: column; gap: 6px; margin: 0 0 14px; }
+#loadbox .seg { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; }
+#loadbox .chip:disabled { opacity: .45; cursor: default; }
+#loadnote { margin: 0; font-size: 12px; line-height: 1.35; }
+#lg-load { display: flex; gap: 8px; align-items: center; }
+#lg-load .bar { width: 128px; }
+#flashbox { display: flex; flex-direction: column; gap: 6px; }
+#flash-types { display: flex; flex-direction: column; gap: 3px; margin-left: 4px; }
+#flash-types label { display: flex; align-items: center; gap: 6px; font-size: 12px; }
+#flash-types i { display: inline-block; width: 10px; height: 10px; border-radius: 50%; }
 #legend .bar { width: 128px; height: 8px; border-radius: 4px;
   background: linear-gradient(90deg, rgb(255, 31, 13) 0%, rgb(255, 179, 26) 40%, rgb(26, 230, 255) 100%); }
 #panel { background: #1b1f27; overflow: auto; padding: 16px 16px 12px; min-height: 0;
@@ -132,6 +142,7 @@ body.panel-off #panel { display: none; }
   <div id="nogl"></div>
   <div id="legend">
     <div id="lg-speed"><div class="bar"></div><span>0 / 20 / 50 km/h</span></div>
+    <div id="lg-load" hidden><div class="bar"></div><span></span></div>
     <div id="lg-class" class="lg-list" hidden></div>
     <div id="lg-road" class="lg-list" hidden></div>
     <span id="bleg"></span>
@@ -153,6 +164,25 @@ body.panel-off #panel { display: none; }
     <label><input type="checkbox" id="osmroads"> kolor dróg OSM</label>
     <label><input type="checkbox" id="models"> modele 3D pojazdów</label>
     <button id="carcolor" type="button" class="chip">kolor auta: prędkość</button>
+    <div id="flashbox" hidden>
+      <label><input type="checkbox" id="flash" checked> błyski: start aktywności</label>
+      <div id="flash-types"></div>
+    </div>
+  </div>
+  <div id="loadbox">
+    <div class="muted">Kolor dróg</div>
+    <div class="seg">
+      <button type="button" class="chip on" data-rm="type">typ drogi</button>
+      <button type="button" class="chip" data-rm="speed">prędkość</button>
+      <button type="button" class="chip" data-rm="flow">natężenie</button>
+    </div>
+    <div class="seg" id="loadwin" hidden>
+      <span class="muted">okno:</span>
+      <button type="button" class="chip" data-w="60">1 min</button>
+      <button type="button" class="chip on" data-w="300">5 min</button>
+      <button type="button" class="chip" data-w="900">15 min</button>
+    </div>
+    <p id="loadnote" class="muted" hidden></p>
   </div>
   <div id="webbase">
     <div class="muted">Podkłady</div>
@@ -282,6 +312,99 @@ const ROAD_OSM_OTHER = ["inna", "#4e5663", [], 1];
 // Kolor auta w trybie „klasa”: kim jest pojazd (inna tabela niż drogi). „?” to klasa „inne”.
 const CLASS_COLOR = {resident: "#5aa2ff", commuter: "#3dbe7a", outbound: "#e0c15a", tlo: "#a89880", ciezkie: "#e15a4a", "?": "#e7e9ee"};
 let carByClass = false, classRgb = null;
+// Błysk startu aktywności: pierścień i rdzeń w kolorze typu, czas życia w czasie ekranu (FLASH.wall s) przeliczony mnożnikiem odtwarzania,
+// więc wygląd zależy tylko od t i mnożnika (przewijanie działa, pauza zamraża fazę). Stałe do strojenia po obejrzeniu na prawdziwym runie.
+const FLASH = {wall: 1.5, min: 3, max: 450, r0: 4, r1: 26, cap: 5000};
+const FLASH_BLEND = {blendColorOperation: "add", blendColorSrcFactor: "src-alpha", blendColorDstFactor: "one",
+  blendAlphaOperation: "add", blendAlphaSrcFactor: "one", blendAlphaDstFactor: "one-minus-src-alpha"};
+// Kolory typów aktywności: znane prefiksy (nazwy zależą od scenariusza), reszta z palety po haszu nazwy.
+const ACT_BASE = [["home", "#ffb347"], ["work", "#5aa2ff"], ["edu", "#b48bff"], ["school", "#b48bff"], ["shop", "#4fd18b"], ["leis", "#ff6fa4"], ["other", "#e7e9ee"]];
+const ACT_PALETTE = ["#ffb347", "#5aa2ff", "#b48bff", "#4fd18b", "#ff6fa4", "#7fe3e0", "#e0c15a", "#e15a4a"];
+function actColor(name) {
+  const n = String(name).toLowerCase();
+  const base = ACT_BASE.find((r) => n.indexOf(r[0]) === 0);
+  if (base) return base[1];
+  let h = 0;
+  for (let i = 0; i < n.length; i++) h = (h * 31 + n.charCodeAt(i)) >>> 0;
+  return ACT_PALETTE[h % ACT_PALETTE.length];
+}
+let flashOn = true, flashTypeOn = null, actRgb = null, fbuf = null;
+// Kolor dróg wg obciążenia (tryb "speed": średnia prędkość / swobodna, "flow": natężenie / przepustowość w skali próbki), z okna ostatnich loadWin s
+// symulacji (engine.linkStats). Link bez ruchu w oknie jest szary: brak ruchu to nie „swobodnie”. Odświeżanie najwyżej 4 razy na sekundę.
+let roadMode = "type", loadWin = 300, loadVals = null, loadRgba = null, loadStamp = 0, loadAt = -1e9, loadT = NaN, loadSig = "", carBeforeLoad = null;
+const LOAD_GREY = [74, 80, 92, 150];
+const LOAD_SPEED = [[0.3, [230, 57, 70]], [0.6, [250, 204, 21]], [0.9, [52, 211, 153]]];
+const LOAD_FLOW = [[0, [86, 150, 235]], [0.5, [250, 150, 40]], [1, [230, 40, 50]]];
+function rampAt(stops, v) {
+  if (v <= stops[0][0]) return stops[0][1];
+  for (let i = 1; i < stops.length; i++) {
+    if (v <= stops[i][0]) {
+      const a = stops[i - 1], b = stops[i], f = (v - a[0]) / (b[0] - a[0]);
+      return a[1].map((x, k) => Math.round(x + (b[1][k] - x) * f));
+    }
+  }
+  return stops[stops.length - 1][1];
+}
+function rampCss(stops, lo, hi) {
+  return "linear-gradient(90deg, " + stops.map((s) => "rgb(" + s[1].join(",") + ") " + Math.round(100 * (s[0] - lo) / (hi - lo)) + "%").join(", ") + ")";
+}
+function refreshLoad() {
+  if (roadMode === "type" || !boot.linkAttr) return;
+  const sig = roadMode + ":" + loadWin + ":" + classesOn.join(",");
+  const now = performance.now();
+  if (sig === loadSig && (playing ? now - loadAt < 250 : t === loadT)) return;
+  const ls = engine.linkStats(t, loadWin, mask);
+  if (!loadVals) { loadVals = new Float32Array(boot.nLinks); loadRgba = new Uint8Array(4 * boot.nLinks); }
+  engine.loadValues(ls, boot.linkAttr, roadMode, loadWin, boot.flowFactor, loadVals);
+  const stops = roadMode === "speed" ? LOAD_SPEED : LOAD_FLOW, top = stops[stops.length - 1][0];
+  for (let l = 0; l < loadVals.length; l++) {
+    const v = loadVals[l], c = v !== v ? LOAD_GREY : rampAt(stops, Math.min(v, top));
+    loadRgba[4 * l] = c[0]; loadRgba[4 * l + 1] = c[1]; loadRgba[4 * l + 2] = c[2]; loadRgba[4 * l + 3] = v !== v ? c[3] : 255;
+  }
+  loadStamp++; loadAt = now; loadT = t; loadSig = sig;
+}
+function setRoadMode(mode) {
+  if (mode === roadMode) return;
+  const wasLoad = roadMode !== "type";
+  roadMode = mode;
+  document.querySelectorAll("#loadbox [data-rm]").forEach((b) => b.classList.toggle("on", b.dataset.rm === mode));
+  document.getElementById("loadwin").hidden = mode === "type";
+  // auta i drogi na tej samej rampie prędkości zlewają się: w trybie obciążenia auta idą kolorem klasy, po powrocie wraca wybór użytkownika
+  if (mode !== "type" && !wasLoad) { carBeforeLoad = carByClass; if (!carByClass) setCarColor(true); }
+  if (mode === "type" && wasLoad && carBeforeLoad !== null) { setCarColor(carBeforeLoad); carBeforeLoad = null; }
+  const lg = document.getElementById("lg-load");
+  lg.hidden = mode === "type";
+  if (mode !== "type") {
+    const speed = mode === "speed";
+    lg.querySelector(".bar").style.background = rampCss(speed ? LOAD_SPEED : LOAD_FLOW, speed ? 0.3 : 0, speed ? 0.9 : 1);
+    lg.querySelector("span").textContent = T(speed ? "prędkość / swobodna: 30% … 90%" : "natężenie / przepustowość: 0 … 100%") + " · " + T("szary: brak ruchu");
+  }
+  document.getElementById("lg-road").hidden = !(osmRoads && mode === "type");
+  loadSig = "";
+  panelForce = true;
+  dirty = true;
+}
+function setLoadWin(w) {
+  loadWin = w;
+  document.querySelectorAll("#loadwin [data-w]").forEach((b) => b.classList.toggle("on", Number(b.dataset.w) === w));
+  loadSig = "";
+  panelForce = true;
+  dirty = true;
+}
+// Wiersz panelu zaznaczonego linku: wartości z okna loadWin (to samo, co koloruje drogę).
+function linkWinLine(l) {
+  const attr = boot.linkAttr;
+  if (!attr) return null;
+  const w = Math.round(loadWin / 60), ls = engine.linkStats(t, loadWin, mask);
+  if (!ls.n[l]) return F("ostatnie {w} min: brak ruchu", {w});
+  const parts = [];
+  if (ls.nf[l]) parts.push(F("{v} (swobodna {f})", {v: kmhJs(ls.len[l] / ls.tt[l]), f: kmhJs(attr[4 * l + 1])}));
+  let q = F("{q} poj/h", {q: Math.round(ls.n[l] * 3600 / loadWin)});
+  const cap = attr[4 * l + 2] * (boot.flowFactor || 0);
+  if (cap > 0) q += F(" ({p}% przepustowości, w skali próbki)", {p: Math.round(100 * ls.n[l] * 3600 / loadWin / cap)});
+  parts.push(q);
+  return F("ostatnie {w} min: {x}", {w, x: parts.join(", ")});
+}
 // Znacznik auta: grot (kierunek jazdy, długość tip × podstawa) + półkole z tyłu, punkt pojazdu w środku podstawy. Rozmiary w pikselach
 // przy zoomie z0 (mnożnik 1); mnożnik rośnie z zoomem o 2^(exp·Δzoom), w granicach min–max. Do strojenia po obejrzeniu.
 const MARKER = {base: 16, heavy: 22, tip: 1.7, z0: 15, exp: 0.5, min: 0.25, max: 3};
@@ -424,7 +547,7 @@ function setCarColor(byClass) {
 function setOsmRoads(on) {
   osmRoads = on;
   document.getElementById("osmroads").checked = on;
-  document.getElementById("lg-road").hidden = !on;
+  document.getElementById("lg-road").hidden = !(on && roadMode === "type");
   if (on) roadLegend();
   dirty = true;
 }
@@ -434,6 +557,29 @@ function roadWidth(name) {
   if (name.indexOf("secondary") === 0 || name.indexOf("tertiary") === 0) return 1.25;
   if (name === "boundary_turnaround") return 0.75;
   return 1;
+}
+
+// Błyski: lista typów aktywności, które mają starty w runie (domyślnie wszystkie; scenariusz strony może wyłączyć część przez boot.flashOff).
+function setupFlash() {
+  const box = document.getElementById("flashbox");
+  const names = engine.actTypes;
+  const shown = names.map((n, i) => i).filter((i) => engine.actStarts[i] > 0);
+  box.hidden = !engine.hasActs || !shown.length;
+  if (box.hidden) { flashOn = false; return; }
+  const off = new Set(boot.flashOff || []);
+  flashTypeOn = Uint8Array.from(names, (n) => (off.has(n) ? 0 : 1));
+  actRgb = names.map((n) => hexRgb(actColor(n)));
+  const list = document.getElementById("flash-types");
+  list.replaceChildren();
+  shown.forEach((i) => {
+    const l = document.createElement("label"), c = document.createElement("input"), sw = document.createElement("i");
+    c.type = "checkbox";
+    c.checked = !!flashTypeOn[i];
+    c.addEventListener("change", () => { flashTypeOn[i] = c.checked ? 1 : 0; dirty = true; });
+    sw.style.background = actColor(names[i]);
+    l.append(c, sw, T(STAY_NAME[names[i]] || names[i]));
+    list.appendChild(l);
+  });
 }
 
 const slider = document.getElementById("slider");
@@ -474,7 +620,12 @@ function applyBoot() {
     });
     chips.appendChild(b);
   });
-  if (engine) setMask();
+  if (engine) { setMask(); setupFlash(); }
+  const flowOk = !!boot.flowFactor;
+  document.querySelector('#loadbox [data-rm="flow"]').disabled = !flowOk;
+  document.getElementById("loadbox").hidden = !boot.linkAttr;
+  document.getElementById("loadnote").hidden = flowOk;
+  if (!flowOk) document.getElementById("loadnote").textContent = T("Brak flowCapacityFactor w configu runu: natężenie niedostępne.");
   document.getElementById("bleg").textContent = boot.bld ? boot.buildingsNote + ". © OpenStreetMap contributors" : "";
   if (boot.bld) document.getElementById("three").title = boot.buildingsNote;
 }
@@ -495,6 +646,7 @@ async function loadBoot() {
   if (boot.error) return;
   boot.linkLL = await get("link_ll.bin", Float64Array);
   boot.linkType = await get("link_type.bin", Uint8Array);
+  boot.linkAttr = await get("link_attr.bin", Float32Array);
   if (boot.nCurve) {
     boot.curveOff = await get("curve_off.bin", Int32Array);
     boot.curveLon = await get("curve_lon.bin", Float64Array);
@@ -725,6 +877,8 @@ function render() {
       buf.size[i] = MARKER_ICON_H * zs * (engine.classHeavy[fr.cls[i]] ? MARKER.heavy / MARKER.base : 1);
       buf.ang[i] = fr.heading[i] * 180 / Math.PI;
     }
+    refreshLoad();
+    const loadMode = roadMode !== "type" && !!loadRgba;
     const layers = [];
     if (boot.bld) {
       // warstwa istnieje od pierwszej klatki (ukryta), więc triangulacja nie blokuje kliknięcia „3D”
@@ -736,8 +890,10 @@ function render() {
       }));
     }
     layers.push(new deck.PathLayer({
-      id: "roads", data: roads, getPath: (d) => d.path, getColor: (d) => (osmRoads ? d.cosm : d.color), getWidth: (d) => (osmRoads ? d.wosm : d.width),
-      updateTriggers: {getColor: osmRoads, getWidth: osmRoads},
+      id: "roads", data: roads, getPath: (d) => d.path,
+      getColor: (d, {index}) => (loadMode ? [loadRgba[4 * index], loadRgba[4 * index + 1], loadRgba[4 * index + 2], loadRgba[4 * index + 3]] : (osmRoads ? d.cosm : d.color)),
+      getWidth: (d) => (loadMode ? Math.max(1.8, 1.3 * d.width) : (osmRoads ? d.wosm : d.width)),
+      updateTriggers: {getColor: [osmRoads, loadMode, loadStamp], getWidth: [osmRoads, loadMode]},
       widthUnits: "pixels", capRounded: true, jointRounded: true,
     }));
     if (selected && selected.link != null && selected.link < roads.length) {
@@ -752,6 +908,36 @@ function render() {
         layers.push(new deck.PathLayer({
           id: "trail", data: [{path}], getPath: (d) => d.path, getColor: [126, 182, 255], getWidth: 2,
           widthUnits: "pixels", jointRounded: true,
+        }));
+      }
+    }
+    window.flashN = 0;
+    if (flashOn && engine.hasActs) {
+      const life = Math.min(FLASH.max, Math.max(FLASH.min, FLASH.wall * mult));
+      const fl = engine.flashes(t, life, flashTypeOn);
+      window.flashN = fl.n;
+      window.flashTruncated = fl.truncated;
+      if (fl.n) {
+        if (!fbuf) fbuf = {pos: new Float64Array(2 * FLASH.cap), ring: new Float32Array(FLASH.cap), core: new Float32Array(FLASH.cap),
+          ringCol: new Uint8Array(4 * FLASH.cap), coreCol: new Uint8Array(4 * FLASH.cap)};
+        for (let i = 0; i < fl.n; i++) {
+          const e = 1 - Math.min(1, fl.age[i] / life), c = actRgb[fl.type[i]];
+          fbuf.pos[2 * i] = fl.lon[i];
+          fbuf.pos[2 * i + 1] = fl.lat[i];
+          fbuf.ring[i] = FLASH.r0 + (FLASH.r1 - FLASH.r0) * (1 - e * e);
+          fbuf.core[i] = 3 + 4 * e;
+          fbuf.ringCol.set([c[0], c[1], c[2], Math.round(255 * e * e)], 4 * i);
+          fbuf.coreCol.set([c[0], c[1], c[2], Math.round(255 * e * e * e)], 4 * i);
+        }
+        const data = (rad, col, name) => ({length: fl.n, attributes: {
+          getPosition: {value: fbuf.pos, size: 2}, getRadius: {value: rad, size: 1}, [name]: {value: col, size: 4}}});
+        layers.push(new deck.ScatterplotLayer({
+          id: "flash-ring", data: data(fbuf.ring, fbuf.ringCol, "getLineColor"), radiusUnits: "pixels", filled: false, stroked: true,
+          lineWidthUnits: "pixels", getLineWidth: 2, parameters: FLASH_BLEND,
+        }));
+        layers.push(new deck.ScatterplotLayer({
+          id: "flash-core", data: data(fbuf.core, fbuf.coreCol, "getFillColor"), radiusUnits: "pixels", filled: true, stroked: false,
+          parameters: FLASH_BLEND,
         }));
       }
     }
@@ -829,7 +1015,8 @@ function webPanel(fr) {
     const now = engine.linkNow(fr, selected.link);
     let line = F("teraz {cars}", {cars: autaJs(now.n)});
     if (now.n) line += F(", średnia na odcinku {speed}", {speed: kmhJs(now.speed_mean)});
-    showPanel({kind: "link", lines: [boot.types[boot.linkType[selected.link]] || "", line], axis: []});
+    const win = linkWinLine(selected.link);
+    showPanel({kind: "link", lines: [boot.types[boot.linkType[selected.link]] || "", line].concat(win ? [win] : []), axis: []});
   } else if (lastSel) {
     const cls = (boot.classes || []).find((c) => c.key === lastSel.cls);
     showPanel({kind: "vehicle", lines: [selected.id, cls ? cls.name : lastSel.cls, kmhJs(lastSel.speed), boot.types[boot.linkType[lastSel.link]] || ""], axis: []});
@@ -855,6 +1042,7 @@ function refreshPanel(fr) {
   const links = selected.link != null ? engine.linkNow(fr, selected.link) : null;
   api.describe(t, selected, lastSel, links).then((r) => {
     if (seq !== panelSeq) return;
+    if (r.panel.kind === "link" && selected && selected.link != null) { const win = linkWinLine(selected.link); if (win) r.panel.lines.push(win); }
     showPanel(r.panel);
     anchor = r.anchor;
   }).catch((err) => { window.drawError = String(err); });
@@ -882,6 +1070,24 @@ window.clientFrame = async (tt, keys) => {
     n: fr.n, track: order.map((i) => fr.track[i]), lon: order.map((i) => fr.lon[i]), lat: order.map((i) => fr.lat[i]),
     speed: order.map((i) => fr.speed[i]), link: order.map((i) => fr.link[i]),
   };
+};
+
+// Do testów okna: błyski w chwili tt przy życiu life (s symulacji) dla widocznych typów (nazwy), posortowane po czasie startu.
+window.clientFlashes = async (tt, life, typeNames) => {
+  await engine.want(tt);
+  const on = Uint8Array.from(engine.actTypes, (n) => (typeNames.indexOf(n) >= 0 ? 1 : 0));
+  const fl = engine.flashes(tt, life, on);
+  const order = Array.from({length: fl.n}, (_, i) => i).sort((a, b) => fl.age[b] - fl.age[a]);
+  return {n: fl.n, truncated: fl.truncated, age: order.map((i) => fl.age[i]), type: order.map((i) => engine.actTypes[fl.type[i]]),
+    lon: order.map((i) => fl.lon[i]), lat: order.map((i) => fl.lat[i])};
+};
+
+// Do testów okna: statystyki linków okna (t - W, t] dla kluczy klas keys, tablice na link.
+window.clientLinkStats = async (tt, W, keys) => {
+  await engine.want(tt);
+  const on = Uint8Array.from(engine.classKeys, (k) => (keys.indexOf(k) >= 0 ? 1 : 0));
+  const ls = engine.linkStats(tt, W, on);
+  return {n: Array.from(ls.n), nf: Array.from(ls.nf)};
 };
 
 let lastNow = 0;
@@ -1224,6 +1430,9 @@ svcEl("svc-ok").addEventListener("click", async () => {
   svcRender(); svcSync(); svcOpen(false);
 });
 document.getElementById("models").addEventListener("change", (ev) => { modelsOn = ev.target.checked; document.getElementById("credit").hidden = !modelsOn; dirty = true; });
+document.querySelectorAll("#loadbox [data-rm]").forEach((b) => b.addEventListener("click", () => { if (!b.disabled) setRoadMode(b.dataset.rm); }));
+document.querySelectorAll("#loadwin [data-w]").forEach((b) => b.addEventListener("click", () => setLoadWin(Number(b.dataset.w))));
+document.getElementById("flash").addEventListener("change", (ev) => { flashOn = ev.target.checked; dirty = true; });
 document.getElementById("carcolor").addEventListener("click", () => setCarColor(!carByClass));
 document.getElementById("osmroads").addEventListener("change", (ev) => setOsmRoads(ev.target.checked));
 document.getElementById("play").addEventListener("click", () => setPlaying(!playing));

@@ -326,6 +326,8 @@ class Player:
             self.link_length = np.array(blob["link_length"])
             self.link_freespeed = np.array(blob["link_freespeed"])
             self.link_type = np.array(blob["link_type"])
+            self.link_capacity = np.array(blob["link_capacity"])
+            self.link_lanes = np.array(blob["link_lanes"])
         if len(self.link_id) != len(self.index.link_xy):
             raise viz_engine.EngineFailed("link_id i link_xy mają różną długość")
 
@@ -587,7 +589,7 @@ class Player:
             "error": self.error, "run": self.run_name, "version": __version__, "t": self.t_start,
             "tMin": 0, "tMax": 1, "sample": "brak", "basemap": self.basemap,
             "bounds": None, "types": [], "classes": [], "nLinks": 0, "nCurve": 0, "curveNote": "", "data": None,
-            "buildings": None, "buildingsNote": "", "crsNote": self.crs_note, "osm": self.osm_info(),
+            "flowFactor": None, "buildings": None, "buildingsNote": "", "crsNote": self.crs_note, "osm": self.osm_info(),
             "lang": i18n.lang(), "strings": i18n.table(),
         }
         if self.index is None:
@@ -602,6 +604,7 @@ class Player:
             "types": self.type_names,
             "classes": [{"key": key, "name": self.class_name[key], "on": True} for key in self.chip_keys],
             "nLinks": int(len(lon1)),
+            "flowFactor": self.index.meta.get("flow_capacity_factor"),
             "nCurve": int(len(self.curve.xy)) if self.curve is not None and self.curve.n_bent else 0,
             "curveNote": self.curve_note,
             "data": "data/manifest.json?v=" + self.export_key[:12],
@@ -635,6 +638,8 @@ class Player:
         arrays = {
             "link_ll": np.column_stack((lon1, lat1, lon2, lat2)),
             "link_type": self.link_type.astype(np.uint8),
+            # długość, prędkość swobodna, przepustowość (poj/h), liczba pasów: tryby koloru dróg w kliencie
+            "link_attr": np.column_stack((self.link_length, self.link_freespeed, self.link_capacity, self.link_lanes)),
         }
         if self.curve is not None and self.curve.n_bent:
             lon, lat = self.fwd.transform(

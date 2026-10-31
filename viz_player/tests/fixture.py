@@ -82,7 +82,7 @@ def write_run(run_dir, events, sample="0.25", network=None):
     run_dir.mkdir(parents=True, exist_ok=True)
     viz_index.write_zst(run_dir / viz_index.NETWORK_NAME, network or network_xml())
     (run_dir / viz_index.CONFIG_NAME).write_text(
-        f'<config><module name="global"><param name="coordinateSystem" value="EPSG:2180"/></module><module name="qsim"><param name="sampleSize" value="{sample}"/></module></config>',
+        f'<config><module name="global"><param name="coordinateSystem" value="EPSG:2180"/></module><module name="qsim"><param name="sampleSize" value="{sample}"/><param name="flowCapacityFactor" value="{sample}"/></module></config>',
         encoding="utf-8",
     )
     rows = sorted(events, key=lambda line: float(viz_index.field(line, "time")))
