@@ -1,0 +1,356 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>easy-matplayer na komputerze: moodboard</title>
+<style>
+:root{--bg:#0b0b0d;--card:#151518;--line:rgba(255,255,255,.09);--tx:#f2f2f7;--mut:#9b9ba3;--acc:#0a84ff;--grn:#30d158;--org:#ff9f0a;--cy:#5ac8fa}
+*{box-sizing:border-box}
+html{background:var(--bg)}
+body{margin:0;color:var(--tx);font:16px/1.5 -apple-system,BlinkMacSystemFont,"SF Pro Text","Segoe UI",system-ui,sans-serif;-webkit-font-smoothing:antialiased}
+.wrap{max-width:1320px;margin:0 auto;padding:40px 20px 80px}
+h1{font-size:40px;line-height:1.1;letter-spacing:-.02em;margin:0 0 8px}
+h2{font-size:26px;letter-spacing:-.01em;margin:0 0 4px}
+h3{font-size:13px;letter-spacing:.08em;text-transform:uppercase;color:var(--mut);margin:0 0 8px;font-weight:600}
+p{margin:0 0 10px}.mut{color:var(--mut)}
+.lead{font-size:18px;color:var(--mut);max-width:780px;margin-bottom:28px}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:20px}
+@media(max-width:900px){.grid2{grid-template-columns:1fr}}
+.card{background:var(--card);border:1px solid var(--line);border-radius:18px;padding:20px}
+ul{margin:0;padding-left:18px}li{margin:3px 0}
+.sw{display:flex;gap:8px;flex-wrap:wrap;margin:6px 0 12px}.sw i{width:60px;height:44px;border-radius:10px;border:1px solid var(--line);display:flex;align-items:flex-end;padding:3px 5px;font:10px/1 ui-monospace,monospace;color:#fff;font-style:normal;text-shadow:0 0 3px #000}
+section.prop{margin-top:64px;padding-top:28px;border-top:1px solid var(--line)}
+.tag{display:inline-block;font-size:12px;font-weight:700;letter-spacing:.06em;padding:3px 10px;border-radius:999px;background:var(--acc);color:#fff;margin-bottom:10px}
+figure{margin:0}
+figcaption{font-size:13px;color:var(--mut);margin-top:8px;line-height:1.35}
+figcaption b{color:var(--tx)}
+table{border-collapse:collapse;width:100%;font-size:14px}
+th,td{border-bottom:1px solid var(--line);padding:9px 10px;text-align:left;vertical-align:top}
+th{color:var(--mut);font-weight:600;font-size:12px;letter-spacing:.06em;text-transform:uppercase}
+.tw{overflow-x:auto}
+.rec{background:linear-gradient(135deg,#0d2a4a,#151518);border-color:#1d4a7a}
+a{color:var(--cy)}
+code{font:13px ui-monospace,monospace;background:#1f1f23;padding:1px 5px;border-radius:5px}
+.note{font-size:13px;color:var(--mut)}
+
+/* ---------- makiety: projektowane w prawdziwych 1440x900 (albo 1024x700), skalowane w dół ---------- */
+.fw{position:relative;overflow:hidden;border-radius:12px;border:1px solid #2a2a2e;box-shadow:0 14px 34px rgba(0,0,0,.5)}
+.fr{position:absolute;left:0;top:0;transform-origin:0 0;overflow:hidden;background:#121418;color:#f2f2f7;
+ font:15px/1.3 -apple-system,BlinkMacSystemFont,"SF Pro Text","Segoe UI",system-ui,sans-serif}
+.fr svg.map{position:absolute;inset:0;width:100%;height:100%}
+.fr .i{width:22px;height:22px;stroke:currentColor;fill:none;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round;flex:none}
+.g{background:rgba(44,44,46,.72);-webkit-backdrop-filter:blur(24px) saturate(1.8);backdrop-filter:blur(24px) saturate(1.8);border:.5px solid rgba(255,255,255,.14)}
+.s{background:#1c1c1e;border:.5px solid rgba(255,255,255,.14)}
+.ab{position:absolute}
+.pill{display:flex;align-items:center;gap:6px;height:36px;padding:0 14px;border-radius:18px;font-weight:600;font-variant-numeric:tabular-nums;white-space:nowrap}
+.pill small{font-weight:400;color:rgba(235,235,245,.65);font-size:14px}
+.stack{display:flex;flex-direction:column;border-radius:20px;overflow:hidden}
+.stack.h{flex-direction:row}
+.btn{width:40px;height:40px;display:grid;place-items:center;color:#fff;flex:none}
+.stack .btn+.btn{border-top:.5px solid rgba(255,255,255,.14)}.stack.h .btn+.btn{border-top:0;border-left:.5px solid rgba(255,255,255,.14)}
+.btn.on{color:#0a84ff}
+.play{width:44px;height:44px;border-radius:50%;background:#0a84ff;display:grid;place-items:center;flex:none;color:#fff}
+.scrub{height:5px;border-radius:3px;background:rgba(235,235,245,.22);position:relative;flex:1}
+.scrub i{position:absolute;left:0;top:0;bottom:0;border-radius:3px;background:#fff}
+.scrub u{position:absolute;top:-8px;width:21px;height:21px;border-radius:50%;background:#fff;margin-left:-10px;box-shadow:0 2px 6px rgba(0,0,0,.5)}
+.speed{height:36px;min-width:60px;border-radius:18px;padding:0 12px;display:flex;align-items:center;justify-content:center;font-weight:600;font-size:16px;background:rgba(118,118,128,.28);font-variant-numeric:tabular-nums}
+.cap{display:flex;align-items:center;gap:14px;padding:10px 16px;border-radius:30px}
+.clk{font-size:22px;font-weight:700;font-variant-numeric:tabular-nums;letter-spacing:-.01em}
+.sub{font-size:12px;color:rgba(235,235,245,.6)}
+.seg{display:flex;gap:2px;padding:2px;border-radius:10px;background:rgba(118,118,128,.24)}
+.seg span{flex:1;text-align:center;padding:6px 10px;border-radius:8px;font-size:13px;white-space:nowrap}
+.seg span.on{background:#636366;color:#fff}
+.chips{display:flex;flex-wrap:wrap;gap:6px}
+.chip{padding:5px 12px;border-radius:999px;border:1px solid rgba(255,255,255,.18);font-size:13px;color:rgba(235,235,245,.8)}
+.chip.on{border-color:#0a84ff;background:rgba(10,132,255,.22);color:#fff}
+.row{display:flex;align-items:center;justify-content:space-between;min-height:34px;font-size:14px;color:rgba(235,235,245,.85)}
+.sw2{width:40px;height:24px;border-radius:12px;background:#39393d;position:relative;flex:none}
+.sw2::after{content:"";position:absolute;left:2px;top:2px;width:20px;height:20px;border-radius:50%;background:#fff;box-shadow:0 2px 4px rgba(0,0,0,.4)}
+.sw2.on{background:#30d158}.sw2.on::after{left:18px}
+.grp{font-size:11px;font-weight:700;letter-spacing:.07em;text-transform:uppercase;color:rgba(235,235,245,.55);display:flex;justify-content:space-between;align-items:center;padding:10px 0 4px}
+.panel{padding:16px 16px 14px;border-radius:24px;display:flex;flex-direction:column;gap:4px;overflow:hidden}
+.panel h4{margin:0 0 2px;font-size:15px}
+.field{height:34px;border-radius:10px;background:rgba(118,118,128,.24);padding:0 12px;display:flex;align-items:center;color:rgba(235,235,245,.5);font-size:14px}
+.leg{border-radius:12px;padding:8px 12px;font-size:12px;display:flex;gap:8px;align-items:center}
+.leg b{display:block;width:110px;height:7px;border-radius:4px;background:linear-gradient(90deg,#ff1f0d,#ffb31a 40%,#1ae6ff)}
+.rail{display:flex;flex-direction:column;gap:2px;padding:6px;border-radius:22px}
+.rail .btn{width:44px;height:44px;border-radius:14px}
+.rail .btn.on{background:rgba(10,132,255,.22)}
+.car{position:absolute;width:14px;height:8px;border-radius:5px;background:#1ae6ff}
+.hl{box-shadow:0 0 0 3px rgba(10,132,255,.9),0 0 18px rgba(10,132,255,.8)}
+.live button{font:inherit;color:#fff;border:0;cursor:pointer;background:rgba(118,118,128,.28);height:36px;min-width:44px;border-radius:18px;padding:0 14px;transition:background .15s}
+.live button:hover{background:rgba(118,118,128,.5)}
+.live button:focus-visible{outline:2px solid #0a84ff;outline-offset:2px}
+.live .a{background:#0a84ff}.live .a:hover{background:#2b95ff}
+.statebox{background:#121418;border-radius:12px;padding:22px;display:flex;gap:14px;flex-wrap:wrap;align-items:center}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<h1>easy-matplayer na komputerze</h1>
+<p class="lead">Moodboard dla szerokiego ekranu: aplikacja okienkowa (WebView2) i strona na komputerze to <b>ten sam plik</b> <code>shell.html</code>. Układ telefonu (≤ 700 px) jest zaakceptowany i zostaje bez zmian. Poniżej trzy kierunki dla ≥ 701 px. Makiety są rysowane w prawdziwych wymiarach 1440×900 i 1024×700 i pomniejszone; to <b>makiety, nie zrzuty z programu</b>, dane (liczby, mapa) są ilustracyjne.</p>
+
+<div class="card" style="margin-bottom:18px">
+  <h3>Decyzje ze STOP 1 (właściciel)</h3>
+  <ul>
+    <li>Panel: <b>pływająca szklana wyspa</b> (zwijana).</li>
+    <li>Odtwarzacz: <b>wyśrodkowana pływająca kapsuła</b>, max ok. 720 px.</li>
+    <li>Aplikacja okienkowa i web na komputerze: <b>identyczne</b>, różnią się tylko funkcje (WMS, obrazy, otwórz run, plik OSM są w aplikacji, na webie ukryte jak dziś).</li>
+    <li>Jeden układ pływający dla ≥ 701 px, węższa wyspa przy ≤ 1024 px; poniżej 701 px zostaje telefon.</li>
+  </ul>
+  <p class="note" style="margin:8px 0 0">Uwaga o szkle: w moich założeniach panel z długim tekstem jest z <b>litego</b> koloru <code>#1c1c1e</code> (jak arkusz na telefonie), a „szkło” mają małe stałe elementy. W makietach panel wygląda więc nie jak szyba. Jeśli wolisz szklany panel, to jest kompromis opisany niżej.</p>
+</div>
+
+<div class="grid2">
+  <div class="card">
+    <h3>Stan obecny (desktop, ≥ 701 px)</h3>
+    <div class="fw" data-s=".42" data-w="1440" data-h="900" data-mock="cur"></div>
+    <figcaption>Mapa + kolumna 320 px po prawej + dolny pasek 52 px z ok. 14 elementami. Kontrolki MapLibre po lewej, legenda i skala jako osobne tabliczki. Nowe elementy z telefonu (<code>#mpill</code>, <code>#mstack</code>, <code>#grab</code>) są ukryte.</figcaption>
+  </div>
+  <div class="card">
+    <h3>Wspólne tokeny z wersją mobilną (bez zmian)</h3>
+    <div class="sw"><i style="background:#121418">#121418</i><i style="background:#1c1c1e">#1c1c1e</i><i style="background:rgba(44,44,46,.72)">szkło</i><i style="background:#636366">#636366</i><i style="background:#0a84ff">#0a84ff</i><i style="background:#30d158">#30d158</i></div>
+    <ul>
+      <li>Szkło: <code>rgba(44,44,46,.72)</code> + <code>blur(24px) saturate(1.8)</code> + obrys <code>.5px</code> <code>rgba(255,255,255,.14)</code>.</li>
+      <li>Kapsuły: pigułka 36 px, karta 28–30 px, wyspa 24 px; chipy 32–40 px.</li>
+      <li>Przełączniki iOS, kontrolka segmentowana, chipy, ikony liniowe 1,8 px.</li>
+      <li>Typografia systemowa; liczby <code>tabular-nums</code>.</li>
+      <li><b>Różnica wobec telefonu:</b> cele 32–40 px zamiast 44 px (wskaźnik, nie palec; WCAG 2.5.8 wymaga 24 px), plus stany <b>hover</b> i <b>focus-visible</b>.</li>
+      <li>Kolory danych bez zmian: klasy aut, skala prędkości, typy aktywności, kolory dróg.</li>
+    </ul>
+  </div>
+</div>
+
+<!-- ========================= A ========================= -->
+<section class="prop">
+  <span class="tag">A</span>
+  <h2>Pływające wyspy</h2>
+  <p class="mut">Mapa na cały ekran. Pigułka zegara u góry po lewej, stos przycisków i panel jako wyspa po prawej, odtwarzacz jako kapsuła na dole pośrodku. Najbliższe telefonowi: ta sama rodzina elementów w innych proporcjach.</p>
+  <div class="grid2">
+    <figure><div class="fw" data-s=".42" data-w="1440" data-h="900" data-mock="A:def"></div><figcaption><b>Domyślny.</b> Panel zwinięty, widać pigułkę, stos (3D, dopasuj, ustawienia) i kapsułę odtwarzacza. Mapa zajmuje 100% okna.</figcaption></figure>
+    <figure><div class="fw" data-s=".42" data-w="1440" data-h="900" data-mock="A:panel"></div><figcaption><b>Ustawienia otwarte.</b> Wyspa 340 px pod stosem, sekcje jako rozwijane grupy, przewijana wewnątrz, lity kolor.</figcaption></figure>
+    <figure><div class="fw" data-s=".42" data-w="1440" data-h="900" data-mock="A:sel"></div><figcaption><b>Zaznaczone auto.</b> Wyspa pokazuje szczegóły i oś dnia; auto ma obwódkę. Wyspa wraca do ustawień przyciskiem w stosie.</figcaption></figure>
+    <figure><div class="fw" data-s=".6" data-w="1024" data-h="700" data-mock="A:w1024"></div><figcaption><b>~1024 px.</b> Wyspa 300 px, kapsuła 560 px; panel po otwarciu zasłania część mapy, więc ma przycisk zamknij i zamyka się dotknięciem mapy (jak na telefonie).</figcaption></figure>
+  </div>
+</section>
+
+<!-- ========================= B ========================= -->
+<section class="prop">
+  <span class="tag" style="background:#ff9f0a;color:#000">B</span>
+  <h2>Pasek narzędzi u góry + inspektor + minikarta</h2>
+  <p class="mut">Klasyczny układ aplikacji (jak okna macOS): pływający pasek na górze (tytuł, zegar, widok, przyciski), inspektor wysuwany z prawej, odtwarzacz jako mała karta w lewym dolnym rogu. Mapa mniej „czysta”, ale funkcje zawsze na wierzchu.</p>
+  <div class="grid2">
+    <figure><div class="fw" data-s=".42" data-w="1440" data-h="900" data-mock="B:def"></div><figcaption><b>Domyślny.</b> Pasek 3 strefy wg HIG: początek (tytuł, zegar), środek (widok), koniec (3D, dopasuj, ustawienia). Minikarta odtwarzacza z lewej.</figcaption></figure>
+    <figure><div class="fw" data-s=".42" data-w="1440" data-h="900" data-mock="B:panel"></div><figcaption><b>Ustawienia otwarte.</b> Inspektor na pełną wysokość pod paskiem, 320 px. Najbliższy dzisiejszej kolumnie, tylko w nowym stylu.</figcaption></figure>
+    <figure><div class="fw" data-s=".42" data-w="1440" data-h="900" data-mock="B:sel"></div><figcaption><b>Zaznaczone auto.</b> Inspektor pokazuje szczegóły; pasek zostaje.</figcaption></figure>
+    <figure><div class="fw" data-s=".6" data-w="1024" data-h="700" data-mock="B:w1024"></div><figcaption><b>~1024 px.</b> Środek paska (widok) zwija się do przycisku „Widok”; minikarta zostaje.</figcaption></figure>
+  </div>
+</section>
+
+<!-- ========================= C ========================= -->
+<section class="prop">
+  <span class="tag" style="background:#30d158;color:#000">C</span>
+  <h2>Wąska szyna ikon + panel kontekstowy + duża kapsuła</h2>
+  <p class="mut">Układ „wydawca”: pionowa szyna ikon po lewej (widok, klasy, warstwy, szukaj, ustawienia), panel kontekstowy obok niej pokazuje tylko jedną sekcję, a odtwarzacz to duża kapsuła z dużym zegarem. Najlepiej radzi sobie z 12 sekcjami, ale to najwięcej nowego kodu.</p>
+  <div class="grid2">
+    <figure><div class="fw" data-s=".42" data-w="1440" data-h="900" data-mock="C:def"></div><figcaption><b>Domyślny.</b> Szyna 56 px, bez panelu; kapsuła z zegarem 28 px i licznikiem aut.</figcaption></figure>
+    <figure><div class="fw" data-s=".42" data-w="1440" data-h="900" data-mock="C:panel"></div><figcaption><b>Sekcja „Warstwy” otwarta.</b> Panel 300 px obok szyny, jedna sekcja naraz, krótszy niż w A i B.</figcaption></figure>
+    <figure><div class="fw" data-s=".42" data-w="1440" data-h="900" data-mock="C:sel"></div><figcaption><b>Zaznaczone auto.</b> Szczegóły w panelu kontekstowym; szyna podświetla „Szczegóły”.</figcaption></figure>
+    <figure><div class="fw" data-s=".6" data-w="1024" data-h="700" data-mock="C:w1024"></div><figcaption><b>~1024 px.</b> Szyna zostaje, panel 280 px nakłada się na mapę, kapsuła 600 px.</figcaption></figure>
+  </div>
+</section>
+
+<section class="prop">
+  <h2>Stany: hover i fokus (jeden przykład, żywy)</h2>
+  <p class="mut">Najedź myszą i użyj klawisza Tab na tych przyciskach, żeby zobaczyć stany, które desktop dostaje, a telefon nie. Ten sam zestaw dotyczy wszystkich trzech propozycji.</p>
+  <div class="statebox live">
+    <button class="a" aria-label="Start">▶ start</button>
+    <button>1×</button><button>10×</button><button>60×</button>
+    <button style="border-radius:12px">3D</button>
+    <span class="note">hover: tło jaśnieje; fokus klawiaturą: obrys 2 px #0a84ff z odstępem 2 px; aktywny: akcent</span>
+  </div>
+</section>
+
+<section class="prop">
+  <h2>Gdzie trafia każdy element</h2>
+  <div class="tw"><table>
+    <tr><th>Element dziś</th><th>A: wyspy</th><th>B: pasek + inspektor</th><th>C: szyna + kapsuła</th></tr>
+    <tr><td>zegar i licznik aut</td><td>pigułka u góry po lewej (bez sekund) plus pełny zegar w kapsule</td><td>w pasku, strefa początku</td><td>duży zegar w kapsule, licznik obok</td></tr>
+    <tr><td>start, suwak, mnożnik ◀ 1× ▶ i presety</td><td>kapsuła na dole: start, suwak, pigułka mnożnika; po kliknięciu mnożnika rząd presetów</td><td>minikarta: start, suwak, pigułka mnożnika</td><td>kapsuła: start, suwak, presety zawsze widoczne</td></tr>
+    <tr><td>3D, dopasuj, ukryj/panel</td><td>stos przycisków po prawej (3D, dopasuj, ustawienia)</td><td>strefa końca paska</td><td>stos u góry po prawej (3D, dopasuj)</td></tr>
+    <tr><td>widok: auta / tylko drogi / auta+drogi</td><td>kontrolka segmentowana na górze wyspy</td><td>kontrolka segmentowana w środku paska</td><td>sekcja „Widok” szyny</td></tr>
+    <tr><td>klasy pojazdów (chipy), szukaj id</td><td>w wyspie: chipy i pole szukania</td><td>w inspektorze; szukaj w pasku (strefa końca)</td><td>sekcje „Klasy” i „Szukaj”</td></tr>
+    <tr><td>przełączniki: kolor dróg OSM, modele 3D, błyski</td><td>w wyspie, przełączniki iOS</td><td>w inspektorze</td><td>sekcja „Warstwy”</td></tr>
+    <tr><td>podkłady (OSM, ortofoto) i krycie</td><td>w wyspie, grupa „Podkład”</td><td>inspektor</td><td>sekcja „Warstwy”</td></tr>
+    <tr><td>tylko aplikacja: WMS/WMTS/XYZ, obrazy</td><td>grupa „Zaawansowane” na dole wyspy, domyślnie zwinięta</td><td>to samo w inspektorze</td><td>sekcja „Zaawansowane”</td></tr>
+    <tr><td>tylko aplikacja: otwórz run…, plik OSM</td><td>„Zaawansowane”; „otwórz run…” też w menu pigułki</td><td>menu „⋯” w pasku</td><td>sekcja „Plik” szyny</td></tr>
+    <tr><td>język (English)</td><td>nagłówek wyspy</td><td>menu „⋯”</td><td>sekcja „Ustawienia”</td></tr>
+    <tr><td>podpowiedź klawiszowa (spacja, strzałki, F, Esc)</td><td>dół wyspy (jedna linia) + tooltipy na przyciskach</td><td>tooltipy i menu „⋯”</td><td>dół panelu + tooltipy</td></tr>
+    <tr><td>prawy przycisk myszy: obrót i pochylenie</td><td>bez zmian (mapa); wzmianka w podpowiedzi</td><td>bez zmian</td><td>bez zmian</td></tr>
+    <tr><td>legenda (prędkość, drogi, klasy)</td><td>szklana kapsuła nad odtwarzaczem po lewej</td><td>nad minikartą</td><td>nad kapsułą</td></tr>
+    <tr><td>skala, atrybucja OSM</td><td>skala nad kapsułą; atrybucja jako skrót „© OpenStreetMap” w kapsule i pełna w wyspie (jak telefon)</td><td>j.w. w minikarcie</td><td>j.w.</td></tr>
+    <tr><td>uwagi o runie (układ współrzędnych, próbka, brak OSM)</td><td>trzeci rząd kapsuły; ostrzeżenia o danych zawsze widoczne (wymóg CLAUDE.md)</td><td>pod minikartą, ostrzeżenia zawsze widoczne</td><td>pod kapsułą, ostrzeżenia zawsze widoczne</td></tr>
+  </table></div>
+</section>
+
+<section class="prop">
+  <h2>Porównanie</h2>
+  <div class="tw"><table>
+    <tr><th></th><th>A: wyspy</th><th>B: pasek + inspektor</th><th>C: szyna + kapsuła</th></tr>
+    <tr><td>Mapa jako bohater</td><td>najlepiej: 100% okna</td><td>średnio: pasek 56 px u góry</td><td>dobrze, szyna 56 px po lewej</td></tr>
+    <tr><td>Spójność z telefonem</td><td>najwyższa (te same elementy)</td><td>niska (inny model)</td><td>średnia</td></tr>
+    <tr><td>Gęstość panelu (12 sekcji)</td><td>średnia: grupy rozwijane</td><td>średnia</td><td>najlepsza: jedna sekcja naraz</td></tr>
+    <tr><td>Nakład kodu w <code>shell.html</code></td><td>najmniejszy: reguły z <code>@media ≤700</code> w większości odtwarzam, dochodzą pozycje wyspy</td><td>średni: nowy pasek</td><td>największy: szyna, przełączanie sekcji</td></tr>
+    <tr><td>Koszt szkła nad WebGL</td><td>małe elementy ze szkłem</td><td>pasek na całą szerokość ze szkłem: największa powierzchnia</td><td>szyna i kapsuła ze szkłem</td></tr>
+    <tr><td>Ryzyko regresji telefonu</td><td>niskie (ta sama baza stylów)</td><td>średnie</td><td>średnie</td></tr>
+    <tr><td>Test <code>desk</code> w smoke</td><td>zmieniam: pigułka i stos widoczne, panel <code>fixed</code></td><td>zmieniam mocniej</td><td>zmieniam mocniej</td></tr>
+  </table></div>
+</section>
+
+<section class="prop">
+  <div class="card rec">
+    <h3>Rekomendacja</h3>
+    <p style="font-size:18px"><b>A: pływające wyspy</b>, z jednym zapożyczeniem z C: pionowe grupowanie w panelu jako rozwijane sekcje, żeby wyspa nie urosła w ścianę.</p>
+    <ul>
+      <li>Zgadza się z twoimi odpowiedziami (wyspa, wyśrodkowana kapsuła, jeden wygląd) i z zasadą „mapa jest bohaterem”.</li>
+      <li>Najmniej nowego kodu i najmniejsze ryzyko dla telefonu: reużywam <code>#mpill</code>, <code>#mstack</code>, <code>#bar</code>, tokeny <code>--glass</code>.</li>
+      <li>Szkło tylko na małych elementach; panel lity (patrz ryzyka research: <code>docs/research/wizualizer_design_desktop.md</code>).</li>
+    </ul>
+    <p class="note" style="margin:10px 0 0">Wybierz: „A”, „A + sekcje z C”, „C z elementami B”, „A, ale bez …”.</p>
+  </div>
+</section>
+
+<section class="prop">
+  <h2>Co zmienia się przy zmianie szerokości</h2>
+  <div class="tw"><table>
+    <tr><th>Szerokość</th><th>Układ</th></tr>
+    <tr><td>≤ 700 px</td><td>telefon (bez zmian): arkusz u dołu, karta pełnej szerokości</td></tr>
+    <tr><td>701–1024 px</td><td>wyspy: panel 300 px, kapsuła do 560 px, zamykany dotknięciem mapy; na poziomym tablecie dotyk działa tak samo (cele ≥ 36 px)</td></tr>
+    <tr><td>1025–1439 px</td><td>wyspa 340 px, kapsuła 640 px</td></tr>
+    <tr><td>≥ 1440 px</td><td>wyspa 360 px, kapsuła 720 px (max)</td></tr>
+  </table></div>
+  <p class="note">Progi robocze (nie normatywne). Wszystko ciągłe w CSS, bez trzeciego osobnego układu.</p>
+</section>
+
+<section class="prop">
+  <h2>Uczciwa lista kompromisów</h2>
+  <ul>
+    <li><b>Miejsce na mapę:</b> w A mapa ma 100%, ale otwarta wyspa 340–360 px zasłania jej prawą część; zamykanie dotknięciem mapy łagodzi, nie usuwa.</li>
+    <li><b>Gęstość panelu:</b> 12 sekcji w jednej wyspie wymaga rozwijanych grup; to dodatkowy klik do rzadkich opcji (WMS, obrazy, plik OSM).</li>
+    <li><b>Koszt szkła nad WebGL:</b> <b>niezmierzony</b> w WebView2. Znane są tylko zgłoszenia o kosztach z innych aplikacji (patrz research). Zmierzę czas klatki z szkłem i bez przed polerką; jest plan B: kolor nieprzezroczysty przy <code>prefers-reduced-transparency</code> i w razie spadku FPS.</li>
+    <li><b>Kontrast na szkle:</b> tekst na jasnej ortofotomapie może wymagać mocniejszego tintu szkła; sprawdzę na zrzutach.</li>
+    <li><b>Nakład kodu:</b> A to głównie nowy blok <code>@media (min-width: 701px)</code> i reużycie JS telefonu (pigułka, stos); asercja <code>desk</code> w smoke zostanie zmieniona świadomie.</li>
+    <li><b>Hover na dotyku:</b> poziomy tablet nie ma hovera, więc nic ważnego nie może być tylko w hoverze.</li>
+    <li><b>Nie sprawdzone:</b> aplikacja okienkowa w WebView2 z nowym układem, prawdziwy tablet, wydajność na zintegrowanej grafice.</li>
+  </ul>
+</section>
+
+<section class="prop">
+  <h2>Źródła</h2>
+  <p class="note">Pełne omówienie, z oznaczeniem „zweryfikowane / z wiedzy własnej”: <code>docs/research/wizualizer_design_desktop.md</code>. Zweryfikowane w tej sesji: kopia Apple HIG (<a href="https://unpkg.com/apple-hig-mcp@1.1.3/content/materials.md">materials</a>, <a href="https://unpkg.com/apple-hig-mcp@1.1.3/content/sidebars.md">sidebars</a>, <a href="https://unpkg.com/apple-hig-mcp@1.1.3/content/toolbars.md">toolbars</a>, <a href="https://unpkg.com/apple-hig-mcp@1.1.3/content/layout.md">layout</a>), <a href="https://developer.mozilla.org/en-US/docs/Web/CSS/backdrop-filter">MDN backdrop-filter</a>, <a href="https://web.dev/articles/backdrop-filter">web.dev</a>, <a href="https://www.w3.org/WAI/WCAG22/Understanding/target-size-minimum.html">WCAG 2.5.8</a>, <a href="https://www.w3.org/WAI/ARIA/apg/patterns/slider/">ARIA APG slider</a>. Z wiedzy własnej: wzorce Apple Maps, Muzyka/Podcasty, Kepler.gl, Felt, Figma, rozmiary kontrolek na Macu.</p>
+</section>
+
+</div>
+
+<script>
+// Generator makiet: wspólne klocki, żeby trzy propozycje różniły się układem, a nie dopracowaniem.
+const I = {
+  play: '<svg class="i" viewBox="0 0 24 24"><path d="M8 5.5v13l11-6.5z" fill="currentColor" stroke="none"/></svg>',
+  d3: '<svg class="i" viewBox="0 0 24 24"><path d="M12 3l8 4.5v9L12 21l-8-4.5v-9z"/><path d="M12 12l8-4.5M12 12L4 7.5M12 12v9"/></svg>',
+  fit: '<svg class="i" viewBox="0 0 24 24"><path d="M4 9V4h5M15 4h5v5M20 15v5h-5M9 20H4v-5"/></svg>',
+  set: '<svg class="i" viewBox="0 0 24 24"><path d="M4 7h10M18 7h2M4 17h2M10 17h10"/><circle cx="16" cy="7" r="2"/><circle cx="8" cy="17" r="2"/></svg>',
+  lay: '<svg class="i" viewBox="0 0 24 24"><path d="M12 4l8 4-8 4-8-4z"/><path d="M4 12l8 4 8-4M4 16l8 4 8-4"/></svg>',
+  car: '<svg class="i" viewBox="0 0 24 24"><path d="M5 16V11l2-4h10l2 4v5M3 16h18M7 19v-3M17 19v-3"/></svg>',
+  find: '<svg class="i" viewBox="0 0 24 24"><circle cx="11" cy="11" r="6"/><path d="M20 20l-4.5-4.5"/></svg>',
+  eye: '<svg class="i" viewBox="0 0 24 24"><path d="M2 12s4-7 10-7 10 7 10 7-4 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/></svg>',
+  info: '<svg class="i" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 11v6M12 7.5v.5"/></svg>',
+  more: '<svg class="i" viewBox="0 0 24 24"><circle cx="5" cy="12" r="1.2"/><circle cx="12" cy="12" r="1.2"/><circle cx="19" cy="12" r="1.2"/></svg>',
+  x: '<svg class="i" viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18"/></svg>',
+  ch: '<svg class="i" style="width:14px;height:14px" viewBox="0 0 24 24"><path d="M9 6l6 6-6 6"/></svg>',
+  chd: '<svg class="i" style="width:14px;height:14px" viewBox="0 0 24 24"><path d="M6 9l6 6 6-6"/></svg>'
+};
+function mapSvg(W, H) {
+  const roads = [[0.1,.6,.9,.3],[.2,.2,.7,.9],[.05,.35,.95,.55],[.45,.05,.55,.95],[.3,.8,.85,.15],[.6,.3,.2,.75]].map(r => `<path d="M${r[0]*W} ${r[1]*H}L${r[2]*W} ${r[3]*H}" stroke="#2c3340" stroke-width="3" fill="none"/>`).join('');
+  const hot = [[.45,.38,.62,.52],[.3,.55,.5,.5],[.5,.5,.72,.7]].map(r => `<path d="M${r[0]*W} ${r[1]*H}L${r[2]*W} ${r[3]*H}" stroke="#1ae6ff" stroke-width="5" opacity=".75" fill="none" stroke-linecap="round"/>`).join('');
+  const warm = `<path d="M${.4*W} ${.45*H}L${.46*W} ${.5*H}" stroke="#ffb31a" stroke-width="5" fill="none" stroke-linecap="round"/><path d="M${.47*W} ${.51*H}L${.5*W} ${.53*H}" stroke="#ff1f0d" stroke-width="5" fill="none" stroke-linecap="round"/>`;
+  return `<svg class="map" viewBox="0 0 ${W} ${H}" preserveAspectRatio="none"><rect width="${W}" height="${H}" fill="#121418"/><circle cx="${.5*W}" cy="${.5*H}" r="${.35*H}" fill="#161a21"/>${roads}${hot}${warm}</svg>`;
+}
+const legend = (x, y) => `<div class="ab g leg" style="left:${x}px;bottom:${y}px"><b></b><span>0 / 20 / 50 km/h</span></div>`;
+function playerCap(w, o = {}) {
+  return `<div class="ab g cap" style="left:50%;margin-left:${-w/2}px;width:${w}px;bottom:16px;flex-wrap:wrap;${o.big ? 'padding:12px 20px;border-radius:34px' : ''}">
+    ${o.clock ? `<div style="min-width:${o.big ? 130 : 110}px"><div class="clk" ${o.big ? 'style="font-size:30px"' : ''}>06:00:00</div><div class="sub">277 aut</div></div>` : ''}
+    <div class="play">${I.play}</div><div class="scrub"><i style="width:26%"></i><u style="left:26%"></u></div><div class="speed">1×</div>
+    <div style="flex-basis:100%;display:flex;justify-content:space-between;gap:10px" class="sub"><span>próbka 0,25 · łamane: 4705 z 10383</span><span>© OpenStreetMap</span></div></div>`;
+}
+const stack = (items, h) => `<div class="g stack${h ? ' h' : ''}">${items.map(x => `<div class="btn${x[1] ? ' on' : ''}">${x[0]}</div>`).join('')}</div>`;
+function sections(open, adv) {
+  const g = (t, o) => `<div class="grp"><span>${t}</span>${o ? I.chd : I.ch}</div>`;
+  const sw = (t, on) => `<div class="row"><span>${t}</span><span class="sw2${on ? ' on' : ''}"></span></div>`;
+  return `${g('Widok', 1)}<div class="seg"><span class="on">auta</span><span>tylko drogi</span><span>auta + drogi</span></div>
+  ${g('Klasy', 1)}<div class="chips"><span class="chip on">mieszkaniec</span><span class="chip on">przyjeżdżający</span><span class="chip">wyjeżdżający</span><span class="chip on">tło lekkie</span></div>
+  ${g('Warstwy', 1)}${sw('Kolor dróg OSM', 0)}${sw('Modele 3D pojazdów', 0)}${sw('Błyski aktywności', 1)}
+  ${g('Podkład', 1)}${sw('OpenStreetMap', 1)}${sw('Ortofotomapa (GUGiK)', 0)}
+  ${g('Zaawansowane (WMS, obrazy, plik OSM)', 0)}`;
+}
+const detail = `<h4>Auto 1 234 567 · mieszkaniec</h4><div class="sub" style="margin-bottom:8px">makieta, dane przykładowe</div>
+  <div class="row"><span>prędkość</span><b>34 km/h</b></div><div class="row"><span>trasa</span><b>12,4 km</b></div>
+  <div class="grp"><span>Oś dnia</span></div><div style="height:30px;border-radius:8px;background:#121418;position:relative"><i style="position:absolute;left:8%;width:26%;top:0;bottom:0;background:#7eb6ff;border-radius:6px"></i><i style="position:absolute;left:34%;width:30%;top:0;bottom:0;background:#3d4656"></i><i style="position:absolute;left:64%;width:22%;top:0;bottom:0;background:#7eb6ff;border-radius:6px"></i></div>
+  <div class="row" style="margin-top:8px"><span>F: śledź · Esc: wyczyść</span></div>`;
+function panelBox(x, y, w, h, inner, o = {}) {
+  return `<div class="ab s panel" style="left:${x}px;top:${y}px;width:${w}px;height:${h}px;${o.r ? 'border-radius:' + o.r + 'px' : ''}">${inner}</div>`;
+}
+function header(withX) {
+  return `<div style="display:flex;justify-content:space-between;align-items:center"><h4>easy-matplayer <span class="sub">v0.1.0</span></h4><span style="display:flex;gap:6px;align-items:center"><span class="chip">English</span>${withX ? I.x : ''}</span></div><div class="field" style="margin:6px 0">id pojazdu</div>`;
+}
+const cars = (sel) => `<div class="car" style="left:640px;top:360px"></div><div class="car" style="left:760px;top:470px"></div><div class="car ${sel ? 'hl' : ''}" style="left:${sel ? 700 : 880}px;top:${sel ? 420 : 520}px;background:#ffb31a"></div>`;
+
+function mock(spec) {
+  const [p, st] = spec.split(':');
+  const w1024 = st === 'w1024', W = w1024 ? 1024 : 1440, H = w1024 ? 700 : 900;
+  const pw = w1024 ? 300 : 340, cw = w1024 ? 560 : 720;
+  let h = mapSvg(W, H) + cars(st === 'sel');
+  if (p === 'cur') {
+    h = mapSvg(W, H) + cars(0)
+     + `<div class="ab" style="left:12px;top:12px;width:30px;background:#1b1f27;border-radius:4px;padding:4px 0;text-align:center;color:#9aa3b2;font-size:18px">+<br>−<br>▲<br>⛶</div>`
+     + `<div class="ab" style="left:12px;bottom:70px;background:rgba(18,20,24,.82);padding:6px 8px;border-radius:6px;font-size:12px">━━ 0 / 20 / 50 km/h</div>`
+     + `<div class="ab" style="right:340px;bottom:62px;background:rgba(18,20,24,.75);padding:3px 8px;font-size:11px;color:#9aa3b2">© OpenStreetMap contributors</div>`
+     + `<div class="ab" style="right:0;top:0;bottom:52px;width:320px;background:#1b1f27;padding:16px;font-size:13px;color:#9aa3b2;line-height:1.9"><b style="color:#e7e9ee;font-size:15px">easy-matplayer</b> v0.1.0<br>← scenariusze · GISBoost<br>demo-kutno<br><span style="border:1px solid #2a3140;border-radius:99px;padding:3px 10px">English</span><br><div style="background:#121418;border:1px solid #2a3140;border-radius:6px;padding:6px 8px;margin:4px 0">id pojazdu</div><span style="border:1px solid #7eb6ff;border-radius:99px;padding:3px 10px">mieszkaniec</span> <span style="border:1px solid #7eb6ff;border-radius:99px;padding:3px 10px">przyjeżdżający</span><br>☐ kolor dróg OSM<br>☐ modele 3D pojazdów<br>☑ błyski aktywności<br>… 12 sekcji w jednej kolumnie …</div>`
+     + `<div class="ab" style="left:0;right:0;bottom:0;height:52px;background:#1b1f27;display:flex;align-items:center;gap:8px;padding:0 12px;font-size:13px;color:#9aa3b2;white-space:nowrap"><span style="border:1px solid #2a3140;border-radius:6px;padding:4px 10px;color:#e7e9ee">start</span> ◀ 1× ▶ <span>1× 10× 60× 300×</span><span style="flex:1;height:4px;background:#7eb6ff;border-radius:2px;max-width:200px"></span><span style="color:#e7e9ee">06:00:00</span>277 aut · próbka 0,25 · łamane: 4705 z 10383<span style="margin-left:auto;color:#e7e9ee">3D · ukryj</span></div>`;
+    return [h, W, H];
+  }
+  const open = st === 'panel' || st === 'sel';
+  const inner = st === 'sel' ? header(1) + detail : header(1) + sections();
+  if (p === 'A') {
+    h += `<div class="ab g pill" style="left:16px;top:16px">06:00 <small>· 277 aut</small></div>`;
+    h += `<div class="ab" style="right:16px;top:16px">${stack([[I.d3], [I.fit], [I.set, open]])}</div>`;
+    if (open) h += panelBox(W - pw - 16, 16 + 120 + 12, pw, H - 16 - 132 - 96 - 90, inner);
+    h += legend(16, 100) + playerCap(cw, {clock: 0});
+    if (!w1024) h += `<div class="ab sub" style="right:20px;bottom:20px">Spacja · ←→ · F · Esc</div>`;
+  } else if (p === 'B') {
+    const bar = W - 32;
+    h += `<div class="ab g" style="left:16px;top:16px;width:${bar}px;height:48px;border-radius:24px;display:flex;align-items:center;padding:0 16px;gap:16px"><b>easy-matplayer</b><span class="pill" style="background:rgba(118,118,128,.28);height:30px">06:00:00 <small>· 277 aut</small></span><span style="flex:1;display:flex;justify-content:center">${w1024 ? '<span class="speed" style="height:30px">Widok ▾</span>' : '<div class="seg" style="width:340px"><span class="on">auta</span><span>tylko drogi</span><span>auta + drogi</span></div>'}</span>${I.find}${I.d3}${I.fit}<span style="color:${open ? '#0a84ff' : '#fff'}">${I.set}</span>${I.more}</div>`;
+    if (open) h += panelBox(W - 320 - 16, 76, 320, H - 76 - 16, inner, {r: 20});
+    h += legend(16, 112) + `<div class="ab g cap" style="left:16px;bottom:16px;width:${w1024 ? 400 : 460}px;flex-wrap:wrap"><div class="play" style="width:38px;height:38px">${I.play}</div><div class="scrub"><i style="width:26%"></i><u style="left:26%"></u></div><div class="speed" style="height:32px">1×</div><div class="sub" style="flex-basis:100%">próbka 0,25 · © OpenStreetMap</div></div>`;
+  } else if (p === 'C') {
+    h += `<div class="ab g rail" style="left:16px;top:16px">${[I.eye, I.car, I.lay, I.find, I.info, I.set].map((x, i) => `<div class="btn${(st === 'panel' && i === 2) || (st === 'sel' && i === 4) ? ' on' : ''}">${x}</div>`).join('')}</div>`;
+    h += `<div class="ab" style="right:16px;top:16px">${stack([[I.d3], [I.fit]])}</div>`;
+    const cwid = w1024 ? 280 : 300;
+    const sw = (t, on) => `<div class="row"><span>${t}</span><span class="sw2${on ? ' on' : ''}"></span></div>`;
+    if (st === 'panel' || w1024) h += panelBox(16 + 56 + 8, 16, cwid, 360, `<h4>Warstwy</h4>${sw('Kolor dróg OSM', 0)}${sw('Modele 3D pojazdów', 0)}${sw('Błyski aktywności', 1)}<div class="grp"><span>Podkład</span></div>${sw('OpenStreetMap', 1)}${sw('Ortofotomapa (GUGiK)', 0)}<div class="grp"><span>Zaawansowane (WMS, obrazy)</span>${I.ch}</div>`, {r: 20});
+    if (st === 'sel') h += panelBox(16 + 56 + 8, 16, cwid, 330, detail, {r: 20});
+    h += legend(16, 120) + playerCap(w1024 ? 600 : 780, {clock: 1, big: 1});
+  }
+  return [h, W, H];
+}
+document.querySelectorAll('.fw').forEach(el => {
+  const [h, W, H] = mock(el.dataset.mock);
+  const s = parseFloat(el.dataset.s);
+  el.style.width = (W * s) + 'px';
+  el.style.height = (H * s) + 'px';
+  el.innerHTML = `<div class="fr" style="width:${W}px;height:${H}px;transform:scale(${s})">${h}</div>`;
+});
+</script>
+</body>
+</html>

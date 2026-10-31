@@ -446,3 +446,10 @@ Otwarte, w kolejności:
 
 - `docs/projekt/design_handoff_styl.md`: handoff dla następnego agenta (decyzje, tokeny, co stosować i czego nie, pułapki, testowanie, zapis researchu mobilnego; moodboard: `docs/projekt/mobile_moodboard.html`).
 - `docs/projekt/prompt_design_desktop.md`: prompt i plan dla agenta, który zrobi research i moodboard dla desktopu i web na komputerze, z punktami STOP na pytania do właściciela. Kodowanie dopiero po wyborze z moodboardu.
+
+## Desktop: audyt, research i moodboard (2026-10-31, kroki 0–3 promptu `prompt_design_desktop.md`)
+
+- STOP 1 (decyzje właściciela): panel jako pływająca szklana wyspa (zwijana), odtwarzacz jako wyśrodkowana kapsuła max ok. 720 px, aplikacja i web na komputerze wyglądają identycznie, jeden układ pływający dla ≥ 701 px (węższa wyspa przy ≤ 1024 px).
+- Audyt: zrzuty obecnego układu w 1440/1024/800 px (strona lokalna z `web_build.py` na demo Kutno, przeglądarka Claude Desktop). Zrzutu z WebView2 (`--smoke`) jeszcze nie robiłem.
+- Research: `docs/research/wizualizer_design_desktop.md` (zweryfikowane vs z wiedzy własnej; wydajność szkła nad WebGL w WebView2 **niezmierzona**, tylko anegdoty).
+- Moodboard: `docs/projekt/desktop_moodboard.html` (3 propozycje A/B/C, makiety nie zrzuty). Kod w `shell.html` bez zmian do wyboru (STOP 2).
