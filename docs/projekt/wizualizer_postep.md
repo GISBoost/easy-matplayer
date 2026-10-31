@@ -475,3 +475,10 @@ Otwarte, w kolejności:
 - Uwagi: legenda ze złej strony (ma być w lewym górnym rogu), skala „dziwnie”, po wysunięciu panelu zostaje pusta szpara po prawej; kapsuła nie animuje się przy wysuwaniu panelu (do polerki).
 - Zrobione: legenda i skala mapy w jednym szklanym polu w lewym górnym rogu (skala przenoszona do `#legend` w `bootMap` tylko na komputerze). Dowód: przeglądarka 1440×900, `#legend` 16,16 (248×54 px) zawiera skalę „5 km”; pytest 132 passed.
 - Warianty prawej strony (1 mało ikon i panel pod szyną, 2 dużo ikon i panel pod ikonami, 3 pasek poziomy w rogu): makieta `docs/projekt/desktop_prawa_strona.html`, kod po wyborze właściciela.
+
+### Prawa strona: wariant 1 (2026-10-31, decyzja właściciela)
+
+- Decyzja: wariant 1 z makiety. Pastylka z trzema ikonami (3D, dopasuj, ustawienia) jest zawsze w prawym górnym rogu; panel wysuwa się pod nią do dołu i prawej krawędzi. Bez ikon sekcji, wszystkie sekcje są w panelu (zwijane nagłówkami). To zastępuje szynę z ikonami sekcji z wpisu wyżej.
+- Zmiana (`viz_player/shell.html`): usunięte przyciski `data-go` i `goSec`; `#panel` `right: 16px; top: 148px; bottom: 16px`; `--bo = --pw + 32px`; test `test_desktop_rail_and_island_geometry` pilnuje nowego układu.
+- Dowody: `pytest` 132 passed; przeglądarka 1440×900 (panel otwarty): pastylka 1382–1424 × 16–138, panel 1064–1424 × 148–884, kapsuła 164–884 × 778–884, legenda 16,16. Nie uruchomiono `--smoke` po tej zmianie.
+- Zostaje do polerki: animacja kapsuły przy wysuwaniu panelu, okno prawie kwadratowe i 701–800 px, exe.

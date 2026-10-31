@@ -333,9 +333,10 @@ def test_desktop_islands_layout():
 
 
 def test_desktop_rail_and_island_geometry():
-    # szyna ikon sekcji w stosie, wyspa na pełną wysokość obok szyny, kapsuła i legenda schodzą wyspie z drogi (--bo)
+    # pastylka z trzema ikonami (3D, dopasuj, ustawienia) zawsze na górze; panel wysuwa się pod nią do dołu i prawej krawędzi;
+    # kapsuła schodzi panelowi z drogi (--bo)
     html = (Path(pl.__file__).parent / "shell.html").read_text(encoding="utf-8")
-    for sec in ("view", "cls", "lay", "find", "base", "adv"):
-        assert f'data-go="{sec}"' in html, sec
+    assert "data-go" not in html
     css = html.split("@media (min-width: 701px) {", 1)[1]
-    assert "body:has(#panel.open) { --bo:" in css and "top: 16px; bottom: 16px; width: var(--pw)" in css
+    assert "body:has(#panel.open) { --bo: calc(var(--pw) + 32px)" in css
+    assert "right: 16px; top: 148px; bottom: 16px; width: var(--pw)" in css
