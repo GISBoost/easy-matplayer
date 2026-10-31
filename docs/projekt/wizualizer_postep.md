@@ -441,3 +441,8 @@ Otwarte, w kolejności:
 2. Krok 7: nowe tryby, PT, atrybuty osób.
 3. Krok 8: test na zintegrowanej grafice (odłożony).
 4. Telefon: układ poziomy, przeciąganie arkusza za treść, Safari na iPhonie (`backdrop-filter`, `100dvh`), pierwszy zoom dopasowany do ruchu a nie do całej sieci (dziś cała sieć mieści się w zoomie 8 na wąskim ekranie, auta są wtedy bardzo małe).
+
+## Dokumenty o stylu interfejsu (2026-10-31, na polecenie właściciela)
+
+- `docs/projekt/design_handoff_styl.md`: handoff dla następnego agenta (decyzje, tokeny, co stosować i czego nie, pułapki, testowanie, zapis researchu mobilnego; moodboard: `docs/projekt/mobile_moodboard.html`).
+- `docs/projekt/prompt_design_desktop.md`: prompt i plan dla agenta, który zrobi research i moodboard dla desktopu i web na komputerze, z punktami STOP na pytania do właściciela. Kodowanie dopiero po wyborze z moodboardu.
