@@ -169,8 +169,8 @@ body.panel-off #panel { display: none; }
     <div id="flashbox" hidden>
       <label><input type="checkbox" id="flash" checked> błyski aktywności</label>
       <div id="flash-kinds">
-        <label><input type="checkbox" id="flash-start" checked> start: pierścień rozchodzi się</label>
-        <label><input type="checkbox" id="flash-end" checked> koniec: jaśniejszy pierścień zbiega się</label>
+        <label><input type="checkbox" id="flash-start" checked> start: sam rdzeń</label>
+        <label><input type="checkbox" id="flash-end" checked> koniec: sam pierścień rozchodzi się</label>
       </div>
       <div id="flash-types"></div>
     </div>
@@ -318,9 +318,9 @@ const ROAD_OSM_OTHER = ["inna", "#4e5663", [], 1];
 // Kolor auta w trybie „klasa”: kim jest pojazd (inna tabela niż drogi). „?” to klasa „inne”.
 const CLASS_COLOR = {resident: "#5aa2ff", commuter: "#3dbe7a", outbound: "#e0c15a", tlo: "#a89880", ciezkie: "#e15a4a", "?": "#e7e9ee"};
 let carByClass = false, classRgb = null;
-// Błysk aktywności: start (pierścień rozchodzi się, rdzeń) i koniec (ten sam kolor rozjaśniony o endMix, pierścień zbiega się, bez rdzenia), czas życia w czasie ekranu (FLASH.wall s) przeliczony mnożnikiem odtwarzania,
+// Błysk aktywności: start (sam rdzeń, bez pierścienia) i koniec (sam pierścień, który się rozchodzi, bez rdzenia), oba w kolorze typu, czas życia w czasie ekranu (FLASH.wall s) przeliczony mnożnikiem odtwarzania,
 // więc wygląd zależy tylko od t i mnożnika (przewijanie działa, pauza zamraża fazę). Stałe do strojenia po obejrzeniu na prawdziwym runie.
-const FLASH = {wall: 1.5, min: 3, max: 450, r0: 4, r1: 26, cap: 5000, endMix: 0.55};
+const FLASH = {wall: 1.5, min: 3, max: 450, r0: 4, r1: 26, cap: 5000};
 const FLASH_BLEND = {blendColorOperation: "add", blendColorSrcFactor: "src-alpha", blendColorDstFactor: "one",
   blendAlphaOperation: "add", blendAlphaSrcFactor: "one", blendAlphaDstFactor: "one-minus-src-alpha"};
 // Kolory typów aktywności: znane prefiksy (nazwy zależą od scenariusza), reszta z palety po haszu nazwy.
@@ -932,16 +932,16 @@ function render() {
           fbuf.pos[2 * i] = fl.lon[i];
           fbuf.pos[2 * i + 1] = fl.lat[i];
           if (fl.kind[i]) {
-            // start: pierścień rozchodzi się od środka, z rdzeniem, kolor typu
-            fbuf.ring[i] = FLASH.r0 + (FLASH.r1 - FLASH.r0) * (1 - e * e);
+            // start: sam rdzeń, gaśnie
+            fbuf.ring[i] = 0;
             fbuf.core[i] = 3 + 4 * e;
-            fbuf.ringCol.set([c[0], c[1], c[2], Math.round(255 * e * e)], 4 * i);
-            fbuf.coreCol.set([c[0], c[1], c[2], Math.round(255 * e * e * e)], 4 * i);
+            fbuf.ringCol.set([0, 0, 0, 0], 4 * i);
+            fbuf.coreCol.set([c[0], c[1], c[2], Math.round(255 * e * e)], 4 * i);
           } else {
-            // koniec: ten sam kolor typu rozjaśniony, pierścień zbiega się do środka, bez rdzenia
-            fbuf.ring[i] = FLASH.r1 - (FLASH.r1 - FLASH.r0) * u * u;
+            // koniec: sam pierścień, rozchodzi się od środka i gaśnie
+            fbuf.ring[i] = FLASH.r0 + (FLASH.r1 - FLASH.r0) * (1 - e * e);
             fbuf.core[i] = 0;
-            fbuf.ringCol.set([c[0] + (255 - c[0]) * FLASH.endMix, c[1] + (255 - c[1]) * FLASH.endMix, c[2] + (255 - c[2]) * FLASH.endMix, Math.round(255 * e)], 4 * i);
+            fbuf.ringCol.set([c[0], c[1], c[2], Math.round(255 * e * e)], 4 * i);
             fbuf.coreCol.set([0, 0, 0, 0], 4 * i);
           }
         }

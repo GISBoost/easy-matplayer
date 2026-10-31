@@ -377,3 +377,7 @@ Wszystkie trzy części (A2a, A2b, A2c) przeszły: 96 testów i smoke w prawdziw
 - Dowody: `pytest viz_player/tests -q` (patrz niżej), `test_effects.py` porównuje klienta w node z surowymi eventami dla startów, końców i obu naraz (`flash_window(kinds=...)`, 10 chwil); `--smoke` na demo Kutno 25% w WebView2: `blyski=215/4` (klient i indeks liczą te same 215 zdarzeń w oknie 300 s i 4 rysowane przy życiu 3 s); zrzut ze strony: 21 startów i 18 końców o 06:20 w oknie 90 s, jasne pierścienie w mieście (koniec `home`), niebieskie przy strefie logistycznej (start `work`).
 - Przeglądu Via nie udało się zrobić: wyszukiwanie nie znalazło opisu błysków aktywności w Via ani OTFVis. Projekt wizualny jest własny.
 - Paczka: `scripts\viz_build.bat` kod 0; `easy-matplayer.exe --smoke` z PATH `C:\Windows\System32;C:\Windows;...\WindowsPowerShell\v1.0` i pustym `EASY_MATPLAYER_DATA`: `smoke OK ... blyski=215/4 linki_z_ruchem=2911`. Pytest: 128 passed.
+
+## Kształt błysku: start = rdzeń, koniec = pierścień (2026-10-31, decyzja właściciela)
+
+- Zastępuje wygląd z poprzedniej sekcji. Start aktywności: sam rdzeń, bez pierścienia (gaśnie). Koniec: sam pierścień rozchodzący się od środka, bez rdzenia. Oba w kolorze typu, bez rozjaśniania (stała `FLASH.endMix` usunięta), więc start od końca odróżnia kształt. Zmiana tylko w rysowaniu (`shell.html`), dane, eksport i `Engine.flashes` bez zmian.

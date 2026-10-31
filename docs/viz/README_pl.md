@@ -56,8 +56,10 @@ Do działania mapa podkładowa pobiera kafelki z publicznych usług WMS/WMTS (ad
 
 Gdy osoba zaczyna aktywność (event `actstart`) albo ją kończy (`actend`, czyli np. wyjeżdża z domu), w tym miejscu mapy pojawia się krótki błysk. Przełącznik „błyski aktywności” w panelu, pod nim osobne checkboxy dla startu i końca oraz lista typów (np. żeby wyłączyć techniczne `tlo_start` i `tlo_end` ruchu tła).
 
-- **Start:** pierścień rozchodzi się od środka, z rdzeniem, w kolorze typu aktywności.
-- **Koniec:** ten sam kolor typu, ale rozjaśniony, a pierścień zbiega się do środka, bez rdzenia. Rozróżnienie działa więc także bez patrzenia na barwę.
+- **Start:** sam rdzeń (kropka, która gaśnie), bez pierścienia.
+- **Koniec:** sam pierścień, który rozchodzi się od środka i gaśnie, bez rdzenia.
+
+Oba w kolorze typu aktywności, więc start i koniec rozróżnia kształt.
 
 Kolory typów: `home` pomarańczowy, `work` niebieski, `edu`/`school` fioletowy, `shop` zielony, `leis…` różowy, inne typy z palety.
 

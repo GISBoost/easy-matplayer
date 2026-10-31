@@ -58,8 +58,10 @@ The base map loads tiles from public WMS/WMTS services (addresses in the map pan
 
 When a person starts an activity (an `actstart` event) or ends it (`actend`, for example leaving home), a short flash appears at that place on the map. Use the "activity flashes" toggle in the panel; below it are separate checkboxes for start and end and a list of types (for example to switch off the technical `tlo_start` and `tlo_end` of background traffic).
 
-- **Start:** the ring expands from the centre, with a core, in the colour of the activity type.
-- **End:** the same type colour, lightened, and the ring contracts to the centre, without a core. So the two can be told apart without relying on colour.
+- **Start:** a core only (a dot that fades), no ring.
+- **End:** a ring only, expanding from the centre and fading, no core.
+
+Both use the activity type colour, so start and end are told apart by shape.
 
 Type colours: `home` orange, `work` blue, `edu`/`school` purple, `shop` green, `leis…` pink, other types from a palette.
 
