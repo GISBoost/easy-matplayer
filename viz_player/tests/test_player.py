@@ -330,3 +330,12 @@ def test_desktop_islands_layout():
     assert 'id="dtime"' in html and 'id="dkeys"' in html and '["clock", "dtime"]' in html
     for key in ("Klasy", "Warstwy", "Szukaj", "Zaawansowane", "Spacja: start · ← →: ±1 min · F: śledź · Esc: wyczyść"):
         assert key in i18n.EN, key
+
+
+def test_desktop_rail_and_island_geometry():
+    # szyna ikon sekcji w stosie, wyspa na pełną wysokość obok szyny, kapsuła i legenda schodzą wyspie z drogi (--bo)
+    html = (Path(pl.__file__).parent / "shell.html").read_text(encoding="utf-8")
+    for sec in ("view", "cls", "lay", "find", "base", "adv"):
+        assert f'data-go="{sec}"' in html, sec
+    css = html.split("@media (min-width: 701px) {", 1)[1]
+    assert "body:has(#panel.open) { --bo:" in css and "top: 16px; bottom: 16px; width: var(--pw)" in css

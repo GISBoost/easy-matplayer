@@ -141,7 +141,7 @@ body.panel-off #panel { display: none; }
 .maplibregl-ctrl-attrib a { color: #7eb6ff; }
 /* Telefon (≤ 700 px): mapa na cały ekran, pływający odtwarzacz ze szkła, pigułka zegara, stos przycisków i panel jako arkusz.
    Desktop: te elementy są ukryte, a wrappery #mspeeds i #binfo nic nie zmieniają. */
-#mpill, #mstack, #grab, #mhint, #dclk, #dkeys, .sechd { display: none; }
+#mpill, #mstack, #grab, #mhint, #dclk, #dkeys, .sechd, #mstack .go { display: none; }
 #mspeeds, #binfo { display: contents; }
 @media (max-width: 700px) {
   :root { --dock: 110px; --glass: rgba(44, 44, 46, .72); }
@@ -253,17 +253,20 @@ body.panel-off #panel { display: none; }
    zwijana przyciskiem ustawień) po prawej; odtwarzacz z zegarem (bez sekund) jako kapsuła na dole pośrodku. Pigułka #mpill zostaje ukryta:
    zegar jest w kapsule. Szkło ma tylko to, co małe i stałe; legenda i panel też, z jednolitym tłem, gdy przeglądarka nie robi rozmycia. */
 @media (min-width: 701px) {
-  :root { --dock: 110px; --pw: 340px; --cw: 640px; --glass: rgba(44, 44, 46, .72); --glassp: rgba(38, 38, 40, .76); --edge: .5px solid rgba(255, 255, 255, .14); }
+  :root { --dock: 110px; --pw: 340px; --cw: 640px; --bo: 0px; --glass: rgba(44, 44, 46, .72); --glassp: rgba(38, 38, 40, .76); --edge: .5px solid rgba(255, 255, 255, .14); }
   html, body { height: 100dvh; }
   body { display: block; font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", Roboto, system-ui, sans-serif; }
   #stage { position: fixed; inset: 0; }
   /* nie chowaj kontenera: deck.gl montuje w nim kanwę (patrz telefon) */
   .maplibregl-ctrl-top-left .maplibregl-ctrl-group { display: none; }
-  .maplibregl-ctrl-bottom-right { bottom: var(--dock); }
+  /* wyspa po otwarciu zajmuje prawą kolumnę (szyna 40 px + odstęp + --pw): kapsuła, legenda i skala schodzą jej z drogi, więc układ trzyma się
+     także w oknie prawie kwadratowym (--bo = zajęta szerokość z prawej) */
+  body:has(#panel.open) { --bo: calc(var(--pw) + 68px); }
+  .maplibregl-ctrl-bottom-right { right: auto; left: 16px; bottom: var(--dock); }
   .maplibregl-ctrl-attrib { display: none; }  /* atrybucja jest w kapsule (#mattr), pełna na dole panelu (#attrfull) */
   #bar #mattr { display: inline; }
   #attrfull { display: block; font-size: 12px; }
-  #legend { left: 16px; bottom: calc(var(--dock) + 4px); padding: 8px 12px; border-radius: 14px; background: var(--glass);
+  #legend { left: auto; right: calc(68px + var(--bo)); top: 16px; bottom: auto; padding: 8px 12px; border-radius: 14px; background: var(--glass);
     -webkit-backdrop-filter: blur(24px) saturate(1.8); backdrop-filter: blur(24px) saturate(1.8); border: var(--edge); }
   .maplibregl-ctrl-scale { background: rgba(18, 20, 24, .75); color: #9aa3b2; border-color: #9aa3b2; }
   :is(button, input, #grab):focus-visible { outline: 2px solid #0a84ff; outline-offset: 2px; }
@@ -273,12 +276,14 @@ body.panel-off #panel { display: none; }
     background: var(--glass); -webkit-backdrop-filter: blur(24px) saturate(1.8); backdrop-filter: blur(24px) saturate(1.8); border: var(--edge); }
   #mstack button { display: grid; place-items: center; width: 40px; height: 40px; padding: 0; border: 0; background: none; color: #fff; cursor: pointer; }
   #mstack button + button { border-top: var(--edge); }
+  #mstack button.go { display: grid; }
+  body:not(.web) #mstack button[data-go=base], body.web #mstack button[data-go=adv] { display: none; }
   #mstack button:hover { background: rgba(255, 255, 255, .1); }
   #mstack button.on { color: #0a84ff; }
   #mstack svg { width: 22px; height: 22px; stroke: currentColor; fill: none; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
 
   /* odtwarzacz: kapsuła [zegar | start | suwak | mnożnik]; drugi rząd po kliknięciu mnożnika; trzeci: próbka, uwagi o runie, skróty */
-  #bar { position: fixed; z-index: 700; left: 0; right: 0; margin: 0 auto; bottom: 16px; width: min(var(--cw), calc(100vw - 32px)); box-sizing: border-box;
+  #bar { position: fixed; z-index: 700; left: 16px; right: calc(16px + var(--bo)); margin: 0 auto; bottom: 16px; width: min(var(--cw), calc(100vw - 32px - var(--bo))); box-sizing: border-box;
     display: grid; grid-template-columns: auto 48px 1fr auto; gap: 8px 14px; align-items: center; padding: 12px 18px; border-radius: 30px;
     background: var(--glass); -webkit-backdrop-filter: blur(24px) saturate(1.8); backdrop-filter: blur(24px) saturate(1.8); border: var(--edge); }
   #bar #mdn, #bar #mup, #bar #clock, #bar #count, #bar #three, #bar #hide { display: none; }
@@ -306,10 +311,10 @@ body.panel-off #panel { display: none; }
   #dkeys { display: inline; margin-left: auto; color: rgba(235, 235, 245, .6); }
 
   /* panel: wyspa ze szkła pod stosem, wysuwana z prawej; sekcje zwijane nagłówkami (.sechd), ostrzeżenia o runie i szczegóły zawsze na górze */
-  #panel { position: fixed; z-index: 600; right: 16px; top: 160px; width: var(--pw); box-sizing: border-box; max-height: calc(100dvh - 160px - var(--dock) - 44px);
+  #panel { position: fixed; z-index: 600; right: 68px; top: 16px; bottom: 16px; width: var(--pw); box-sizing: border-box;
     display: flex; flex-direction: column; gap: 10px; padding: 16px; border-radius: 24px; font-size: 14px; overflow: auto; overscroll-behavior: contain;
     background: var(--glassp); -webkit-backdrop-filter: blur(30px) saturate(1.8); backdrop-filter: blur(30px) saturate(1.8); border: var(--edge);
-    transform: translateX(calc(100% + 24px)); visibility: hidden; pointer-events: none;
+    transform: translateX(calc(100% + 96px)); visibility: hidden; pointer-events: none;
     transition: transform .32s cubic-bezier(.2, .8, .2, 1), visibility 0s linear .32s; }
   #panel.open { transform: none; visibility: visible; pointer-events: auto; transition: transform .32s cubic-bezier(.2, .8, .2, 1); }
   body.panel-off #panel { display: flex; }
@@ -384,6 +389,12 @@ body.panel-off #panel { display: none; }
 <div id="mstack">
   <button id="m3d" type="button" aria-label="3D"><svg viewBox="0 0 24 24"><path d="M12 3l8 4.5v9L12 21l-8-4.5v-9z"/><path d="M12 12l8-4.5M12 12L4 7.5M12 12v9"/></svg></button>
   <button id="mfit" type="button" aria-label="Pokaż cały obszar sieci"><svg viewBox="0 0 24 24"><path d="M4 9V4h5M15 4h5v5M20 15v5h-5M9 20H4v-5"/></svg></button>
+  <button class="go" type="button" data-go="view" title="Widok" aria-label="Widok"><svg viewBox="0 0 24 24"><path d="M2 12s4-7 10-7 10 7 10 7-4 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/></svg></button>
+  <button class="go" type="button" data-go="cls" title="Klasy" aria-label="Klasy"><svg viewBox="0 0 24 24"><path d="M5 16V11l2-4h10l2 4v5M3 16h18M7 19v-3M17 19v-3"/></svg></button>
+  <button class="go" type="button" data-go="lay" title="Warstwy" aria-label="Warstwy"><svg viewBox="0 0 24 24"><path d="M12 4l8 4-8 4-8-4z"/><path d="M4 12l8 4 8-4M4 16l8 4 8-4"/></svg></button>
+  <button class="go" type="button" data-go="find" title="Szukaj" aria-label="Szukaj"><svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="6"/><path d="M20 20l-4.5-4.5"/></svg></button>
+  <button class="go" type="button" data-go="base" title="Podkłady" aria-label="Podkłady"><svg viewBox="0 0 24 24"><path d="M3 6l6-2 6 2 6-2v14l-6 2-6-2-6 2zM9 4v14M15 6v14"/></svg></button>
+  <button class="go" type="button" data-go="adv" title="Zaawansowane" aria-label="Zaawansowane"><svg viewBox="0 0 24 24"><circle cx="5" cy="12" r="1.3"/><circle cx="12" cy="12" r="1.3"/><circle cx="19" cy="12" r="1.3"/></svg></button>
   <button id="msheet" type="button" aria-label="Ustawienia"><svg viewBox="0 0 24 24"><path d="M4 7h10M18 7h2M4 17h2M10 17h10"/><circle cx="16" cy="7" r="2"/><circle cx="8" cy="17" r="2"/></svg></button>
 </div>
 <aside id="panel">
@@ -559,6 +570,7 @@ function translateStatic() {
 const mobileMQ = window.matchMedia("(max-width: 700px)");
 const panelEl = document.getElementById("panel"), barEl = document.getElementById("bar"), grabEl = document.getElementById("grab");
 const sheet = {d: 0};
+let goSec = null;  // komputer: sekcja otwarta ikoną ze stosu (podświetlona), null gdy wyspa zamknięta albo otwarta przyciskiem ustawień
 // Miejsce nad odtwarzaczem, z zapasem na pigułkę zegara u góry; --dock przesuwa nad odtwarzacz arkusz, legendę i prawa autorów mapy.
 function sheetRoom() { return Math.max(0, barEl.getBoundingClientRect().top - 8 - 64); }
 function sheetH(d) { return d === 0 ? 0 : d === 1 ? Math.min(sheetRoom(), Math.round(innerHeight * 0.46)) : sheetRoom(); }
@@ -566,7 +578,9 @@ function setSheet(d) {
   sheet.d = d;
   panelEl.style.setProperty("--sh", sheetH(d) + "px");
   panelEl.classList.toggle("open", d > 0);
-  document.getElementById("msheet").classList.toggle("on", d > 0);
+  if (d === 0) goSec = null;
+  document.getElementById("msheet").classList.toggle("on", d > 0 && !goSec);
+  document.querySelectorAll("#mstack [data-go]").forEach((b) => b.classList.toggle("on", d > 0 && b.dataset.go === goSec));
 }
 function layoutDock() {
   document.documentElement.style.setProperty("--dock", (innerHeight - barEl.getBoundingClientRect().top + 8) + "px");
@@ -625,6 +639,15 @@ document.querySelectorAll(".sechd").forEach((h) => {
   h.addEventListener("click", () => setSection(h, !h.classList.contains("shut")));
   if (h.dataset.sec === "adv") setSection(h, true);
 });
+// Ikony sekcji w stosie (komputer): otwierają wyspę na jednej sekcji (pozostałe zwinięte); ponowne kliknięcie tej samej ikony zamyka wyspę.
+document.querySelectorAll("#mstack [data-go]").forEach((b) => b.addEventListener("click", () => {
+  const sec = b.dataset.go;
+  if (sheet.d && goSec === sec) { setSheet(0); return; }
+  document.querySelectorAll(".sechd").forEach((h) => setSection(h, h.dataset.sec !== sec));
+  goSec = sec;
+  setSheet(1);
+  panelEl.scrollTop = 0;
+}));
 new ResizeObserver(layoutDock).observe(barEl);
 window.addEventListener("resize", layoutDock);
 mobileMQ.addEventListener("change", layoutDock);

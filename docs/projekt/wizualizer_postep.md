@@ -462,3 +462,10 @@ Otwarte, w kolejności:
 - Dowody: `pytest viz_player/tests -q` 131 passed; `--smoke` na demo Kutno w WebView2 `smoke OK ... mapa=1426x863 klient_vs_python_max=0.46 m blyski=215/4 linki_z_ruchem=2911`; strona lokalna (`web_build.py`, demo Kutno), przeglądarka Claude Desktop: 1440 px (wyspa 360 px, kapsuła 720 px), 1024 px (300/560, bez przewijania poziomego), sekcje zwijają się, zaznaczenie drogi otwiera wyspę; telefon 390 px: pigułka, stos, karta i arkusz jak wcześniej.
 - Nie sprawdzone: zrzut z WebView2 (zrzut smoke wyszedł z innego okna, nie wolno go uznać za dowód), zamrożone exe (krok domknięcia), wydajność szkła nad WebGL (niezmierzona), kontrast na ortofotomapie, zachowanie `prefers-reduced-transparency` w WebView2, prawdziwy tablet.
 - Zauważone poza zakresem (nie naprawiane): na telefonie `#attrfull` (pełna atrybucja) nie ma `order`, więc w arkuszu jest na górze, nie na dole, jak opisano; zrzut `smoke.png` z `grab.window_png` potrafi złapać obce okno.
+
+### Poprawki po obejrzeniu przez właściciela (2026-10-31)
+
+- Uwagi (zrzuty właściciela): po prawej miało być więcej opcji jak w wariancie C; wyspa ma sięgać do samego dołu; legenda do górnego prawego rogu; w oknie prawie kwadratowym elementy źle się wyrównywały (kapsuła na środku okna, wyspa nie sięgała dołu).
+- Zmiana: szyna po prawej z ikonami sekcji (`#mstack [data-go]`, otwierają wyspę na jednej sekcji, ponowne kliknięcie zamyka, aktywna świeci); wyspa `top/bottom: 16px` na lewo od szyny; zmienna `--bo` (szerokość zajęta przez otwartą wyspę, `body:has(#panel.open)`) przesuwa i zwęża kapsułę i legendę; legenda u góry na lewo od szyny; skala przeniesiona w lewy dolny róg nad kapsułę.
+- Dowody: `pytest` 132 passed, `--smoke` OK (jak wyżej); przeglądarka 1230×1000: wyspa 16–984 px (do dołu), kapsuła 91–731 px mieści się na lewo od wyspy (822 px), legenda 507–754 px u góry, szyna 1173–1214 px.
+- Nie sprawdzone: ikony sekcji w WebView2 (smoke ich nie klika), skala i legenda przy bardzo wąskim oknie (701–800 px) z otwartą wyspą.
