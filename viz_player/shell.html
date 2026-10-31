@@ -283,6 +283,7 @@ body.panel-off #panel { display: none; }
   /* odtwarzacz: kapsuła [zegar | start | suwak | mnożnik]; drugi rząd po kliknięciu mnożnika; trzeci: próbka, uwagi o runie, skróty */
   #bar { position: fixed; z-index: 700; left: 16px; right: calc(16px + var(--bo)); margin: 0 auto; bottom: 16px; width: min(var(--cw), calc(100vw - 32px - var(--bo))); box-sizing: border-box;
     display: grid; grid-template-columns: auto 48px 1fr auto; gap: 8px 14px; align-items: center; padding: 12px 18px; border-radius: 30px;
+    transition: right .32s cubic-bezier(.2, .8, .2, 1), width .32s cubic-bezier(.2, .8, .2, 1);
     background: var(--glass); -webkit-backdrop-filter: blur(24px) saturate(1.8); backdrop-filter: blur(24px) saturate(1.8); border: var(--edge); }
   #bar #mdn, #bar #mup, #bar #clock, #bar #count, #bar #three, #bar #hide { display: none; }
   #dclk { display: block; grid-column: 1; grid-row: 1; min-width: 88px; line-height: 1.15; }

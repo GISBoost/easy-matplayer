@@ -839,7 +839,9 @@ def smoke(run):
                 js(f"map.jumpTo({{zoom: {zoom}}}); 0")
                 time.sleep(0.4)
                 scale.append(js("(document.querySelector('.maplibregl-ctrl-scale')||{}).textContent||''"))
-            overlap = js("(function(){var a=document.querySelector('.maplibregl-ctrl-scale').getBoundingClientRect(),b=document.getElementById('legend').getBoundingClientRect();"
+            # komputer: skala leży w legendzie (to samo pole), telefon: osobno, więc nie może jej zasłaniać
+            overlap = js("(function(){var s=document.querySelector('.maplibregl-ctrl-scale'),l=document.getElementById('legend');if(l.contains(s))return false;"
+                         "var a=s.getBoundingClientRect(),b=l.getBoundingClientRect();"
                          "return !(a.right<=b.left||a.left>=b.right||a.bottom<=b.top||a.top>=b.bottom);})()")
             if overlap is not False:
                 result["error"] = "skala zasłonięta przez legendę"
