@@ -148,7 +148,8 @@ body.panel-off #panel { display: none; }
   body { display: block; font-size: 16px; -webkit-tap-highlight-color: transparent;
     font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", Roboto, system-ui, sans-serif; }
   #stage { position: fixed; inset: 0; }
-  .maplibregl-ctrl-top-left { display: none; }
+  /* nie chowaj samego kontenera: deck.gl montuje w nim swoją kanwę (display:none zerował rysowanie aut, dróg i budynków) */
+  .maplibregl-ctrl-top-left .maplibregl-ctrl-group { display: none; }
   .maplibregl-ctrl-bottom-right { bottom: var(--dock); }
   #legend { bottom: calc(var(--dock) + 8px); }
   #bleg { max-width: calc(100vw - 110px); }

@@ -296,3 +296,11 @@ def test_api_osm_use_sets_clears_and_rejects(run_dir, tmp_path, monkeypatch):
     out = api.osm_use("")
     assert out["status"] == "ok" and pl.saved_pbf() is None
     assert api._player.osm_info() == {"file": None, "user": False, "cached": True}, "zapomnienie pliku zostawia dane zapisane przy runie"
+
+
+def test_phone_css_keeps_deck_container():
+    # deck.gl montuje kanwę w .maplibregl-ctrl-top-left; display:none na kontenerze zerował rysowanie aut, dróg i budynków na telefonie
+    import re
+
+    html = (Path(pl.__file__).parent / "shell.html").read_text(encoding="utf-8")
+    assert not re.search(r"\.maplibregl-ctrl-top-left\s*\{[^}]*display\s*:\s*none", html)
