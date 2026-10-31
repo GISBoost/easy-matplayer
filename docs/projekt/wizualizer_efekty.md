@@ -155,6 +155,16 @@ Decyzje właściciela: D1 tylko start aktywności, D2 `tlo_*` z przełącznikiem
 
 Zmiana decyzji D1 (właściciel, 2026-10-31, po obejrzeniu błysków o 6–7): błyski także przy **końcu** aktywności, żeby widać było wyjazd z domu, a kolor odróżniał start od końca. Wykonanie: dwa checkboxy (start, koniec), start = pierścień rozchodzący się z rdzeniem w kolorze typu, koniec = ten sam kolor rozjaśniony o 55%, pierścień zbiegający się do środka, bez rdzenia (kształt rozróżnia też bez koloru). Przeglądu, jak robi to Via, nie udało się potwierdzić: wyszukiwanie nie znalazło opisu błysków aktywności w Via ani OTFVis, więc projekt jest własny.
 
+### Zmiana: widok „auta / tylko drogi / auta + drogi” (2026-10-31, uwaga właściciela)
+
+Problem: kolor prędkości i natężenia zależał od filtra klas aut (statystyki liczone z maską klas), więc włączanie i wyłączanie klas zmieniało kolory dróg, a auta i drogi na jednej skali zlewały się. Decyzja: przełącznik „Widok” (auta, tylko drogi, auta + drogi) oraz osobny wybór wskaźnika (prędkość, natężenie) i okna.
+
+- `view` = `cars | load | both`, `metric` = `speed | flow`; `roadMode` (`type | speed | flow`) wynika z nich, więc `setRoadMode` zostaje dla smoke i testów.
+- Statystyki liczą **cały ruch** (maska ze wszystkimi klasami), filtr klas dotyczy tylko aut.
+- Widok `load`: nie rysuje warstw aut ani modeli, chowa legendy aut i przycisk „kolor auta”, klik na mapie wybiera drogę (nie auto). Widok `both`: auta kolorem klasy (jak w poprzednim trybie obciążenia).
+- Test: smoke sprawdza warstwy i legendy w trzech widokach oraz że wyłączenie klasy nie zmienia liczby kolorowanych linków.
+- Nie robione: skala koloru bez suwaków, wskaźnik per klasa (można wrócić, jeśli będzie potrzebny).
+
 Odstępstwa od planu:
 
 - Wyjazd z linku liczy się tylko po węźle wjazdu (`knot_len = 0`), nie po dowolnym węźle tego samego linku. Powód: fixtura (i potencjalnie dziwny run) dubluje `left link` i `leaves traffic` na ostatnim linku, a podwójne wyjście zawyżałoby natężenie.

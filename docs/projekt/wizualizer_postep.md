@@ -378,6 +378,15 @@ Wszystkie trzy części (A2a, A2b, A2c) przeszły: 96 testów i smoke w prawdziw
 - Przeglądu Via nie udało się zrobić: wyszukiwanie nie znalazło opisu błysków aktywności w Via ani OTFVis. Projekt wizualny jest własny.
 - Paczka: `scripts\viz_build.bat` kod 0; `easy-matplayer.exe --smoke` z PATH `C:\Windows\System32;C:\Windows;...\WindowsPowerShell\v1.0` i pustym `EASY_MATPLAYER_DATA`: `smoke OK ... blyski=215/4 linki_z_ruchem=2911`. Pytest: 128 passed.
 
+## Widok: auta / tylko drogi / auta + drogi (2026-10-31, uwaga właściciela)
+
+- Zgłoszenie: prędkość i natężenie „włączają się” zależnie od tego, czy auto danej kategorii jest na drodze. Przyczyna: `refreshLoad` i `linkWinLine` liczyły statystyki z maską klas aut (`mask`), więc przyciski klas zmieniały kolory dróg.
+- Zmiana (`shell.html`): przełącznik „Widok” (`auta`, `tylko drogi`, `auta + drogi`) i wybór wskaźnika (`prędkości`, `natężenia`) z oknem; statystyki liczą cały ruch (`allClasses()`); widok „tylko drogi” nie rysuje aut ani modeli, chowa legendy aut, przycisk „kolor auta” i wybór aut kliknięciem. `setRoadMode` zostaje jako cienka nakładka dla smoke. Napisy EN w `i18n.py`.
+- Dowody: `pytest viz_player/tests -q` 128 passed; `--smoke` na demo Kutno w WebView2 `smoke OK ... blyski=215/4 linki_z_ruchem=2911`, rozszerzony o trzy widoki (warstwy i legendy) oraz o sprawdzenie, że wyłączenie klasy nie zmienia liczby kolorowanych linków; podgląd w przeglądarce (strona z `write_site`): „tylko drogi” bez aut z legendą prędkości, „auta + drogi” z natężeniem i autami w kolorze klasy.
+- Dokumentacja: nowe `docs/viz/blyski_aktywnosci.md` i `docs/viz/predkosc_i_natezenie.md`, zaktualizowane `README_pl.md` i `README.md`.
+- Paczka: `scriptsiz_build.bat` kod 0; `easy-matplayer.exe --smoke` z PATH `C:\Windows\System32;C:\Windows;...\WindowsPowerShell1.0` i pustym `EASY_MATPLAYER_DATA`: `smoke OK ... blyski=215/4 linki_z_ruchem=2911` (w tym nowe sprawdzenia widoków). Za pierwszym razem smoke OSM wywalił się na komunikacie z cache (`w pliku OSM 0 z 3705 dróg sieci` zamiast `nie pokrywa`): kontrola przyjmuje teraz oba warianty, to była kruchość testu, nie błąd programu.
+- Nie sprawdzone: Wiedeń (wydajność koloru dróg).
+
 ## Kształt błysku: start = rdzeń, koniec = pierścień (2026-10-31, decyzja właściciela)
 
 - Zastępuje wygląd z poprzedniej sekcji. Start aktywności: sam rdzeń, bez pierścienia (gaśnie). Koniec: sam pierścień rozchodzący się od środka, bez rdzenia. Oba w kolorze typu, bez rozjaśniania (stała `FLASH.endMix` usunięta), więc start od końca odróżnia kształt. Zmiana tylko w rysowaniu (`shell.html`), dane, eksport i `Engine.flashes` bez zmian.

@@ -59,7 +59,7 @@ Gdy osoba zaczyna aktywność (event `actstart`) albo ją kończy (`actend`, czy
 - **Start:** sam rdzeń (kropka, która gaśnie), bez pierścienia.
 - **Koniec:** sam pierścień, który rozchodzi się od środka i gaśnie, bez rdzenia.
 
-Oba w kolorze typu aktywności, więc start i koniec rozróżnia kształt.
+Oba w kolorze typu aktywności, więc start i koniec rozróżnia kształt. Szczegóły: `blyski_aktywnosci.md`.
 
 Kolory typów: `home` pomarańczowy, `work` niebieski, `edu`/`school` fioletowy, `shop` zielony, `leis…` różowy, inne typy z palety.
 
@@ -69,9 +69,9 @@ Kolory typów: `home` pomarańczowy, `work` niebieski, `edu`/`school` fioletowy,
 
 ## Kolor dróg: obciążenie
 
-Panel „Kolor dróg”: `typ drogi` (domyślnie), `prędkość` albo `natężenie`, oraz okno 1, 5 (domyślnie) lub 15 minut symulacji. Wartości liczone są z eventów ruchu w oknie `(t − okno, t]`, odświeżane 4 razy na sekundę.
+Panel „Widok” ma trzy ustawienia: `auta` (domyślnie, drogi w zwykłych kolorach), `tylko drogi` (auta ukryte, drogi w kolorze obciążenia) i `auta + drogi`. W dwóch ostatnich wybierasz wskaźnik, `prędkości` albo `natężenia`, oraz okno 1, 5 (domyślnie) lub 15 minut symulacji. Wartości liczone są z eventów ruchu w oknie `(t − okno, t]`, odświeżane 4 razy na sekundę. Szczegóły: `predkosc_i_natezenie.md`.
 
-| Tryb | Co pokazuje | Skala |
+| Wskaźnik | Co pokazuje | Skala |
 |---|---|---|
 | prędkość | średnia prędkość na linku (suma długości / suma czasów przejazdu) podzielona przez prędkość swobodną linku | czerwony ≤ 30%, żółty 60%, zielony ≥ 90% |
 | natężenie | liczba wyjazdów z linku na godzinę podzielona przez `capacity × flowCapacityFactor` | niebieski 0, pomarańczowy 50%, czerwony ≥ 100% |
@@ -79,7 +79,7 @@ Panel „Kolor dróg”: `typ drogi` (domyślnie), `prędkość` albo `natężen
 - Link bez wyjazdu w oknie jest szary: brak ruchu to nie „swobodnie”.
 - Natężenie jest w skali próbki. Przepustowość sieci jest pełna, symulacja skaluje ją przez `flowCapacityFactor` z `output_config.xml` (moduł `qsim`), więc dzielimy przez ten iloczyn i nie przeliczamy do pełnej populacji. Bez `flowCapacityFactor` w configu tryb „natężenie” jest wyłączony z komunikatem.
 - Prędkość liczą tylko pełne przejazdy linku (początek w początku linku). Wjazd w środek linku (początek i koniec trasy) liczy się do natężenia, nie do prędkości. Wszystkie pojazdy liczone jako jeden pojazd (pojazdy PT mają w MATSim większy współczynnik PCE).
-- Statystyki z próbki 25% są szumne na pojedynczych linkach (kilka aut w oknie): dłuższe okno wygładza. W trybie obciążenia auta są kolorowane klasą (po powrocie do „typ drogi” wraca poprzedni wybór), żeby nie zlewały się z drogą.
+- Statystyki z próbki 25% są szumne na pojedynczych linkach (kilka aut w oknie): dłuższe okno wygładza. W widoku `auta + drogi` auta są kolorowane klasą (po powrocie do `auta` wraca poprzedni wybór), żeby nie zlewały się z drogą. Kolor dróg liczy cały ruch: przyciski klas aut ukrywają auta, ale nie zmieniają koloru dróg.
 - Panel zaznaczonego linku ma dodatkowy wiersz z wartościami z okna, np. „ostatnie 5 min: 13 km/h (swobodna 42 km/h), 156 poj/h (104% przepustowości, w skali próbki)”.
 
 ## Znane ograniczenia

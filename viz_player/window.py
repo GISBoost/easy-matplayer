@@ -398,7 +398,7 @@ def _smoke_osm(window, js):
         if not _wait_js(window, f"boot.osm && boot.osm.user === true && boot.osm.file === 'kutno_tiny.osm.pbf' && {ready} && window.drawnN > 0", 180):
             return f"osm: po wskazaniu pliku {js('JSON.stringify(boot.osm)')} msg={js('document.getElementById(\'runmsg\').textContent')}"
         curves_text = str(js("document.getElementById('curves').textContent"))
-        if "nie pokrywa" not in curves_text and "brak origid" not in curves_text:
+        if "nie pokrywa" not in curves_text and "brak origid" not in curves_text and "w pliku OSM 0 z" not in curves_text:  # druga wersja: wynik z cache
             return f"osm: brak komunikatu o pokryciu: {curves_text!r}"
         buildings_note = str(js("boot.buildingsNote"))
         if not buildings_note.startswith("budynki 1:"):
@@ -672,7 +672,32 @@ def smoke(run):
                 if grey[0] >= grey[1]:
                     result["error"] = f"tryb dróg {mode}: wszystkie linki szare"
                     return
-            js("setRoadMode('type'); setMult(1); change();")
+            # Widoki: auta / tylko drogi / auta + drogi. Kolor dróg liczy cały ruch, więc wyłączenie klasy aut go nie zmienia.
+            if player.boot().get("flowFactor"):
+                js("setMetric('flow')")
+            js("setView('load'); t = " + str(t_win) + "; change();")
+            if not _wait_js(window, f"window.layerIds && view === 'load' && loadT === {t_win} && !window.drawError", 15):
+                result["error"] = f"widok „tylko drogi”: {js('window.drawError')}"
+                return
+            n_link = js("(function(){var g=0;for(var l=0;l<loadVals.length;l++)if(loadVals[l]===loadVals[l])g++;return g;})()")
+            js("loadSig = ''; loadT = NaN; document.querySelector('#chips .chip').click(); t = " + str(t_win) + "; change();")
+            if not _wait_js(window, f"window.layerIds && loadT === {t_win} && !window.drawError", 15):
+                result["error"] = f"widok „tylko drogi” po wyłączeniu klasy: {js('window.drawError')}"
+                return
+            n_link2 = js("(function(){var g=0;for(var l=0;l<loadVals.length;l++)if(loadVals[l]===loadVals[l])g++;return g;})()")
+            js("document.querySelector('#chips .chip').click()")
+            only_roads = js("window.layerIds.indexOf('cars') < 0 && window.layerIds.indexOf('roads') >= 0 && document.getElementById('lg-class').hidden && document.getElementById('lg-speed').hidden && !document.getElementById('lg-load').hidden")
+            js("setView('both'); t = " + str(t_win) + "; change();")
+            if not _wait_js(window, "window.layerIds && view === 'both' && window.layerIds.indexOf('cars') >= 0 && !window.drawError", 15):
+                result["error"] = f"widok „auta + drogi”: {js('window.layerIds')} {js('window.drawError')}"
+                return
+            if n_link != n_link2 or n_link < 100 or only_roads is not True:
+                result["error"] = f"widok „tylko drogi”: linki z wartością {n_link}/{n_link2}, bez aut i legend aut: {only_roads}"
+                return
+            js("setView('cars'); setMetric('speed'); setMult(1); change();")
+            if not _wait_js(window, "roadMode === 'type' && window.layerIds.indexOf('cars') >= 0 && !window.drawError", 15):
+                result["error"] = f"widok „auta”: {js('window.drawError')}"
+                return
             result["load_links"] = int((ref_stats["n"] > 0).sum())
             mult_seq = js(
                 "(function(){var g=function(){return document.getElementById('mval').textContent;};var o=[g()];"

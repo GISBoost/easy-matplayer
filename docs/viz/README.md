@@ -61,7 +61,7 @@ When a person starts an activity (an `actstart` event) or ends it (`actend`, for
 - **Start:** a core only (a dot that fades), no ring.
 - **End:** a ring only, expanding from the centre and fading, no core.
 
-Both use the activity type colour, so start and end are told apart by shape.
+Both use the activity type colour, so start and end are told apart by shape. Details (Polish): `blyski_aktywnosci.md`.
 
 Type colours: `home` orange, `work` blue, `edu`/`school` purple, `shop` green, `leis…` pink, other types from a palette.
 
@@ -71,9 +71,9 @@ Type colours: `home` orange, `work` blue, `edu`/`school` purple, `shop` green, `
 
 ## Road colour: load
 
-Panel "Road color": `road type` (default), `speed` or `flow`, and a window of 1, 5 (default) or 15 simulated minutes. Values come from the traffic events in the window `(t − window, t]`, refreshed 4 times a second.
+Panel "View" has three settings: `cars` (default, roads in their usual colours), `roads only` (cars hidden, roads coloured by load) and `cars + roads`. In the last two you choose the indicator, `speed` or `flow`, and a window of 1, 5 (default) or 15 simulated minutes. Values come from the traffic events in the window `(t − window, t]`, refreshed 4 times a second. Details (Polish): `predkosc_i_natezenie.md`.
 
-| Mode | What it shows | Scale |
+| Indicator | What it shows | Scale |
 |---|---|---|
 | speed | mean speed on the link (sum of lengths / sum of travel times) divided by the link's free speed | red ≤ 30%, yellow 60%, green ≥ 90% |
 | flow | link exits per hour divided by `capacity × flowCapacityFactor` | blue 0, orange 50%, red ≥ 100% |
@@ -81,7 +81,7 @@ Panel "Road color": `road type` (default), `speed` or `flow`, and a window of 1,
 - A link with no exit in the window is grey: no traffic is not "free flow".
 - Flow is in sample scale. The network capacity is full, the simulation scales it by `flowCapacityFactor` from `output_config.xml` (`qsim` module), so we divide by that product and do not extrapolate to the full population. Without `flowCapacityFactor` in the config the "flow" mode is disabled with a message.
 - Speed uses only complete link traversals (starting at the start of the link). Entering mid-link (start and end of a trip) counts towards flow, not speed. All vehicles count as one vehicle (transit vehicles have a larger PCE in MATSim).
-- Statistics from a 25% sample are noisy on single links (a few cars in the window): a longer window smooths them. In load mode cars are coloured by class (back in "road type" the previous choice returns) so they do not blend into the road.
+- Statistics from a 25% sample are noisy on single links (a few cars in the window): a longer window smooths them. In the `cars + roads` view cars are coloured by class (back in `cars` the previous choice returns) so they do not blend into the road. Road colour counts all traffic: the car class buttons hide cars but do not change road colours.
 - The selected-link panel has an extra line with the window values, e.g. "last 5 min: 13 km/h (free 42 km/h), 156 veh/h (104% of capacity, sample scale)".
 
 ## Known limitations

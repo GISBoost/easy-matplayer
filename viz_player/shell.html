@@ -25,7 +25,8 @@ body { display: grid; grid-template-columns: 1fr 320px; grid-template-rows: 1fr 
 #opts { margin: 0 0 14px; display: flex; flex-direction: column; gap: 8px; }
 #opts label { color: #9aa3b2; cursor: pointer; }
 #opts .chip { align-self: flex-start; }
-#loadbox { display: flex; flex-direction: column; gap: 6px; margin: 0 0 14px; }
+#loadbox, #loadmore { display: flex; flex-direction: column; gap: 6px; }
+#loadbox { margin: 0 0 14px; }
 #loadbox .seg { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; }
 #loadbox .chip:disabled { opacity: .45; cursor: default; }
 #loadnote { margin: 0; font-size: 12px; line-height: 1.35; }
@@ -176,17 +177,24 @@ body.panel-off #panel { display: none; }
     </div>
   </div>
   <div id="loadbox">
-    <div class="muted">Kolor dróg</div>
+    <div class="muted">Widok</div>
     <div class="seg">
-      <button type="button" class="chip on" data-rm="type">typ drogi</button>
-      <button type="button" class="chip" data-rm="speed">prędkość</button>
-      <button type="button" class="chip" data-rm="flow">natężenie</button>
+      <button type="button" class="chip on" data-view="cars">auta</button>
+      <button type="button" class="chip" data-view="load">tylko drogi</button>
+      <button type="button" class="chip" data-view="both">auta + drogi</button>
     </div>
-    <div class="seg" id="loadwin" hidden>
-      <span class="muted">okno:</span>
-      <button type="button" class="chip" data-w="60">1 min</button>
-      <button type="button" class="chip on" data-w="300">5 min</button>
-      <button type="button" class="chip" data-w="900">15 min</button>
+    <div id="loadmore" hidden>
+      <div class="muted">Kolor dróg wg</div>
+      <div class="seg">
+        <button type="button" class="chip on" data-rm="speed">prędkości</button>
+        <button type="button" class="chip" data-rm="flow">natężenia</button>
+      </div>
+      <div class="seg" id="loadwin">
+        <span class="muted">okno:</span>
+        <button type="button" class="chip" data-w="60">1 min</button>
+        <button type="button" class="chip on" data-w="300">5 min</button>
+        <button type="button" class="chip" data-w="900">15 min</button>
+      </div>
     </div>
     <p id="loadnote" class="muted" hidden></p>
   </div>
@@ -338,7 +346,9 @@ let flashOn = true, flashTypeOn = null, actRgb = null, fbuf = null;
 const flashKind = Uint8Array.of(1, 1);   // widoczne rodzaje zdarzeń, indeks = act_kind: [koniec, start]
 // Kolor dróg wg obciążenia (tryb "speed": średnia prędkość / swobodna, "flow": natężenie / przepustowość w skali próbki), z okna ostatnich loadWin s
 // symulacji (engine.linkStats). Link bez ruchu w oknie jest szary: brak ruchu to nie „swobodnie”. Odświeżanie najwyżej 4 razy na sekundę.
-let roadMode = "type", loadWin = 300, loadVals = null, loadRgba = null, loadStamp = 0, loadAt = -1e9, loadT = NaN, loadSig = "", carBeforeLoad = null;
+// Widok (view): "cars" = auta na drogach koloru typu, "load" = same drogi w kolorze obciążenia, "both" = auta i drogi w kolorze obciążenia.
+// roadMode wynika z widoku: "type" przy "cars", w pozostałych metric ("speed" albo "flow"). Statystyki liczą cały ruch, bez filtra klas aut.
+let view = "cars", metric = "speed", roadMode = "type", loadWin = 300, loadVals = null, loadRgba = null, loadStamp = 0, loadAt = -1e9, loadT = NaN, loadSig = "", carBeforeLoad = null;
 const LOAD_GREY = [74, 80, 92, 150];
 const LOAD_SPEED = [[0.3, [230, 57, 70]], [0.6, [250, 204, 21]], [0.9, [52, 211, 153]]];
 const LOAD_FLOW = [[0, [86, 150, 235]], [0.5, [250, 150, 40]], [1, [230, 40, 50]]];
@@ -355,12 +365,23 @@ function rampAt(stops, v) {
 function rampCss(stops, lo, hi) {
   return "linear-gradient(90deg, " + stops.map((s) => "rgb(" + s[1].join(",") + ") " + Math.round(100 * (s[0] - lo) / (hi - lo)) + "%").join(", ") + ")";
 }
+let allMask = null;
+function allClasses() {
+  if (!allMask || allMask.length !== engine.classKeys.length) allMask = new Uint8Array(engine.classKeys.length).fill(1);
+  return allMask;
+}
+const carsShown = () => view !== "load";
+function carLegend() {
+  document.getElementById("lg-speed").hidden = carByClass || !carsShown();
+  document.getElementById("lg-class").hidden = !carByClass || !carsShown();
+  document.getElementById("carcolor").hidden = !carsShown();
+}
 function refreshLoad() {
   if (roadMode === "type" || !boot.linkAttr) return;
-  const sig = roadMode + ":" + loadWin + ":" + classesOn.join(",");
+  const sig = roadMode + ":" + loadWin;
   const now = performance.now();
   if (sig === loadSig && (playing ? now - loadAt < 250 : t === loadT)) return;
-  const ls = engine.linkStats(t, loadWin, mask);
+  const ls = engine.linkStats(t, loadWin, allClasses());
   if (!loadVals) { loadVals = new Float32Array(boot.nLinks); loadRgba = new Uint8Array(4 * boot.nLinks); }
   engine.loadValues(ls, boot.linkAttr, roadMode, loadWin, boot.flowFactor, loadVals);
   const stops = roadMode === "speed" ? LOAD_SPEED : LOAD_FLOW, top = stops[stops.length - 1][0];
@@ -370,15 +391,25 @@ function refreshLoad() {
   }
   loadStamp++; loadAt = now; loadT = t; loadSig = sig;
 }
+function setView(v) { view = v; applyView(); }
+function setMetric(m) { metric = m; applyView(); }
+// zgodność ze smoke i testami: "type" = auta, "speed"/"flow" = drogi w tym wskaźniku (z autami, jeśli widok był „auta”)
 function setRoadMode(mode) {
-  if (mode === roadMode) return;
+  if (mode === "type") { setView("cars"); return; }
+  metric = mode;
+  setView(view === "cars" ? "both" : view);
+}
+function applyView() {
   const wasLoad = roadMode !== "type";
-  roadMode = mode;
-  document.querySelectorAll("#loadbox [data-rm]").forEach((b) => b.classList.toggle("on", b.dataset.rm === mode));
-  document.getElementById("loadwin").hidden = mode === "type";
-  // auta i drogi na tej samej rampie prędkości zlewają się: w trybie obciążenia auta idą kolorem klasy, po powrocie wraca wybór użytkownika
+  roadMode = view === "cars" ? "type" : metric;
+  const mode = roadMode;
+  document.querySelectorAll("#loadbox [data-view]").forEach((b) => b.classList.toggle("on", b.dataset.view === view));
+  document.querySelectorAll("#loadbox [data-rm]").forEach((b) => b.classList.toggle("on", b.dataset.rm === metric));
+  document.getElementById("loadmore").hidden = mode === "type";
+  // auta i drogi na tej samej rampie prędkości zlewają się: przy autach na drogach obciążenia auta idą kolorem klasy, po powrocie wraca wybór użytkownika
   if (mode !== "type" && !wasLoad) { carBeforeLoad = carByClass; if (!carByClass) setCarColor(true); }
   if (mode === "type" && wasLoad && carBeforeLoad !== null) { setCarColor(carBeforeLoad); carBeforeLoad = null; }
+  carLegend();
   const lg = document.getElementById("lg-load");
   lg.hidden = mode === "type";
   if (mode !== "type") {
@@ -402,7 +433,7 @@ function setLoadWin(w) {
 function linkWinLine(l) {
   const attr = boot.linkAttr;
   if (!attr) return null;
-  const w = Math.round(loadWin / 60), ls = engine.linkStats(t, loadWin, mask);
+  const w = Math.round(loadWin / 60), ls = engine.linkStats(t, loadWin, allClasses());
   if (!ls.n[l]) return F("ostatnie {w} min: brak ruchu", {w});
   const parts = [];
   if (ls.nf[l]) parts.push(F("{v} (swobodna {f})", {v: kmhJs(ls.len[l] / ls.tt[l]), f: kmhJs(attr[4 * l + 1])}));
@@ -538,9 +569,7 @@ function setCarColor(byClass) {
   carByClass = byClass;
   document.getElementById("carcolor").textContent = T("kolor auta: ") + T(byClass ? "klasa" : "prędkość");
   document.getElementById("carcolor").classList.toggle("on", byClass);
-  document.getElementById("lg-speed").hidden = byClass;
   const box = document.getElementById("lg-class");
-  box.hidden = !byClass;
   box.replaceChildren();
   (boot.classes || []).forEach((c) => {
     const d = document.createElement("div");
@@ -549,6 +578,7 @@ function setCarColor(byClass) {
     d.append(i, c.name);
     box.appendChild(d);
   });
+  carLegend();
   dirty = true;
 }
 function setOsmRoads(on) {
@@ -812,9 +842,9 @@ function sqDistToSegment(px, py, a, b) {
 }
 // Najbliższe auto z ostatniej klatki (8 px), inaczej najbliższy odcinek drogi.
 function pickAt(p) {
-  const tol = 8, fr = engine.out;
+  const tol = 8, fr = engine.out, nCars = carsShown() ? fr.n : 0;
   let best = -1, bd = tol * tol;
-  for (let i = 0; i < fr.n; i++) {
+  for (let i = 0; i < nCars; i++) {
     const q = map.project([fr.lon[i], fr.lat[i]]);
     const dx = q.x - p.x, dy = q.y - p.y, d = dx * dx + dy * dy;
     if (d <= bd) { bd = d; best = i; }
@@ -957,8 +987,8 @@ function render() {
         }));
       }
     }
-    const showIcons = !modelsOn;
-    if (modelsOn) {
+    const carsOn = carsShown(), showIcons = carsOn && !modelsOn, showModels = carsOn && modelsOn;
+    if (showModels) {
       // modele idą jako obiekty z akcesorami (mało pojazdów w kadrze przy zoomie, od którego je widać)
       const rows = {car: [], heavy: []};
       for (let i = 0; i < fr.n; i++) {
@@ -985,14 +1015,14 @@ function render() {
       getPosition: {value: buf.pos, size: 2}, getAngle: {value: buf.ang, size: 1}, getSize: {value: buf.size, size: 1},
       getColor: {value: buf.col, size: 4},
     }}}));
-    if (sel >= 0 && modelsOn) {
+    if (sel >= 0 && showModels) {
       // zaznaczenie przy modelach: okrąg wokół modelu, nie kontur grota
       const r = 0.6 * MODEL_PX * zs * (engine.classHeavy[fr.cls[sel]] ? MARKER.heavy / MARKER.base : 1);
       layers.push(new deck.ScatterplotLayer({
         id: "car-sel", data: [{p: [fr.lon[sel], fr.lat[sel]]}], getPosition: (d) => d.p, getRadius: r, radiusUnits: "pixels",
         stroked: true, filled: false, getLineColor: [126, 182, 255], lineWidthUnits: "pixels", getLineWidth: 1.5,
       }));
-    } else if (sel >= 0) {
+    } else if (sel >= 0 && carsOn) {
       layers.push(marker("car-sel", "ring", {
         data: [{p: [fr.lon[sel], fr.lat[sel]], a: buf.ang[sel], s: buf.size[sel]}],
         getPosition: (d) => d.p, getAngle: (d) => d.a, getSize: (d) => d.s, getColor: [126, 182, 255, 255],
@@ -1447,7 +1477,8 @@ svcEl("svc-ok").addEventListener("click", async () => {
   svcRender(); svcSync(); svcOpen(false);
 });
 document.getElementById("models").addEventListener("change", (ev) => { modelsOn = ev.target.checked; document.getElementById("credit").hidden = !modelsOn; dirty = true; });
-document.querySelectorAll("#loadbox [data-rm]").forEach((b) => b.addEventListener("click", () => { if (!b.disabled) setRoadMode(b.dataset.rm); }));
+document.querySelectorAll("#loadbox [data-view]").forEach((b) => b.addEventListener("click", () => setView(b.dataset.view)));
+document.querySelectorAll("#loadbox [data-rm]").forEach((b) => b.addEventListener("click", () => { if (!b.disabled) setMetric(b.dataset.rm); }));
 document.querySelectorAll("#loadwin [data-w]").forEach((b) => b.addEventListener("click", () => setLoadWin(Number(b.dataset.w))));
 document.getElementById("flash").addEventListener("change", (ev) => { flashOn = ev.target.checked; dirty = true; });
 document.getElementById("flash-start").addEventListener("change", (ev) => { flashKind[1] = ev.target.checked ? 1 : 0; dirty = true; });
