@@ -1934,11 +1934,12 @@ class FitControl {
   onRemove() { this.el.remove(); }
 }
 // Web: dwa podkłady pobierane wprost przez przeglądarkę (obie usługi wysyłają Access-Control-Allow-Origin: *), pod warstwą aut.
-// WMS GUGiK: GetMap w EPSG:3857 z szablonem {bbox-epsg-3857} (MapLibre podstawia zakres kafelka).
+// GUGiK: kafelkowy WMTS (KVP, EPSG:3857, gotowe kafelki, cache 30 dni); dynamiczny WMS renderował każdy kafelek od zera i bywał 3-4 s.
+// Wiersz kafelka w WMTS liczy się od góry, tak jak {y} w XYZ.
 const WEB_BASE = [
   {id: "osm", tiles: ["https://tile.openstreetmap.org/{z}/{x}/{y}.png"], attr: "© OpenStreetMap contributors", on: true, op: 0.6},
   {id: "orto", tileSize: 256, attr: "© GUGiK (Geoportal.gov.pl)", on: false, op: 1, tiles: [
-    "https://mapy.geoportal.gov.pl/wss/service/PZGIK/ORTO/WMS/StandardResolution?SERVICE=WMS&VERSION=1.3.0&REQUEST=GetMap&LAYERS=Raster&STYLES=&FORMAT=image/jpeg&CRS=EPSG:3857&WIDTH=256&HEIGHT=256&BBOX={bbox-epsg-3857}"]},
+    "https://mapy.geoportal.gov.pl/wss/service/PZGIK/ORTO/WMTS/StandardResolution?SERVICE=WMTS&REQUEST=GetTile&VERSION=1.0.0&LAYER=ORTOFOTOMAPA&STYLE=default&FORMAT=image/jpeg&TILEMATRIXSET=EPSG:3857&TILEMATRIX=EPSG:3857:{z}&TILEROW={y}&TILECOL={x}"]},
 ];
 function addWebBasemaps(style) {
   WEB_BASE.forEach((b) => {
