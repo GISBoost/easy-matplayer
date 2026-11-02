@@ -112,6 +112,12 @@ body { display: grid; grid-template-columns: 1fr 320px; grid-template-rows: 1fr 
 #axis-ends { display: flex; justify-content: space-between; gap: 8px; margin-top: 4px; color: #9aa3b2; font-size: 11px; font-variant-numeric: tabular-nums; }
 .muted { color: #9aa3b2; }
 #runbar { width: 100%; height: 6px; accent-color: #4f9cf9; }
+#loading { position: fixed; inset: 0; z-index: 100; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 10px;
+  background: #121418; color: #e7e9ee; transition: opacity .3s; padding: 0 16px; text-align: center; }
+#loading.out { opacity: 0; pointer-events: none; }
+#loading h2 { margin: 0; font-size: 18px; font-weight: 600; }
+#loading progress { width: min(320px, 80vw); height: 6px; accent-color: #4f9cf9; }
+#loading p { margin: 0; font-size: 13px; }
 #credit { margin: 14px 0 0; font-size: 12px; }
 #weblinks { display: none; margin: 0 0 8px; font-size: 12px; }
 #weblinks a { color: #9aa3b2; }
@@ -512,6 +518,11 @@ body.panel-off #panel { display: none; }
   <span>Obraz bez georeferencji: przeciągnij środek, żeby przesunąć, róg, żeby skalować i obracać. Suwak przezroczystości w panelu pomaga trafić w drogi.</span>
   <button id="edit-bbox" type="button">wpisz zakres…</button>
   <button id="edit-done" type="button">gotowe</button>
+</div>
+<div id="loading" role="status" hidden>
+  <h2 id="load-title">easy-matplayer</h2>
+  <progress id="load-bar" max="1" value="0"></progress>
+  <p id="load-stage" class="muted"></p>
 </div>
 <div id="svc-dlg" hidden>
   <form id="svc-form">
@@ -998,13 +1009,39 @@ function applyBoot() {
   if (boot.bld) document.getElementById("three").title = boot.buildingsNote;
 }
 
+// Ekran ładowania (tylko web): pasek = ukończone pliki / znana liczba plików, etap = nazwa grupy plików.
+const loading = {done: 0, total: 1};
+function loadShow() {
+  const box = document.getElementById("loading");
+  box.hidden = false;
+  document.getElementById("load-stage").textContent = webLang() === "en" ? "Loading…" : "Ładowanie…";
+  // tytuł scenariusza z listy; brak listy nie blokuje ładowania
+  fetch("../scenarios.json").then((r) => r.json()).then((rows) => {
+    const row = rows.find((x) => x.id === WEB);
+    if (row && row.title) document.getElementById("load-title").textContent = row.title[webLang()] || row.title.pl;
+  }).catch(() => {});
+}
+function loadStage(text) { if (WEB) document.getElementById("load-stage").textContent = T(text); }
+function loadTick() {
+  loading.done++;
+  if (WEB) { const b = document.getElementById("load-bar"); b.max = loading.total; b.value = Math.min(loading.done, loading.total); }
+}
+function loadHide() {
+  const box = document.getElementById("loading");
+  box.classList.add("out");
+  setTimeout(() => { box.hidden = true; }, 400);
+}
+
 // boot.json to małe metadane; tablice (linki, łamane) idą jako pliki binarne tego samego serwera.
 async function loadBoot() {
+  if (WEB) loadShow();
   const get = async (name, kind) => {
     // no-store: serwer okna nie wysyła Cache-Control, a po „otwórz run” albo zmianie pliku OSM strona ma wziąć świeże boot.json i tablice
     const res = await fetch(BASE + name, {cache: "no-store"});
     if (!res.ok) throw new Error(BASE + name + " " + res.status);
-    return kind === "json" ? res.json() : new kind(await res.arrayBuffer());
+    const out = kind === "json" ? await res.json() : new kind(await res.arrayBuffer());
+    loadTick();
+    return out;
   };
   boot = await get(WEB ? "boot." + webLang() + ".json" : "boot.json", "json");
   STR = boot.strings || {};
@@ -1012,30 +1049,34 @@ async function loadBoot() {
   document.getElementById("lang").textContent = boot.lang === "en" ? "Polski" : "English";
   translateStatic();
   if (boot.error) return;
-  boot.linkLL = await get("link_ll.bin", Float64Array);
-  boot.linkType = await get("link_type.bin", Uint8Array);
-  boot.linkAttr = await get("link_attr.bin", Float32Array);
+  // znane z góry: 3 pliki linków, krzywe, budynki, manifest + ślady + osoby i 2 porcje na start (porcji bywa więcej, pasek jest przycięty do 100%)
+  loading.total = 1 + 3 + (boot.nCurve ? 3 : 0) + (boot.buildings ? 5 : 0) + 3 + 2;
+  loadStage("Sieć drogowa");
+  [boot.linkLL, boot.linkType, boot.linkAttr] = await Promise.all([get("link_ll.bin", Float64Array), get("link_type.bin", Uint8Array), get("link_attr.bin", Float32Array)]);
   if (boot.nCurve) {
-    boot.curveOff = await get("curve_off.bin", Int32Array);
-    boot.curveLon = await get("curve_lon.bin", Float64Array);
-    boot.curveLat = await get("curve_lat.bin", Float64Array);
+    [boot.curveOff, boot.curveLon, boot.curveLat] = await Promise.all([get("curve_off.bin", Int32Array), get("curve_lon.bin", Float64Array), get("curve_lat.bin", Float64Array)]);
   }
   if (boot.buildings) {
+    loadStage("Budynki 3D");
     const q = "?v=" + boot.buildings.split("?v=")[1];
-    const meta = await get("data/buildings.json" + q, "json");
-    boot.bld = {
-      meta, off: await get("data/buildings_off.bin" + q, Int32Array), xy: await get("data/buildings_xy.bin" + q, Float32Array),
-      h: await get("data/buildings_h.bin" + q, Float32Array), src: await get("data/buildings_src.bin" + q, Uint8Array),
-    };
+    const [meta, off, xy, h, src] = await Promise.all([
+      get("data/buildings.json" + q, "json"), get("data/buildings_off.bin" + q, Int32Array), get("data/buildings_xy.bin" + q, Float32Array),
+      get("data/buildings_h.bin" + q, Float32Array), get("data/buildings_src.bin" + q, Uint8Array),
+    ]);
+    boot.bld = {meta, off, xy, h, src};
   }
   const curves = boot.nCurve ? {off: boot.curveOff, lon: boot.curveLon, lat: boot.curveLat} : null;
   const getData = async (name, kind) => {
     const res = await fetch(name);
     if (!res.ok) throw new Error(name + " " + res.status);
-    return kind === "json" ? res.json() : res.arrayBuffer();
+    const out = kind === "json" ? await res.json() : await res.arrayBuffer();
+    loadTick();
+    return out;
   };
+  loadStage("Ruch pojazdów");
   engine = await Engine.load(BASE + "data/", getData, curves, boot.linkLL, boot.data.split("/").pop());
   await engine.want(boot.t);
+  loadStage("Mapa");
 }
 
 const STAY_NAME = {home: "dom", work: "praca", tlo_start: "tło", tlo_end: "tło"};
@@ -2022,10 +2063,13 @@ async function bootMap() {
     window.mapReady = true;
     dirty = true;
     svcLoad();
+    if (WEB) loadHide();
   });
 }
 window.addEventListener("pywebviewready", () => { window.apiReady = true; dirty = true; svcLoad(); });
-loadBoot().then(() => { applyBoot(); return bootMap(); }).catch((err) => { window.drawError = String(err && err.stack || err); });
+// Nakładka znika przy załadowaniu mapy, a przy błędzie (boot.error, brak WebGL2, wyjątek) od razu, żeby nie zasłaniać komunikatu.
+loadBoot().then(() => { applyBoot(); return bootMap(); }).then(() => { if (WEB && !map) loadHide(); })
+  .catch((err) => { window.drawError = String(err && err.stack || err); if (WEB) loadHide(); });
 requestAnimationFrame(loop);
 </script>
 </body>

@@ -21,6 +21,13 @@ def test_translate_follows_the_language_and_keeps_unknown_text():
     assert i18n.t("Eksport danych dla okna") == "Eksport danych dla okna"
 
 
+def test_loading_stages_are_translated():
+    # etapy ekranu ładowania (shell.html, loadStage) idą przez T() z tabeli w boot.<lang>.json
+    i18n.set_lang("en")
+    assert [i18n.t(s) for s in ("Sieć drogowa", "Budynki 3D", "Ruch pojazdów", "Mapa")] == ["Road network", "3D buildings", "Vehicle traffic", "Map"]
+    i18n.set_lang(i18n.DEFAULT)
+
+
 def test_table_for_the_page_is_empty_in_polish():
     i18n.set_lang("en")
     assert i18n.table() is i18n.EN

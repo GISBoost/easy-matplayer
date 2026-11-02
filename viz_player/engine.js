@@ -69,8 +69,7 @@ class Engine {
     if (manifest.format !== 1 && manifest.format !== 2) throw new Error("nieznany format eksportu " + manifest.format);
     // ?v=klucz: serwer pywebview nie ustawia Cache-Control, a pliki danych zmieniają się bez zmiany adresu
     const q = "?v=" + manifest.source_key.slice(0, 12);
-    const persons = await get(base + manifest.persons + q, "json");
-    const buf = await get(base + manifest.tracks.file + q, "buf");
+    const [persons, buf] = await Promise.all([get(base + manifest.persons + q, "json"), get(base + manifest.tracks.file + q, "buf")]);
     const tracks = readColumns(buf, manifest.tracks.columns, manifest.tracks.columns.map(() => manifest.n_tracks), manifest.align);
     return new Engine(manifest, persons, tracks, curves, linkLL, (name, kind) => get(base + name + q, kind));
   }

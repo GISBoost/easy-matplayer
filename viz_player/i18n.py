@@ -203,6 +203,10 @@ EN = {
     " ({p}% przepustowości, w skali próbki)": " ({p}% of capacity, sample scale)",
     "ostatnie {w} min: {x}": "last {w} min: {x}",
     "GISBoost · analizy mapowe": "GISBoost · map analyses",
+    "Sieć drogowa": "Road network",
+    "Budynki 3D": "3D buildings",
+    "Ruch pojazdów": "Vehicle traffic",
+    "Mapa": "Map",
     "postoje ściśnięte": "stops compressed",
     "Modele aut: Quaternius (CC0).": "Car models: Quaternius (CC0).",
     "Spacja: start. Strzałki: ±1 min. F: śledź. Esc: wyczyść. Prawy przycisk myszy: obrót i pochylenie mapy.":
