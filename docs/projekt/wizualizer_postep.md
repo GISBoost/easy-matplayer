@@ -508,3 +508,12 @@ Otwarte, w kolejności:
 - Dowód (lokalny serwer statyczny, strona zbudowana `scripts/web_build.py` z Kutna 25%, ramka z `player/?run=demo-kutno`): nakładka przechodzi `0/1 → 4/17 → 8/17 → 12/17 → 17/17`, etapy w kolejności, potem znika (~0,4 s fade), `drawError` puste, `mapReady` true.
 - **Nie zmierzone:** czas na prawdziwych Pages (lokalny serwer odpowiada w ~80 ms, więc czy zrównoleglenie skraca start przez sieć, nie wiadomo), rozmiary i kompresja `.bin`, wersja angielska nakładki w przeglądarce (tłumaczenie testowane tylko w `test_i18n`), telefon.
 - Testy po zmianie: `pytest viz_player/tests -q` 133 passed (132 + test etapów); smoke z kodu na Kutnie 25%: `smoke OK n=729 … klient_vs_python_max=0.46 m budynki3D=83617 blyski=215/4 linki_z_ruchem=2911` (jak w linii bazowej). Exe nie budowałem (zmiana nie dotyka paczki poza kopią `shell.html`/`engine.js`), więc **smoke exe nie uruchomiony**.
+
+## Warstwa hosta w `shell.html` (2026-11-02, krok 1 handoffu scalenia)
+
+- Zrobione: obiekt `host` (zaraz po `WEB`/`BASE`) jest jedynym miejscem, które zna `window.pywebview`: `host.api()`, flagi `canOpenRun`, `canOsmFile`, `canOgc`, `canRaster`, `canDescribe` i metoda `host.setLanguage(code)` (web: `localStorage` + reload; aplikacja: `runBusy` → `set_language`). Funkcje pytają o flagi zamiast o `WEB`: `refreshPanel` (`canDescribe`), przełącznik języka, `osm-pick`, `openrun`, `svcApi` (`canOgc`).
+- Widoczność kontrolek nie idzie już z `body.web`, tylko z klas `no-openrun`, `no-osm`, `no-ogc`, `no-raster`, `no-adv` ustawianych z flag. Wynik w web jest taki sam jak wcześniej, ale kolejny krok może włączyć `canOgc` bez zmian w CSS (i osobno ukryć `#img-add` przez `canRaster`).
+- Zostają `WEB`-owe miejsca, które są funkcjami tylko strony (nie hostem): ścieżka danych (`BASE`, `boot.<lang>.json`), podkłady `WEB_BASE`, atrybucja, ekran ładowania.
+- Dowód web (lokalny serwer, strona z Kutna 25%): klasy `web no-openrun no-osm no-ogc no-raster no-adv`; `#openrun`, `#osm`, `#svc`, `#img-add` i nagłówek „Zaawansowane” ukryte, `#webbase` widoczny; `drawError` puste, `mapReady` true; kliknięcie „English” zapisało `mapyAnalizyLang=en`, strona po reloadzie ma `lang=en` i przycisk „Polski”.
+- **Nie sprawdzone ręcznie w oknie aplikacji poza smoke** (smoke z kodu sprawdza DOM i klienta, wyniki niżej).
+- Testy po kroku 1: `pytest` 133 passed; smoke z kodu na Kutnie 25%: `smoke OK n=729 … klient_vs_python_max=0.46 m budynki3D=83617 wms_kafelki=24 blyski=215/4 linki_z_ruchem=2911` (jak w linii bazowej). Exe nie budowany.

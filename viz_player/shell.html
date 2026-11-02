@@ -126,7 +126,7 @@ body.web #weblinks { display: block; }
 body.web #webbase { display: block; }
 .wbrow { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-top: 4px; font-size: 13px; }
 .wbrow input[type=range] { width: 90px; }
-body.web #openrun, body.web #osm, body.web #svc { display: none; }
+body.no-openrun #openrun, body.no-osm #osm, body.no-ogc #svc, body.no-raster #img-add { display: none; }
 #hint { margin-top: 18px; color: #9aa3b2; font-size: 12px; line-height: 1.4; }
 #bar { display: flex; align-items: center; gap: 8px; padding: 0 12px; background: #1b1f27; min-width: 0;
   grid-column: 1 / -1; grid-row: 2; }
@@ -343,7 +343,7 @@ body.panel-off #panel { display: none; }
   .sechd[data-sec=find] { order: 50; } #find { order: 51; } #hits { order: 52; }
   .sechd[data-sec=base] { order: 60; } #webbase { order: 61; }
   .sechd[data-sec=adv] { order: 70; } #svc { order: 71; } #osm { order: 72; } #openrun { order: 73; align-self: flex-start; }
-  body:not(.web) .sechd[data-sec=base], body.web .sechd[data-sec=adv] { display: none; }
+  body:not(.web) .sechd[data-sec=base], body.no-adv .sechd[data-sec=adv] { display: none; }
   #loadbox > .muted:first-child, #webbase > .muted:first-child { display: none; }  /* tytuł grupy jest już w nagłówku */
   #credit { order: 90; }
   #attrfull { order: 91; }
@@ -550,6 +550,23 @@ function webLang() {
   try { return localStorage.getItem("mapyAnalizyLang") === "en" ? "en" : "pl"; } catch (e) { return "pl"; }
 }
 if (WEB) document.body.classList.add("web");
+// Warstwa hosta: jedyne miejsce, które wie, czy jest most Pythona (aplikacja) czy tylko strona (web).
+// Funkcje pytają o możliwości (can*) i wołają host.api(); nie sprawdzają window.pywebview.
+const host = {
+  api: () => window.pywebview && window.pywebview.api,
+  canOpenRun: !WEB, canOsmFile: !WEB, canOgc: !WEB, canRaster: !WEB,
+  canDescribe: !WEB,  // opis zaznaczenia z indeksu w Pythonie; bez niego panel liczy klient (webPanel)
+  setLanguage(code) {
+    if (!WEB) return runBusy((a) => a.set_language(code), T("Run się otwiera…"));
+    try { localStorage.setItem("mapyAnalizyLang", code); } catch (e) { /* bez zapisu: wybór tylko na teraz */ }
+    location.reload();
+  },
+};
+document.body.classList.toggle("no-openrun", !host.canOpenRun);
+document.body.classList.toggle("no-osm", !host.canOsmFile);
+document.body.classList.toggle("no-ogc", !host.canOgc);
+document.body.classList.toggle("no-raster", !host.canRaster);
+document.body.classList.toggle("no-adv", !(host.canOpenRun || host.canOsmFile || host.canOgc || host.canRaster));
 // Teksty: klucz to polski tekst z kodu. Tabela przychodzi w boot.json (po angielsku), po polsku jest pusta i zostaje tekst z kodu.
 let STR = {};
 const T = (text) => STR[text] || text;
@@ -1446,12 +1463,12 @@ function webPanel(fr) {
 
 // Opis zaznaczenia (lista czynności, linki) zna tylko indeks w Pythonie, więc pytamy go rzadko.
 function refreshPanel(fr) {
-  const api = window.pywebview && window.pywebview.api;
+  const api = host.api();
   if (!selected) {
     if (panelForce) { showPanel({kind: "empty"}); anchor = null; panelForce = false; }
     return;
   }
-  if (WEB) { webPanel(fr); return; }
+  if (!host.canDescribe) { webPanel(fr); return; }
   if (!api || !api.describe) return;
   const now = performance.now();
   if (!panelForce && now - panelAt < 250) return;
@@ -1535,7 +1552,7 @@ document.getElementById("three").addEventListener("click", () => setThreeD(!thre
 // „otwórz run”: wybór folderu w Pythonie, potem otwarcie; sukces przeładowuje stronę (świeży boot.json), błąd zostawia bieżący run
 // Wspólna obsługa długiej operacji w Pythonie (otwarcie runu, zmiana pliku OSM): pasek i etap z Api.progress(), po sukcesie przeładowanie strony
 async function runBusy(start, text) {
-  const api = window.pywebview && window.pywebview.api, msg = document.getElementById("runmsg");
+  const api = host.api(), msg = document.getElementById("runmsg");
   const say = (t) => { msg.textContent = t; msg.hidden = !t; };
   const bar = document.getElementById("runbar");
   say(text);
@@ -1563,8 +1580,8 @@ async function openRunPath(path) {
 window.openRunPath = openRunPath;
 // Plik OSM (opcjonalny): bez niego proste odcinki z sieci runu, z nim łamane drogi i budynki 3D; wynik w cache przy runie
 document.getElementById("osm-pick").addEventListener("click", async () => {
-  const api = window.pywebview && window.pywebview.api;
-  if (!api) return;
+  const api = host.api();
+  if (!host.canOsmFile || !api) return;
   const r = await api.osm_pick();
   if (r.status === "path") runBusy((a) => a.osm_use(r.path), T("Czytam plik OSM…"));
 });
@@ -1572,24 +1589,18 @@ document.getElementById("osm-clear").addEventListener("click", () => runBusy((a)
 window.useOsm = (path) => runBusy((a) => a.osm_use(path), T("Czytam plik OSM…"));
 // Przełącznik języka: Python zapisuje wybór, przeładowuje run (nazwy klas i komunikaty powstają przy otwarciu), strona się przeładowuje.
 document.getElementById("lang").addEventListener("click", () => {
-  if (WEB) {
-    try { localStorage.setItem("mapyAnalizyLang", boot.lang === "en" ? "pl" : "en"); } catch (e) { /* bez zapisu: wybór tylko na teraz */ }
-    location.reload();
-    return;
-  }
-  const api = window.pywebview && window.pywebview.api;
-  if (!api) return;
-  runBusy((a) => a.set_language(boot.lang === "en" ? "pl" : "en"), T("Run się otwiera…"));
+  if (!WEB && !host.api()) return;
+  host.setLanguage(boot.lang === "en" ? "pl" : "en");
 });
 document.getElementById("openrun").addEventListener("click", async () => {
-  const api = window.pywebview && window.pywebview.api;
-  if (!api) return;
+  const api = host.api();
+  if (!host.canOpenRun || !api) return;
   const r = await api.pick_run();
   if (r.status === "path") openRunPath(r.path);
 });
 // Podkłady WMS / WMTS: kafelki pobiera Python (CORS), MapLibre dostaje je przez protokół ogc://<id>/{z}/{x}/{y}
 let services = [], svcLoaded = false;
-function svcApi() { return window.pywebview && window.pywebview.api; }
+function svcApi() { return host.canOgc ? host.api() : null; }
 async function svcTile(params) {
   const m = /^ogc:\/\/([^/]+)\/(\d+)\/(\d+)\/(\d+)/.exec(params.url);
   const r = await svcApi().ogc_tile(m[1], +m[2], +m[3], +m[4]);
