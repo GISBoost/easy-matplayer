@@ -22,9 +22,23 @@ def test_translate_follows_the_language_and_keeps_unknown_text():
 
 
 def test_loading_stages_are_translated():
-    # etapy ekranu ładowania (shell.html, loadStage) idą przez T() z tabeli w boot.<lang>.json
+    # napisy ekranu ładowania (shell.html, LOAD_LINES) idą przez T() z tabeli w boot.<lang>.json
+    lines = (
+        "Ładujemy Twoją mapę…", "Szykujemy odtwarzacz…",
+        "Rozkładamy sieć drogową…", "Układamy ulice na miejscu…",
+        "Ładujemy budynki…", "Stawiamy domy…",
+        "Wpuszczamy pojazdy na drogi…", "Układamy trasy przejazdów…",
+        "Otwieramy mapę…", "Jeszcze tylko chwilka…",
+    )
+    en = (
+        "Loading your map…", "Getting the player ready…",
+        "Laying out the road network…", "Putting the streets in place…",
+        "Loading the buildings…", "Raising the houses…",
+        "Letting the vehicles onto the roads…", "Laying out the trips…",
+        "Opening the map…", "Just a moment more…",
+    )
     i18n.set_lang("en")
-    assert [i18n.t(s) for s in ("Sieć drogowa", "Budynki 3D", "Ruch pojazdów", "Mapa")] == ["Road network", "3D buildings", "Vehicle traffic", "Map"]
+    assert [i18n.t(s) for s in lines] == list(en)
     i18n.set_lang(i18n.DEFAULT)
 
 

@@ -112,12 +112,23 @@ body { display: grid; grid-template-columns: 1fr 320px; grid-template-rows: 1fr 
 #axis-ends { display: flex; justify-content: space-between; gap: 8px; margin-top: 4px; color: #9aa3b2; font-size: 11px; font-variant-numeric: tabular-nums; }
 .muted { color: #9aa3b2; }
 #runbar { width: 100%; height: 6px; accent-color: #4f9cf9; }
-#loading { position: fixed; inset: 0; z-index: 100; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 10px;
-  background: #121418; color: #e7e9ee; transition: opacity .3s; padding: 0 16px; text-align: center; }
+/* Ekran ładowania (web). Tokeny jak na stronie „godzina po godzinie”, tylko na tej nakładce. */
+#loading { --solid: #1c1c1e; --fill: rgba(118, 118, 128, .28); --accent: #0a84ff; --ink: #f2f2f7; --ink-2: rgba(235, 235, 245, .72);
+  position: fixed; inset: 0; z-index: 800; display: grid; place-items: center;
+  background: var(--solid); color: var(--ink); transition: opacity .6s ease; padding: 0 16px; text-align: center; }
 #loading.out { opacity: 0; pointer-events: none; }
-#loading h2 { margin: 0; font-size: 18px; font-weight: 600; }
-#loading progress { width: min(320px, 80vw); height: 6px; accent-color: #4f9cf9; }
-#loading p { margin: 0; font-size: 13px; }
+#loading .ld { width: min(320px, calc(100% - 48px)); }
+#loading h2 { margin: 0 0 18px; font-size: 1.05rem; font-weight: 600; }
+#loading .ld-msg { margin: 0 0 16px; height: 2.6em; overflow: hidden; display: grid; place-items: center;
+  font-size: 1rem; font-weight: 600; line-height: 1.3; }
+#loading .ld-msg span { display: block; transition: opacity .35s ease, transform .35s ease; }
+#loading .ld-msg.out span { opacity: 0; transform: translateY(110%); }
+#loading .ld-bar { height: 6px; border-radius: 3px; background: var(--fill); overflow: hidden; }
+#loading .ld-bar i { display: block; height: 100%; width: 0; border-radius: 3px; background: var(--accent); transition: width .4s ease; }
+#loading .ld-pct { display: block; margin-top: 8px; font-size: .78rem; color: var(--ink-2); font-variant-numeric: tabular-nums; }
+@media (prefers-reduced-motion: reduce) {
+  #loading, #loading .ld-msg span, #loading .ld-bar i { transition: none; }
+}
 #credit { margin: 14px 0 0; font-size: 12px; }
 #weblinks { display: none; margin: 0 0 8px; font-size: 12px; }
 #weblinks a { color: #9aa3b2; }
@@ -519,10 +530,13 @@ body.panel-off #panel { display: none; }
   <button id="edit-bbox" type="button">wpisz zakres…</button>
   <button id="edit-done" type="button">gotowe</button>
 </div>
-<div id="loading" role="status" hidden>
-  <h2 id="load-title">easy-matplayer</h2>
-  <progress id="load-bar" max="1" value="0"></progress>
-  <p id="load-stage" class="muted"></p>
+<div id="loading" hidden>
+  <div class="ld">
+    <h2 id="load-title">easy-matplayer</h2>
+    <p class="ld-msg" id="load-stage" role="status"><span></span></p>
+    <div class="ld-bar" id="load-track" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0" aria-valuetext="0%"><i id="load-bar"></i></div>
+    <span class="ld-pct" id="load-pct" aria-hidden="true">0%</span>
+  </div>
 </div>
 <div id="svc-dlg" hidden>
   <form id="svc-form">
@@ -1026,27 +1040,78 @@ function applyBoot() {
   if (boot.bld) document.getElementById("three").title = boot.buildingsNote;
 }
 
-// Ekran ładowania (tylko web): pasek = ukończone pliki / znana liczba plików, etap = nazwa grupy plików.
-const loading = {done: 0, total: 1};
+// Ekran ładowania (tylko web): pasek = ukończone pliki / znana liczba plików.
+// Napisy grupy kręcą się co 2,4 s: stary schodzi w dół, nowy wchodzi od dołu. Klucze idą przez T() (i18n.EN).
+const LOAD_LINES = {
+  start: ["Ładujemy Twoją mapę…", "Szykujemy odtwarzacz…"],
+  roads: ["Rozkładamy sieć drogową…", "Układamy ulice na miejscu…"],
+  buildings: ["Ładujemy budynki…", "Stawiamy domy…"],
+  traffic: ["Wpuszczamy pojazdy na drogi…", "Układamy trasy przejazdów…"],
+  map: ["Otwieramy mapę…", "Jeszcze tylko chwilka…"],
+};
+// boot.<lang>.json jeszcze nie dotarł, a pierwsze dwa zdania już widać. Reszta grup wołana jest po słowniku.
+const LOAD_EARLY = {"Ładujemy Twoją mapę…": "Loading your map…", "Szykujemy odtwarzacz…": "Getting the player ready…"};
+const LOAD_SWAP_MS = 350, LOAD_ROTATE_MS = 2400;
+const loading = {done: 0, total: 1, ready: false};
+let loadTimer = 0, loadSwap = 0, loadLines = [], loadLine = 0;
+function loadReduce() { return window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches; }
+function loadText(key) {
+  if (webLang() === "en" && !STR[key] && LOAD_EARLY[key]) return LOAD_EARLY[key];
+  return T(key);
+}
+function loadSay(text) {
+  const el = document.getElementById("load-stage"), span = el.firstElementChild;
+  if (!span.textContent || loadReduce()) { clearTimeout(loadSwap); span.textContent = text; el.classList.remove("out"); return; }
+  el.classList.add("out");
+  clearTimeout(loadSwap);
+  loadSwap = setTimeout(() => { span.textContent = text; el.classList.remove("out"); }, LOAD_SWAP_MS);
+}
+function loadRotate() {
+  if (loadLines.length < 2) return;
+  loadLine = (loadLine + 1) % loadLines.length;
+  loadSay(loadLines[loadLine]);
+}
+function loadStage(key) {
+  if (!WEB) return;
+  loadLines = (LOAD_LINES[key] || [key]).map(loadText);
+  loadLine = 0;
+  loadSay(loadLines[0]);
+  clearInterval(loadTimer);
+  loadTimer = setInterval(loadRotate, LOAD_ROTATE_MS);
+}
+function loadPaint() {
+  if (!WEB) return;
+  const p = Math.max(0, Math.min(100, Math.round(100 * loading.done / loading.total)));
+  document.getElementById("load-bar").style.width = p + "%";
+  const track = document.getElementById("load-track");
+  track.setAttribute("aria-valuenow", String(p));
+  track.setAttribute("aria-valuetext", p + "%");
+  document.getElementById("load-pct").textContent = p + "%";
+}
 function loadShow() {
   const box = document.getElementById("loading");
   box.hidden = false;
-  document.getElementById("load-stage").textContent = webLang() === "en" ? "Loading…" : "Ładowanie…";
+  loadStage("start");
   // tytuł scenariusza z listy; brak listy nie blokuje ładowania
   fetch("../scenarios.json").then((r) => r.json()).then((rows) => {
     const row = rows.find((x) => x.id === WEB);
     if (row && row.title) document.getElementById("load-title").textContent = row.title[webLang()] || row.title.pl;
   }).catch(() => {});
 }
-function loadStage(text) { if (WEB) document.getElementById("load-stage").textContent = T(text); }
 function loadTick() {
   loading.done++;
-  if (WEB) { const b = document.getElementById("load-bar"); b.max = loading.total; b.value = Math.min(loading.done, loading.total); }
+  if (loading.ready) loadPaint();
 }
-function loadHide() {
+function loadHide(done) {
+  clearInterval(loadTimer);
+  clearTimeout(loadSwap);
+  document.getElementById("load-stage").classList.remove("out");
   const box = document.getElementById("loading");
+  if (!(done && loading.ready) || loadReduce()) { box.hidden = true; return; }
+  loading.done = loading.total;
+  loadPaint();
   box.classList.add("out");
-  setTimeout(() => { box.hidden = true; }, 400);
+  setTimeout(() => { box.hidden = true; }, 650);
 }
 
 // boot.json to małe metadane; tablice (linki, łamane) idą jako pliki binarne tego samego serwera.
@@ -1068,13 +1133,15 @@ async function loadBoot() {
   if (boot.error) return;
   // znane z góry: 3 pliki linków, krzywe, budynki, manifest + ślady + osoby i 2 porcje na start (porcji bywa więcej, pasek jest przycięty do 100%)
   loading.total = 1 + 3 + (boot.nCurve ? 3 : 0) + (boot.buildings ? 5 : 0) + 3 + 2;
-  loadStage("Sieć drogowa");
+  loading.ready = true;
+  loadPaint();
+  loadStage("roads");
   [boot.linkLL, boot.linkType, boot.linkAttr] = await Promise.all([get("link_ll.bin", Float64Array), get("link_type.bin", Uint8Array), get("link_attr.bin", Float32Array)]);
   if (boot.nCurve) {
     [boot.curveOff, boot.curveLon, boot.curveLat] = await Promise.all([get("curve_off.bin", Int32Array), get("curve_lon.bin", Float64Array), get("curve_lat.bin", Float64Array)]);
   }
   if (boot.buildings) {
-    loadStage("Budynki 3D");
+    loadStage("buildings");
     const q = "?v=" + boot.buildings.split("?v=")[1];
     const [meta, off, xy, h, src] = await Promise.all([
       get("data/buildings.json" + q, "json"), get("data/buildings_off.bin" + q, Int32Array), get("data/buildings_xy.bin" + q, Float32Array),
@@ -1090,10 +1157,10 @@ async function loadBoot() {
     loadTick();
     return out;
   };
-  loadStage("Ruch pojazdów");
+  loadStage("traffic");
   engine = await Engine.load(BASE + "data/", getData, curves, boot.linkLL, boot.data.split("/").pop());
   await engine.want(boot.t);
-  loadStage("Mapa");
+  loadStage("map");
 }
 
 const STAY_NAME = {home: "dom", work: "praca", tlo_start: "tło", tlo_end: "tło"};
@@ -2074,7 +2141,7 @@ async function bootMap() {
     window.mapReady = true;
     dirty = true;
     svcLoad();
-    if (WEB) loadHide();
+    if (WEB) loadHide(true);
   });
 }
 window.addEventListener("pywebviewready", () => { window.apiReady = true; dirty = true; svcLoad(); });
